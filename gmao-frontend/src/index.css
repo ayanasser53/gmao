@@ -3204,3 +3204,58 @@ a {
     width: 100%;
   }
 }
+.equipment-workspace{min-height:calc(100vh - 66px);padding:30px;background:#f7f9fb}
+.equipment-page-header,.equipment-toolbar,.equipment-card,.equipment-card-title-row,.equipment-card-actions,.equipment-drawer-header,.equipment-drawer-footer{display:flex;align-items:center}
+.equipment-page-header{justify-content:space-between;gap:24px;margin-bottom:24px}
+.equipment-page-header h1{margin:6px 0;color:#173454;font-size:32px}.equipment-page-header p{margin:0;color:#68778a}
+.equipment-primary-button{min-height:43px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;color:#fff;background:#087fbd;border:1px solid #087fbd;border-radius:6px;font-weight:700}
+.equipment-toolbar{gap:12px;margin-bottom:16px}.equipment-search{flex:1;min-height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border:1px solid #dce5ed;border-radius:8px}.equipment-search input{width:100%;border:0;outline:0}
+.equipment-filter-button{min-height:44px;display:inline-flex;align-items:center;gap:8px;padding:0 16px;color:#087fbd;background:#fff;border:1px solid #087fbd;border-radius:8px}
+.equipment-filters{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px;padding:20px;background:#eaf5fb;border-radius:10px}
+.equipment-clear-filter{min-height:42px;padding:0 15px;color:#b42318;background:#fff;border:1px solid #e7b4af;border-radius:6px}
+.equipment-list{display:flex;flex-direction:column;gap:14px}.equipment-card{align-items:stretch;gap:20px;padding:18px;background:#fff;border:1px solid #dce5ed;border-radius:10px}
+.equipment-card-image{width:110px;min-width:110px;height:90px;display:grid;place-items:center;color:#087fbd;background:#eef5f8;border-radius:8px;overflow:hidden}.equipment-card-image img{width:100%;height:100%;object-fit:cover}
+.equipment-card-content{flex:1;min-width:0}.equipment-card-title-row{justify-content:space-between;gap:20px}.equipment-card h2{margin:0 0 6px;color:#087fbd;font-size:18px}.equipment-card p{margin:0;color:#5e6f82}
+.equipment-visibility-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;color:#53667a;background:#edf2f5;border-radius:999px;font-size:12px}
+.equipment-card-meta{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:15px;color:#53667a;font-size:12px}
+.equipment-card-tags,.equipment-tag-selector{display:flex;flex-wrap:wrap;gap:8px}.equipment-card-tags{margin-top:14px}.equipment-card-tags span{padding:6px 10px;color:#fff;border-radius:5px;font-size:12px}
+.equipment-card-actions{align-self:center;gap:6px}.equipment-card-actions button{width:36px;height:36px;display:grid;place-items:center;color:#087fbd;background:transparent;border:0;border-radius:6px}.equipment-card-actions .equipment-delete-button{color:#d92d20}
+.equipment-loading,.equipment-empty{padding:40px;color:#68778a;background:#fff;border:1px solid #dce5ed;border-radius:10px;text-align:center}.equipment-error{margin-bottom:16px;padding:12px 14px;color:#b42318;background:#fff1f0;border:1px solid #f2c2be;border-radius:6px}
+.equipment-tag-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;color:#4f6277;background:#f0f3f5;border:1px solid transparent;border-radius:5px}.equipment-tag-chip-selected{color:#087fbd;background:#e5f5fc;border-color:#087fbd}
+.equipment-drawer-overlay{position:fixed;inset:0;z-index:300;background:rgba(15,25,35,.52);border:0}.equipment-drawer{position:fixed;top:0;right:0;bottom:0;z-index:310;width:min(58vw,940px);background:#fff;transform:translateX(105%);transition:transform .28s ease;box-shadow:-8px 0 24px rgba(0,0,0,.18)}.equipment-drawer-open{transform:translateX(0)}
+.equipment-drawer form{height:100%;display:flex;flex-direction:column}.equipment-drawer-header{min-height:62px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:0 20px;border-bottom:1px solid #e0e5e9}.equipment-drawer-header h2{margin:0;color:#173454;font-size:18px}.equipment-drawer-header button{width:34px;height:34px;display:grid;place-items:center;color:#68788a;background:transparent;border:0}
+.equipment-drawer-body{flex:1;display:flex;flex-direction:column;gap:20px;padding:22px;overflow-y:auto}.equipment-drawer-footer{justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid #e0e5e9}
+.equipment-cancel-button{min-height:43px;padding:0 18px;color:#31465d;background:#fff;border:1px solid #ccd5de;border-radius:6px}.equipment-form-field{display:flex;flex-direction:column;gap:8px}.equipment-form-field label{color:#304762;font-size:13px;font-weight:700}
+.equipment-form-field input,.equipment-form-field select,.equipment-form-field textarea{width:100%;padding:11px 12px;border:1px solid #bcc8d4;border-radius:6px;outline:0}.equipment-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.equipment-image-dropzone{min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#087fbd;background:#fafcfd;border:2px dashed #b8cad8;border-radius:8px;cursor:pointer}.equipment-image-dropzone input{display:none}.equipment-image-preview{display:flex;align-items:center;gap:14px}.equipment-image-preview img{width:120px;height:90px;object-fit:cover;border-radius:8px}.equipment-image-preview button{color:#b42318;background:transparent;border:0}
+.equipment-visibility-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.equipment-visibility-option{min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#617287;background:#fff;border:1px solid #c8d4df;border-radius:8px}.equipment-visibility-option-active{color:#087fbd;background:#edf8fc;border:2px solid #087fbd}
+@media(max-width:850px){.equipment-form-grid,.equipment-visibility-options{grid-template-columns:1fr}.equipment-card{flex-direction:column}.equipment-card-image{width:100%;height:180px}.equipment-drawer{width:100%}}
+.equipment-tag-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+
+    padding:8px 16px;
+
+    border-radius:18px;
+
+    border:none;
+
+    color:white;
+
+    font-size:14px;
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.2s;
+}
+
+.equipment-tag-chip:hover{
+    transform:translateY(-2px);
+    opacity:.9;
+}
+
+.equipment-tag-chip-selected{
+    box-shadow:0 0 0 3px rgba(13,110,253,.25);
+}

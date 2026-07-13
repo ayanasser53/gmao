@@ -5,19 +5,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.http.HttpMethod;
 
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.web.SecurityFilterChain;
-
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import org.springframework.web.cors.CorsConfiguration;
@@ -41,9 +40,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
 
                 .cors(cors ->
-                        cors.configurationSource(
-                                corsConfigurationSource()
-                        )
+                        cors.configurationSource(corsConfigurationSource())
                 )
 
                 .sessionManagement(session ->
@@ -53,11 +50,19 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**")
-                        .permitAll()
 
-                        .anyRequest()
-                        .authenticated()
+                        // Autoriser les requêtes OPTIONS de pré-vérification CORS
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
+                        // Routes publiques
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
+
+                        // Toutes les autres routes demandent un JWT
+                        .anyRequest().authenticated()
                 )
 
                 .addFilterBefore(
@@ -75,7 +80,10 @@ public class SecurityConfig {
                 new CorsConfiguration();
 
         configuration.setAllowedOrigins(
-                List.of("http://localhost:5174")
+                List.of(
+                        "http://localhost:5173",
+                        "http://localhost:5174"
+                )
         );
 
         configuration.setAllowedMethods(
@@ -92,12 +100,18 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(
                 List.of(
                         "Authorization",
-                        "Content-Type"
+                        "Content-Type",
+                        "Accept",
+                        "Origin",
+                        "X-Requested-With"
                 )
         );
 
         configuration.setExposedHeaders(
-                List.of("Authorization")
+                List.of(
+                        "Authorization",
+                        "Content-Disposition"
+                )
         );
 
         configuration.setAllowCredentials(true);
@@ -120,9 +134,9 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config
+            AuthenticationConfiguration configuration
     ) throws Exception {
 
-        return config.getAuthenticationManager();
+        return configuration.getAuthenticationManager();
     }
 }

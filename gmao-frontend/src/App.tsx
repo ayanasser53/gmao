@@ -13,6 +13,7 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import TagsPage from "./pages/admin/TagsPage";
+import EquipmentPage from "./pages/admin/EquipmentPage";
 
 import DashboardPage from "./pages/admin/DashboardPage";
 import ModulePlaceholderPage from "./pages/admin/ModulePlaceholderPage";
@@ -48,7 +49,10 @@ function App() {
   path="measures"
   element={<MeasuresPage />}
 />
-
+<Route
+  path="equipment"
+  element={<EquipmentPage />}
+/>
 <Route
   path="tags"
   element={<TagsPage />}
