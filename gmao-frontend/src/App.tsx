@@ -18,9 +18,14 @@ import EquipmentPage from "./pages/admin/EquipmentPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import ModulePlaceholderPage from "./pages/admin/ModulePlaceholderPage";
 import MeasuresPage from "./pages/admin/MeasuresPage";
-import MeasureFormPage from "./pages/admin/MeasureFormPage";
 import UnitsPage from "./pages/admin/UnitsPage";
 import UnitFormPage from "./pages/admin/UnitFormPage";
+import SuppliersPage from "./pages/admin/SuppliersPage";
+import SupplierFormPage from "./pages/admin/SupplierFormPage";
+import SupplierDetailsPage from "./pages/admin/SupplierDetailsPage";
+import SparePartsPage from './pages/admin/SparePartsPage'
+import SparePartFormPage from './pages/admin/SparePartFormPage'
+import SparePartDetailsPage from './pages/admin/SparePartDetailsPage'
 
 function App() {
   return (
@@ -45,6 +50,10 @@ function App() {
             index
             element={<Navigate to="dashboard" replace />}
           />
+          <Route path="spare-parts" element={<SparePartsPage />} />
+          <Route path="spare-parts/create" element={<SparePartFormPage />} />
+          <Route path="spare-parts/:id" element={<SparePartDetailsPage />} />
+          <Route path="spare-parts/:id/edit" element={<SparePartFormPage />} />
           <Route
   path="measures"
   element={<MeasuresPage />}
@@ -90,11 +99,6 @@ function App() {
           />
 
           <Route
-            path="spare-parts"
-            element={<ModulePlaceholderPage />}
-          />
-
-          <Route
             path="tasks"
             element={<ModulePlaceholderPage />}
           />
@@ -109,9 +113,24 @@ function App() {
 />
 
           <Route
-            path="suppliers"
-            element={<ModulePlaceholderPage />}
-          />
+  path="suppliers"
+  element={<SuppliersPage />}
+/>
+
+<Route
+  path="suppliers/create"
+  element={<SupplierFormPage />}
+/>
+
+<Route
+  path="suppliers/:id"
+  element={<SupplierDetailsPage />}
+/>
+
+<Route
+  path="suppliers/:id/edit"
+  element={<SupplierFormPage />}
+/>
 
           <Route
             path="supplier-catalog"
