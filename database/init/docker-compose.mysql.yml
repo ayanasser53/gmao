@@ -1,0 +1,18 @@
+services:
+  gmao_mysql:
+    image: mysql:8.0
+    container_name: gmao_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: gmao_mobility
+      MYSQL_USER: gmao_user
+      MYSQL_PASSWORD: gmao_pass
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - gmao_mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+
+volumes:
+  gmao_mysql_data:
