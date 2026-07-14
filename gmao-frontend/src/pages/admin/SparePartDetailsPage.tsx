@@ -106,9 +106,9 @@ function SparePartDetailsPage() {
 
       <div className="supplier-detail-content">
         <div className="supplier-detail-logo-panel">
-          {sparePart.imageUrl ? (
+          {sparePart.image ? (
             <img
-              src={sparePart.imageUrl}
+              src={sparePart.image}
               alt={sparePart.name}
               className="supplier-detail-logo"
             />
@@ -201,7 +201,7 @@ function SparePartDetailsPage() {
             <MapPin size={18} />
             <div>
               <span>Centre de coûts</span>
-              <strong>{displayValue(sparePart.costCenter)}</strong>
+              <strong>{displayValue(sparePart.costCenterId != null ? String(sparePart.costCenterId) : null)}</strong>
             </div>
           </div>
 

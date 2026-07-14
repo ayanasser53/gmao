@@ -65,11 +65,11 @@ function SparePartsPage() {
         part.brand,
         part.manufacturerReference,
         part.location,
-        part.costCenter,
+        part.costCenterId,
       ]
         .filter(Boolean)
         .some((field) =>
-          field!.toLowerCase().includes(value),
+          String(field).toLowerCase().includes(value),
         ),
     );
   }, [spareParts, search]);
@@ -191,8 +191,8 @@ function getStockDotClass(part: SparePart): string {
                   <td>
                     <div className="supplier-name-cell">
                       <div className="supplier-avatar">
-                        {part.imageUrl ? (
-                          <img src={part.imageUrl} alt={part.name} />
+                        {part.image ? (
+                          <img src={part.image} alt={part.name} />
                         ) : (
                           <PackagePlus size={20} />
                         )}

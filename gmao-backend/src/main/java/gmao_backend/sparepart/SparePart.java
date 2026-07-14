@@ -35,7 +35,7 @@ public class SparePart {
 
     private String brand;
 
-    private String imageUrl;
+    private String image;
 
     private BigDecimal unitPrice;
 
@@ -51,7 +51,8 @@ public class SparePart {
 
     private String location;
 
-    private String costCenter;
+    @Column(name = "cost_center_id")
+    private Long costCenterId;
 
     private String gtin;
 

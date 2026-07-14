@@ -27,13 +27,17 @@ import type {
   SparePartVisibility,
 } from "../../types/sparePart";
 
-const emptyForm: SparePartRequest = {
+type SparePartFormState = Omit<SparePartRequest, "costCenterId"> & {
+  costCenterId: string;
+};
+
+const emptyForm: SparePartFormState = {
   name: "",
   description: "",
   code: "",
   manufacturerReference: "",
   brand: "",
-  imageUrl: "",
+  image: "",
   unitPrice: 0,
   currency: "EUR",
   quantity: 0,
@@ -41,7 +45,7 @@ const emptyForm: SparePartRequest = {
   maximumStock: 0,
   reorderQuantity: 1,
   location: "",
-  costCenter: "",
+  costCenterId: "",
   gtin: "",
   articleCode: "",
   visibility: "PRIVATE",
@@ -54,7 +58,7 @@ function SparePartFormPage() {
 
   const isEditMode = Boolean(id);
 
-  const [form, setForm] = useState<SparePartRequest>(emptyForm);
+  const [form, setForm] = useState<SparePartFormState>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
   const [error, setError] = useState("");
@@ -77,7 +81,7 @@ function SparePartFormPage() {
           code: sparePart.code ?? "",
           manufacturerReference: sparePart.manufacturerReference ?? "",
           brand: sparePart.brand ?? "",
-          imageUrl: sparePart.imageUrl ?? "",
+          image: sparePart.image ?? "",
           unitPrice: sparePart.unitPrice ?? 0,
           currency: sparePart.currency ?? "EUR",
           quantity: sparePart.quantity ?? 0,
@@ -85,7 +89,7 @@ function SparePartFormPage() {
           maximumStock: sparePart.maximumStock ?? 0,
           reorderQuantity: sparePart.reorderQuantity ?? 1,
           location: sparePart.location ?? "",
-          costCenter: sparePart.costCenter ?? "",
+          costCenterId: sparePart.costCenterId != null ? String(sparePart.costCenterId) : "",
           gtin: sparePart.gtin ?? "",
           articleCode: sparePart.articleCode ?? "",
           visibility: sparePart.visibility ?? "PRIVATE",
@@ -101,9 +105,9 @@ function SparePartFormPage() {
     void loadSparePart();
   }, [id]);
 
-  function updateField<K extends keyof SparePartRequest>(
+  function updateField<K extends keyof SparePartFormState>(
     field: K,
-    value: SparePartRequest[K],
+    value: SparePartFormState[K],
   ): void {
     setForm((currentForm) => ({
       ...currentForm,
@@ -113,7 +117,7 @@ function SparePartFormPage() {
 
   function updateNumberField(
     field: keyof Pick<
-      SparePartRequest,
+      SparePartFormState,
       | "unitPrice"
       | "quantity"
       | "minimumStock"
@@ -147,10 +151,10 @@ function SparePartFormPage() {
         code: form.code.trim(),
         manufacturerReference: form.manufacturerReference.trim(),
         brand: form.brand.trim(),
-        imageUrl: form.imageUrl.trim(),
+        image: form.image.trim(),
         currency: form.currency.trim().toUpperCase() || "EUR",
         location: form.location.trim(),
-        costCenter: form.costCenter.trim(),
+        costCenterId: form.costCenterId ? Number(form.costCenterId) : null,
         gtin: form.gtin.trim(),
         articleCode: form.articleCode.trim(),
       };
@@ -296,13 +300,13 @@ function SparePartFormPage() {
 
               <div className="measure-form-group">
                 <label htmlFor="spare-part-image">
-                  Image URL
+                  Image
                 </label>
                 <input
                   id="spare-part-image"
-                  value={form.imageUrl}
+                  value={form.image}
                   onChange={(event) =>
-                    updateField("imageUrl", event.target.value)
+                    updateField("image", event.target.value)
                   }
                 />
               </div>
@@ -446,9 +450,9 @@ function SparePartFormPage() {
                   </label>
                   <input
                     id="spare-part-cost-center"
-                    value={form.costCenter}
+                    value={form.costCenterId}
                     onChange={(event) =>
-                      updateField("costCenter", event.target.value)
+                      updateField("costCenterId", event.target.value)
                     }
                     placeholder="Exemple : 124002"
                   />

@@ -7,7 +7,7 @@ export type SparePart = {
   code: string | null
   manufacturerReference: string | null
   brand: string | null
-  imageUrl: string | null
+  image: string | null
   unitPrice: number
   currency: string
   quantity: number
@@ -15,7 +15,7 @@ export type SparePart = {
   maximumStock: number
   reorderQuantity: number
   location: string | null
-  costCenter: string | null
+  costCenterId: number | null
   gtin: string | null
   articleCode: string | null
   visibility: SparePartVisibility
@@ -31,7 +31,7 @@ export type SparePartRequest = {
   code: string
   manufacturerReference: string
   brand: string
-  imageUrl: string
+  image: string
   unitPrice: number
   currency: string
   quantity: number
@@ -39,7 +39,7 @@ export type SparePartRequest = {
   maximumStock: number
   reorderQuantity: number
   location: string
-  costCenter: string
+  costCenterId: number | null
   gtin: string
   articleCode: string
   visibility: SparePartVisibility

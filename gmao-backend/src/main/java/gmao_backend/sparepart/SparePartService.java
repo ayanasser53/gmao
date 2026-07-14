@@ -52,7 +52,7 @@ public class SparePartService {
                 .code(code)
                 .manufacturerReference(request.manufacturerReference())
                 .brand(request.brand())
-                .imageUrl(request.imageUrl())
+                .image(request.image())
                 .unitPrice(defaultDecimal(request.unitPrice()))
                 .currency(defaultCurrency(request.currency()))
                 .quantity(defaultDecimal(request.quantity()))
@@ -60,7 +60,7 @@ public class SparePartService {
                 .maximumStock(defaultDecimal(request.maximumStock()))
                 .reorderQuantity(defaultDecimal(request.reorderQuantity()))
                 .location(request.location())
-                .costCenter(request.costCenter())
+                .costCenterId(request.costCenterId())
                 .gtin(request.gtin())
                 .articleCode(request.articleCode())
                 .visibility(defaultVisibility(request.visibility()))
@@ -90,7 +90,7 @@ public class SparePartService {
         sparePart.setDescription(request.description());
         sparePart.setManufacturerReference(request.manufacturerReference());
         sparePart.setBrand(request.brand());
-        sparePart.setImageUrl(request.imageUrl());
+        sparePart.setImage(request.image());
         sparePart.setUnitPrice(defaultDecimal(request.unitPrice()));
         sparePart.setCurrency(defaultCurrency(request.currency()));
         sparePart.setQuantity(defaultDecimal(request.quantity()));
@@ -98,7 +98,7 @@ public class SparePartService {
         sparePart.setMaximumStock(defaultDecimal(request.maximumStock()));
         sparePart.setReorderQuantity(defaultDecimal(request.reorderQuantity()));
         sparePart.setLocation(request.location());
-        sparePart.setCostCenter(request.costCenter());
+        sparePart.setCostCenterId(request.costCenterId());
         sparePart.setGtin(request.gtin());
         sparePart.setArticleCode(request.articleCode());
         sparePart.setVisibility(defaultVisibility(request.visibility()));
@@ -174,7 +174,7 @@ public class SparePartService {
                 sparePart.getCode(),
                 sparePart.getManufacturerReference(),
                 sparePart.getBrand(),
-                sparePart.getImageUrl(),
+                sparePart.getImage(),
                 sparePart.getUnitPrice(),
                 sparePart.getCurrency(),
                 sparePart.getQuantity(),
@@ -182,7 +182,7 @@ public class SparePartService {
                 sparePart.getMaximumStock(),
                 sparePart.getReorderQuantity(),
                 sparePart.getLocation(),
-                sparePart.getCostCenter(),
+                sparePart.getCostCenterId(),
                 sparePart.getGtin(),
                 sparePart.getArticleCode(),
                 sparePart.getVisibility(),
