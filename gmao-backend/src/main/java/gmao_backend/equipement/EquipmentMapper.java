@@ -108,7 +108,7 @@ public class EquipmentMapper {
                                 sparePart.getId(),
                                 sparePart.getCode(),
                                 sparePart.getName(),
-                                sparePart.getImageUrl(),
+                                sparePart.getImage(),
                                 sparePart.getQuantity()
                         )
                 )

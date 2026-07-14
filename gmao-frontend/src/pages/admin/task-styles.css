@@ -1,0 +1,448 @@
+/* =========================================================
+   MODULE TÂCHES
+   Réutilise la palette de l'application (#087fbd, #173454,
+   #198754, #b42318...) — importé directement par les pages
+   TaskListPage / TaskCreatePage, pas besoin de le coller
+   ailleurs.
+   ========================================================= */
+
+.task-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 44px;
+  padding: 0 16px;
+
+  color: #087fbd;
+  background: #e7f5fb;
+
+  border: 1px solid #bfe0f0;
+  border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.task-summary-chip strong {
+  color: #173454;
+}
+
+/* ---------- Statut ---------- */
+
+.task-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  min-height: 28px;
+  padding: 0 11px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.task-status-editable {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  font-family: inherit;
+}
+
+.task-status-editable:hover {
+  border-color: currentColor;
+}
+
+.task-status-select {
+  min-height: 32px;
+  padding: 0 10px;
+
+  color: #173454;
+  background: #ffffff;
+
+  border: 1px solid #cbd7e3;
+  border-radius: 6px;
+
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.task-status-done {
+  color: #198754;
+  background: #ddf6e9;
+}
+
+.task-status-late {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.task-status-progress {
+  color: #087fbd;
+  background: #e7f5fb;
+}
+
+/* ---------- Cellules du tableau ---------- */
+
+.task-cell-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-cell-title {
+  color: #173454;
+  font-weight: 700;
+}
+
+.task-cell-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #7c8998;
+  font-size: 12px;
+}
+
+.task-cell-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.task-cell-tags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 4px 10px;
+
+  color: #ffffff;
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.task-equipment-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #41566d;
+  font-size: 13px;
+}
+
+.task-equipment-thumb {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #0784bf;
+  background: #eaf7fc;
+
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.task-equipment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.task-unassigned {
+  color: #93a0af;
+  font-style: italic;
+}
+
+/* ---------- Formulaire : sections ---------- */
+
+.task-form-section {
+  padding-top: 26px;
+  margin-top: 26px;
+
+  border-top: 1px solid #e6ecf1;
+}
+
+.task-form-section:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+.task-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 0 0 18px;
+
+  color: #152d4a;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.task-section-title svg {
+  color: #087fbd;
+}
+
+.task-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 14px 16px;
+  margin-bottom: 20px;
+
+  background: #f7fafc;
+  border: 1px solid #e1e8ef;
+  border-radius: 8px;
+}
+
+.task-toggle-row span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: #304762;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.task-toggle-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: #087fbd;
+}
+
+.task-empty-hint {
+  margin: 0 0 12px;
+
+  color: #93a0af;
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* ---------- Chips (assignés, fichiers, liens) ---------- */
+
+.task-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 7px 8px 7px 12px;
+
+  color: #076ea4;
+  background: #e5f5fc;
+
+  border: 1px solid #84cbe9;
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-chip button {
+  display: grid;
+  place-items: center;
+
+  width: 18px;
+  height: 18px;
+  padding: 0;
+
+  color: #087fbd;
+  background: rgba(8, 127, 189, 0.12);
+
+  border: 0;
+  border-radius: 50%;
+}
+
+.task-chip button:hover {
+  background: rgba(8, 127, 189, 0.22);
+}
+
+.task-add-select {
+  width: 100%;
+  min-height: 44px;
+
+  padding: 0 12px;
+
+  color: #41566d;
+  background: #fafcfd;
+
+  border: 1px dashed #b8cad8;
+  border-radius: 8px;
+
+  font-size: 13.5px;
+}
+
+/* ---------- Tags (sélecteur) ---------- */
+
+.task-tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-tag-option {
+  padding: 8px 14px;
+
+  color: #617287;
+  background: #ffffff;
+
+  border: 1px solid #cfdbe6;
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-tag-option:hover {
+  border-color: #087fbd;
+  color: #087fbd;
+}
+
+.task-tag-option-active {
+  color: #ffffff;
+  background: #087fbd;
+  border-color: #087fbd;
+}
+
+.task-tag-option-active:hover {
+  color: #ffffff;
+}
+
+/* ---------- Pièces de rechange ---------- */
+
+.task-spare-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 6px 8px 6px 12px;
+
+  color: #243f5f;
+  background: #f7fafc;
+
+  border: 1px solid #e1e8ef;
+  border-radius: 999px;
+
+  font-size: 13px;
+}
+
+.task-spare-line input {
+  width: 48px;
+  padding: 4px 6px;
+
+  border: 1px solid #cbd7e3;
+  border-radius: 4px;
+
+  text-align: center;
+}
+
+.task-spare-line button {
+  display: grid;
+  place-items: center;
+
+  width: 18px;
+  height: 18px;
+  padding: 0;
+
+  color: #b42318;
+  background: #fff1f0;
+
+  border: 0;
+  border-radius: 50%;
+}
+
+/* ---------- Documents ---------- */
+
+.task-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  min-height: 100px;
+
+  color: #617287;
+  background: #fafcfd;
+
+  border: 2px dashed #b8cad8;
+  border-radius: 8px;
+
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.task-dropzone span {
+  color: #087fbd;
+  font-weight: 700;
+}
+
+.task-dropzone input {
+  display: none;
+}
+
+.task-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-top: 14px;
+  color: #93a0af;
+}
+
+.task-link-row input {
+  flex: 1;
+  min-height: 42px;
+
+  padding: 0 12px;
+
+  border: 1px solid #cdd7e2;
+  border-radius: 6px;
+
+  font-size: 13px;
+}
+
+.task-link-row button {
+  flex-shrink: 0;
+  min-height: 42px;
+
+  padding: 0 16px;
+
+  color: #087fbd;
+  background: #ffffff;
+
+  border: 1px solid #087fbd;
+  border-radius: 6px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-link-row button:hover {
+  background: #edf8fc;
+}
+
+@media (max-width: 650px) {
+  .task-link-row {
+    flex-wrap: wrap;
+  }
+}

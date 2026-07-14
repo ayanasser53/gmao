@@ -1,5 +1,6 @@
 package com.gmao.gmao_backend.sparepart;
 
+import com.gmao.gmao_backend.costcenter.CostCenterRepository;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
@@ -20,6 +21,7 @@ public class SparePartService {
 
     private final SparePartRepository sparePartRepository;
     private final SupplierRepository supplierRepository;
+    private final CostCenterRepository costCenterRepository;
     private final AppFileStorageService fileStorageService;
 
     public List<SparePartResponse> findAll() {
@@ -53,6 +55,8 @@ public class SparePartService {
 
         Supplier supplier = getSupplier(request.supplierId());
 
+        Long costCenterId = resolveCostCenterId(request.costCenterId());
+
         SparePart sparePart = SparePart.builder()
                 .name(request.name().trim())
                 .description(request.description())
@@ -67,7 +71,7 @@ public class SparePartService {
                 .maximumStock(defaultDecimal(request.maximumStock()))
                 .reorderQuantity(defaultDecimal(request.reorderQuantity()))
                 .location(request.location())
-                .costCenterId(request.costCenterId())
+                .costCenterId(costCenterId)
                 .gtin(request.gtin())
                 .articleCode(request.articleCode())
                 .visibility(defaultVisibility(request.visibility()))
@@ -97,6 +101,8 @@ public class SparePartService {
 
         Supplier supplier = getSupplier(request.supplierId());
 
+        Long costCenterId = resolveCostCenterId(request.costCenterId());
+
         sparePart.setName(request.name().trim());
         sparePart.setDescription(request.description());
         sparePart.setManufacturerReference(request.manufacturerReference());
@@ -109,7 +115,7 @@ public class SparePartService {
         sparePart.setMaximumStock(defaultDecimal(request.maximumStock()));
         sparePart.setReorderQuantity(defaultDecimal(request.reorderQuantity()));
         sparePart.setLocation(request.location());
-        sparePart.setCostCenterId(request.costCenterId());
+        sparePart.setCostCenterId(costCenterId);
         sparePart.setGtin(request.gtin());
         sparePart.setArticleCode(request.articleCode());
         sparePart.setVisibility(defaultVisibility(request.visibility()));
@@ -145,6 +151,27 @@ public class SparePartService {
 
         return supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Supplier not found"));
+    }
+
+    /**
+     * Treats 0/negative as "no cost center" (some selects send 0 instead of
+     * null for the empty option) and makes sure a non-null id actually
+     * exists, so a stale/invalid value fails fast with a clean 404 instead
+     * of a raw SQLIntegrityConstraintViolationException at insert time.
+     */
+    private Long resolveCostCenterId(Long costCenterId) {
+        if (costCenterId == null || costCenterId <= 0) {
+            return null;
+        }
+
+        if (!costCenterRepository.existsById(costCenterId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Centre de coût introuvable (id=" + costCenterId + ")."
+            );
+        }
+
+        return costCenterId;
     }
 
     private void validateRequest(SparePartRequest request) {

@@ -7,6 +7,8 @@ import {
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./layouts/AdminLayout";
+import TaskListPage from "./pages/admin/TaskListPage";
+import TaskCreatePage from "./pages/admin/TaskCreatePage";
 
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -59,6 +61,8 @@ function App() {
             </ProtectedRoute>
           }
         >
+          <Route path="/admin/tasks" element={<TaskListPage />} />
+<Route path="/admin/tasks/new" element={<TaskCreatePage />} />
           <Route
             index
             element={
