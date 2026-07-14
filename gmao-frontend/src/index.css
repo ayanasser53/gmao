@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   font-family:
     Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -365,7 +365,7 @@ a {
 }
 
 /* =========================================================
-   FONCTIONNALITÉS
+   FONCTIONNALITÃ‰S
    ========================================================= */
 
 .features-section {
@@ -528,7 +528,7 @@ a {
 }
 
 /* =========================================================
-   SECTION DE PRÉSENTATION
+   SECTION DE PRÃ‰SENTATION
    ========================================================= */
 
 .security-section {
@@ -1105,7 +1105,7 @@ a {
 }
 
 .spare-stock-dot-high {
-  background: #f26b3a;
+  background: #ffc400;
 }
 
 /* =========================================================
@@ -1734,7 +1734,7 @@ a {
   }
 }
 /* =========================================================
-   MODULE MESURES ET UNITÉS
+   MODULE MESURES ET UNITÃ‰S
    ========================================================= */
 
 .resource-page-header {
@@ -2339,7 +2339,7 @@ a {
   }
 }
 /* =========================================================
-   MESURES — DESIGN TYPE MOBILITY WORK
+   MESURES â€” DESIGN TYPE MOBILITY WORK
    ========================================================= */
 
 .measures-workspace {
@@ -2816,7 +2816,7 @@ a {
   margin-bottom: 0;
 }
 
-/* CRÉATION UNITÉ */
+/* CRÃ‰ATION UNITÃ‰ */
 
 .measure-resume-notice {
   display: grid;
@@ -2882,7 +2882,7 @@ a {
 }
 
 .measure-unit-type-card-active::after {
-  content: "✓";
+  content: "âœ“";
 
   position: absolute;
   top: 7px;
