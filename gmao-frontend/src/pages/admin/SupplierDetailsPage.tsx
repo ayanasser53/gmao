@@ -23,6 +23,24 @@ import { getSupplierById } from "../../services/supplierService";
 
 import type { Supplier } from "../../types/supplier";
 
+const BACKEND_URL = "http://localhost:8090";
+
+function getImageUrl(imagePath: string | null | undefined): string | null {
+  if (!imagePath) {
+    return null;
+  }
+
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+
+  return `${BACKEND_URL}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+}
+
 function formatAddress(supplier: Supplier): string {
   return [
     supplier.address,
@@ -114,7 +132,7 @@ function SupplierDetailsPage() {
         <div className="supplier-detail-logo-panel">
           {supplier.logoUrl ? (
             <img
-              src={supplier.logoUrl}
+              src={getImageUrl(supplier.logoUrl) ?? ""}
               alt={supplier.name}
               className="supplier-detail-logo"
             />

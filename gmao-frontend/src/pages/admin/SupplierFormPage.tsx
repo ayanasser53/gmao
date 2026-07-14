@@ -7,6 +7,7 @@ import {
 import {
   ArrowLeft,
   Building2,
+  ImagePlus,
   Save,
   X,
 } from "lucide-react";
@@ -48,6 +49,7 @@ function SupplierFormPage() {
   const isEditMode = Boolean(id);
 
   const [form, setForm] = useState<SupplierRequest>(emptyForm);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
   const [error, setError] = useState("");
@@ -137,9 +139,9 @@ function SupplierFormPage() {
       };
 
       if (isEditMode && id) {
-        await updateSupplier(Number(id), request);
+        await updateSupplier(Number(id), request, logoFile);
       } else {
-        await createSupplier(request);
+        await createSupplier(request, logoFile);
       }
 
       navigate("/admin/suppliers", {
@@ -363,15 +365,26 @@ function SupplierFormPage() {
 
               <div className="measure-form-group">
                 <label htmlFor="supplier-logo">
-                  Logo URL
+                  Logo
                 </label>
-                <input
-                  id="supplier-logo"
-                  value={form.logoUrl}
-                  onChange={(event) =>
-                    updateField("logoUrl", event.target.value)
-                  }
-                />
+                <label className="asset-image-picker" htmlFor="supplier-logo">
+                  <ImagePlus size={30} />
+                  <strong>
+                    {logoFile?.name || form.logoUrl || "Choisir une image"}
+                  </strong>
+                  <input
+                    id="supplier-logo"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setLogoFile(file);
+                      if (file) {
+                        updateField("logoUrl", file.name);
+                      }
+                    }}
+                  />
+                </label>
               </div>
 
               <div className="measure-form-group">
@@ -395,22 +408,6 @@ function SupplierFormPage() {
                     }
                   />
                 </div>
-              </div>
-
-              <div className="measure-form-group">
-                <label htmlFor="supplier-visibility">
-                  Visibilite
-                </label>
-                <select
-                  id="supplier-visibility"
-                  value={form.visibility}
-                  onChange={(event) =>
-                    updateField("visibility", event.target.value)
-                  }
-                >
-                  <option value="PRIVATE">Mon reseau uniquement</option>
-                  <option value="PUBLIC">Public</option>
-                </select>
               </div>
             </div>
 

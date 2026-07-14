@@ -3901,7 +3901,53 @@ a {
 .suppliers-workspace .supplier-table-wrapper {
   overflow: visible;
 }
-.multi-select-box {
+
+.asset-image-picker {
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  color: #2f4a66;
+  background: #fbfdff;
+  border: 2px dashed #b7cde2;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.asset-image-picker svg {
+  color: #2f4a66;
+}
+
+.asset-image-picker strong {
+  color: #243b55;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.asset-image-picker input {
+  max-width: 520px;
+  min-height: 34px;
+  margin-top: 2px;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.asset-image-picker input:focus {
+  border: 0;
+  box-shadow: none;
+}
+.asset-image-picker {
+  cursor: pointer;
+}
+
+.asset-image-picker input[type="file"] {
+  display: none;
+}.multi-select-box {
   min-height: 54px;
   padding: 8px;
 

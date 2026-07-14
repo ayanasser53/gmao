@@ -23,6 +23,25 @@ import {
 
 import type { SparePart } from "../../types/sparePart";
 
+
+const BACKEND_URL = "http://localhost:8090";
+
+function getImageUrl(imagePath: string | null | undefined): string | null {
+  if (!imagePath) {
+    return null;
+  }
+
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+
+  return `${BACKEND_URL}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+}
+
 function SparePartsPage() {
   const navigate = useNavigate();
 
@@ -192,7 +211,7 @@ function getStockDotClass(part: SparePart): string {
                     <div className="supplier-name-cell">
                       <div className="supplier-avatar">
                         {part.image ? (
-                          <img src={part.image} alt={part.name} />
+                          <img src={getImageUrl(part.image) ?? ""} alt={part.name} />
                         ) : (
                           <PackagePlus size={20} />
                         )}

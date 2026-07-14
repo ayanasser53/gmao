@@ -2,7 +2,9 @@ package com.gmao.gmao_backend.sparepart;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,15 +25,36 @@ public class SparePartController {
         return sparePartService.findById(id);
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public SparePartResponse create(@RequestBody SparePartRequest request) {
+    public SparePartResponse createJson(@RequestBody SparePartRequest request) {
         return sparePartService.create(request);
     }
 
-    @PutMapping("/{id}")
-    public SparePartResponse update(@PathVariable Long id, @RequestBody SparePartRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public SparePartResponse createMultipart(
+            @RequestPart("sparePart") SparePartRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
+        return sparePartService.create(request, image);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public SparePartResponse updateJson(
+            @PathVariable Long id,
+            @RequestBody SparePartRequest request
+    ) {
         return sparePartService.update(id, request);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public SparePartResponse updateMultipart(
+            @PathVariable Long id,
+            @RequestPart("sparePart") SparePartRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
+        return sparePartService.update(id, request, image);
     }
 
     @DeleteMapping("/{id}")

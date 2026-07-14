@@ -1,11 +1,13 @@
 package com.gmao.gmao_backend.sparepart;
 
+import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -18,6 +20,7 @@ public class SparePartService {
 
     private final SparePartRepository sparePartRepository;
     private final SupplierRepository supplierRepository;
+    private final AppFileStorageService fileStorageService;
 
     public List<SparePartResponse> findAll() {
         return sparePartRepository.findAll()
@@ -32,6 +35,10 @@ public class SparePartService {
     }
 
     public SparePartResponse create(SparePartRequest request) {
+        return create(request, null);
+    }
+
+    public SparePartResponse create(SparePartRequest request, MultipartFile image) {
         validateRequest(request);
 
         String code = normalizeCode(request.code());
@@ -52,7 +59,7 @@ public class SparePartService {
                 .code(code)
                 .manufacturerReference(request.manufacturerReference())
                 .brand(request.brand())
-                .image(request.image())
+                .image(resolveImage(request.image(), image, null))
                 .unitPrice(defaultDecimal(request.unitPrice()))
                 .currency(defaultCurrency(request.currency()))
                 .quantity(defaultDecimal(request.quantity()))
@@ -71,6 +78,10 @@ public class SparePartService {
     }
 
     public SparePartResponse update(Long id, SparePartRequest request) {
+        return update(id, request, null);
+    }
+
+    public SparePartResponse update(Long id, SparePartRequest request, MultipartFile image) {
         validateRequest(request);
 
         SparePart sparePart = getSparePart(id);
@@ -90,7 +101,7 @@ public class SparePartService {
         sparePart.setDescription(request.description());
         sparePart.setManufacturerReference(request.manufacturerReference());
         sparePart.setBrand(request.brand());
-        sparePart.setImage(request.image());
+        sparePart.setImage(resolveImage(request.image(), image, sparePart.getImage()));
         sparePart.setUnitPrice(defaultDecimal(request.unitPrice()));
         sparePart.setCurrency(defaultCurrency(request.currency()));
         sparePart.setQuantity(defaultDecimal(request.quantity()));
@@ -109,7 +120,17 @@ public class SparePartService {
 
     public void delete(Long id) {
         SparePart sparePart = getSparePart(id);
+        fileStorageService.delete(sparePart.getImage(), "spare-parts");
         sparePartRepository.delete(sparePart);
+    }
+
+    private String resolveImage(String requestImage, MultipartFile image, String currentImage) {
+        if (image != null && !image.isEmpty()) {
+            fileStorageService.delete(currentImage, "spare-parts");
+            return fileStorageService.save(image, "spare-parts");
+        }
+
+        return requestImage;
     }
 
     private SparePart getSparePart(Long id) {

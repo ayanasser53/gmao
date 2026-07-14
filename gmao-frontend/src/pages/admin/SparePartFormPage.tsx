@@ -6,6 +6,7 @@ import {
 
 import {
   ArrowLeft,
+  ImagePlus,
   PackagePlus,
   Save,
   X,
@@ -22,10 +23,7 @@ import {
   updateSparePart,
 } from "../../services/sparePartService";
 
-import type {
-  SparePartRequest,
-  SparePartVisibility,
-} from "../../types/sparePart";
+import type { SparePartRequest } from "../../types/sparePart";
 
 type SparePartFormState = Omit<SparePartRequest, "costCenterId"> & {
   costCenterId: string;
@@ -59,6 +57,7 @@ function SparePartFormPage() {
   const isEditMode = Boolean(id);
 
   const [form, setForm] = useState<SparePartFormState>(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
   const [error, setError] = useState("");
@@ -160,9 +159,9 @@ function SparePartFormPage() {
       };
 
       if (isEditMode && id) {
-        await updateSparePart(Number(id), request);
+        await updateSparePart(Number(id), request, imageFile);
       } else {
-        await createSparePart(request);
+        await createSparePart(request, imageFile);
       }
 
       navigate("/admin/spare-parts", {
@@ -302,13 +301,24 @@ function SparePartFormPage() {
                 <label htmlFor="spare-part-image">
                   Image
                 </label>
-                <input
-                  id="spare-part-image"
-                  value={form.image}
-                  onChange={(event) =>
-                    updateField("image", event.target.value)
-                  }
-                />
+                <label className="asset-image-picker" htmlFor="spare-part-image">
+                  <ImagePlus size={30} />
+                  <strong>
+                    {imageFile?.name || form.image || "Choisir une image"}
+                  </strong>
+                  <input
+                    id="spare-part-image"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setImageFile(file);
+                      if (file) {
+                        updateField("image", file.name);
+                      }
+                    }}
+                  />
+                </label>
               </div>
 
               <div className="supplier-drawer-section-title">
@@ -506,25 +516,6 @@ function SparePartFormPage() {
                     }
                   />
                 </div>
-              </div>
-
-              <div className="measure-form-group">
-                <label htmlFor="spare-part-visibility">
-                  Visibilite
-                </label>
-                <select
-                  id="spare-part-visibility"
-                  value={form.visibility}
-                  onChange={(event) =>
-                    updateField(
-                      "visibility",
-                      event.target.value as SparePartVisibility,
-                    )
-                  }
-                >
-                  <option value="PRIVATE">Prive</option>
-                  <option value="PUBLIC">Public</option>
-                </select>
               </div>
             </div>
 
