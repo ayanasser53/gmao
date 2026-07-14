@@ -12,7 +12,6 @@ services:
       - "3307:3306"
     volumes:
       - gmao_mysql_data:/var/lib/mysql
-      - ./database/init:/docker-entrypoint-initdb.d
-
+     
 volumes:
   gmao_mysql_data:
