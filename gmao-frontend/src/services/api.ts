@@ -1,44 +1,88 @@
-import axios from "axios";
+import axios, {
+  AxiosError,
+  type InternalAxiosRequestConfig,
+} from "axios";
 
 const api = axios.create({
   baseURL: "http://localhost:8090/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
+/*
+ * Ne pas définir globalement :
+ *
+ * headers: {
+ *   "Content-Type": "application/json"
+ * }
+ *
+ * Axios choisira automatiquement :
+ * - application/json pour les objets JSON ;
+ * - multipart/form-data avec boundary pour FormData.
+ */
+
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
+  (
+    config: InternalAxiosRequestConfig,
+  ) => {
+    const token =
+      localStorage.getItem("token");
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization =
+        `Bearer ${token}`;
+    }
+
+    /*
+     * Quand les données sont un FormData,
+     * on supprime tout Content-Type éventuellement hérité.
+     * Le navigateur doit le générer avec sa boundary.
+     */
+    if (config.data instanceof FormData) {
+      delete config.headers[
+        "Content-Type"
+      ];
     }
 
     return config;
   },
-  (error: unknown) => {
-    return Promise.reject(error);
-  },
+  (error: AxiosError) =>
+    Promise.reject(error),
 );
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
-      const requestUrl = error.config?.url as string | undefined;
+      const requestUrl =
+        error.config?.url;
 
-      const isAuthRoute =
-        requestUrl?.includes("/auth/login") ||
-        requestUrl?.includes("/auth/register");
+      const isAuthenticationRoute =
+        requestUrl?.includes(
+          "/auth/login",
+        ) ||
+        requestUrl?.includes(
+          "/auth/register",
+        );
 
-      if (!isAuthRoute) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("email");
-        localStorage.removeItem("role");
+      if (!isAuthenticationRoute) {
+        localStorage.removeItem(
+          "token",
+        );
 
-        window.location.href = "/login";
+        localStorage.removeItem(
+          "userId",
+        );
+
+        localStorage.removeItem(
+          "email",
+        );
+
+        localStorage.removeItem(
+          "role",
+        );
+
+        window.location.href =
+          "/login";
       }
     }
 

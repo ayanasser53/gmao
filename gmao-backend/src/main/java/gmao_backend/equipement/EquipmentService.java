@@ -2,112 +2,387 @@ package com.gmao.gmao_backend.equipment;
 
 import com.gmao.gmao_backend.costcenter.CostCenter;
 import com.gmao.gmao_backend.costcenter.CostCenterRepository;
+
 import com.gmao.gmao_backend.exception.ResourceInUseException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+
+import com.gmao.gmao_backend.sparepart.SparePart;
+import com.gmao.gmao_backend.sparepart.SparePartRepository;
+
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.*;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class EquipmentService {
+
     private final EquipmentRepository equipmentRepository;
+
     private final CostCenterRepository costCenterRepository;
+
     private final TagRepository tagRepository;
+
+    private final SparePartRepository sparePartRepository;
+
     private final EquipmentMapper mapper;
+
     private final FileStorageService storage;
 
     @Transactional(readOnly = true)
     public List<EquipmentResponse> findAll() {
-        return equipmentRepository.findAllByOrderByCreatedAtDesc()
-            .stream().map(mapper::toResponse).toList();
+        return equipmentRepository
+                .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public EquipmentResponse findById(Long id) {
-        return mapper.toResponse(entity(id));
+    public EquipmentResponse findById(
+            Long id
+    ) {
+        return mapper.toResponse(
+                findEntityById(id)
+        );
     }
 
     @Transactional
-    public EquipmentResponse create(CreateEquipmentRequest r, MultipartFile image) {
-        Equipment e = Equipment.builder()
-            .name(r.name().trim())
-            .description(optional(r.description()))
-            .costCenter(costCenter(r.costCenterId()))
-            .gtinEanCode(optional(r.gtinEanCode()))
-            .itemCode(optional(r.itemCode()))
-            .parentEquipment(parent(r.parentEquipmentId(), null))
-            .visibility(r.visibility() == null ? EquipmentVisibility.PRIVATE : r.visibility())
-            .tags(tags(r.tagIds()))
-            .image(storage.save(image))
-            .build();
-        return mapper.toResponse(equipmentRepository.save(e));
+    public EquipmentResponse create(
+            CreateEquipmentRequest request,
+            MultipartFile image
+    ) {
+        Equipment equipment = Equipment.builder()
+
+                .name(request.name().trim())
+
+                .description(
+                        optional(request.description())
+                )
+
+                .costCenter(
+                        resolveCostCenter(
+                                request.costCenterId()
+                        )
+                )
+
+                .gtinEanCode(
+                        optional(request.gtinEanCode())
+                )
+
+                .itemCode(
+                        optional(request.itemCode())
+                )
+
+                .tags(
+                        resolveTags(request.tagIds())
+                )
+
+                .linkedEquipment(
+                        resolveLinkedEquipment(
+                                request.linkedEquipmentIds(),
+                                null
+                        )
+                )
+
+                .linkedSpareParts(
+                        resolveLinkedSpareParts(
+                                request.linkedSparePartIds()
+                        )
+                )
+
+                .image(storage.save(image))
+
+                .build();
+
+        Equipment savedEquipment =
+                equipmentRepository.save(equipment);
+
+        return mapper.toResponse(savedEquipment);
     }
 
     @Transactional
-    public EquipmentResponse update(Long id, UpdateEquipmentRequest r, MultipartFile image) {
-        Equipment e = entity(id);
-        e.setName(r.name().trim());
-        e.setDescription(optional(r.description()));
-        e.setCostCenter(costCenter(r.costCenterId()));
-        e.setGtinEanCode(optional(r.gtinEanCode()));
-        e.setItemCode(optional(r.itemCode()));
-        e.setParentEquipment(parent(r.parentEquipmentId(), id));
-        e.setVisibility(r.visibility() == null ? EquipmentVisibility.PRIVATE : r.visibility());
-        e.setTags(tags(r.tagIds()));
+    public EquipmentResponse update(
+            Long id,
+            UpdateEquipmentRequest request,
+            MultipartFile image
+    ) {
+        Equipment equipment =
+                findEntityById(id);
 
-        if (r.removeImage()) {
-            storage.delete(e.getImage());
-            e.setImage(null);
+        equipment.setName(
+                request.name().trim()
+        );
+
+        equipment.setDescription(
+                optional(request.description())
+        );
+
+        equipment.setCostCenter(
+                resolveCostCenter(
+                        request.costCenterId()
+                )
+        );
+
+        equipment.setGtinEanCode(
+                optional(request.gtinEanCode())
+        );
+
+        equipment.setItemCode(
+                optional(request.itemCode())
+        );
+
+        equipment.setTags(
+                resolveTags(request.tagIds())
+        );
+
+        equipment.setLinkedEquipment(
+                resolveLinkedEquipment(
+                        request.linkedEquipmentIds(),
+                        id
+                )
+        );
+
+        equipment.setLinkedSpareParts(
+                resolveLinkedSpareParts(
+                        request.linkedSparePartIds()
+                )
+        );
+
+        if (request.removeImage()) {
+            storage.delete(equipment.getImage());
+            equipment.setImage(null);
         }
-        if (image != null && !image.isEmpty()) {
-            storage.delete(e.getImage());
-            e.setImage(storage.save(image));
+
+        if (
+                image != null &&
+                !image.isEmpty()
+        ) {
+            storage.delete(equipment.getImage());
+
+            equipment.setImage(
+                    storage.save(image)
+            );
         }
-        return mapper.toResponse(equipmentRepository.save(e));
+
+        Equipment savedEquipment =
+                equipmentRepository.save(equipment);
+
+        return mapper.toResponse(savedEquipment);
     }
 
     @Transactional
-    public void delete(Long id) {
-        Equipment e = entity(id);
-        if (equipmentRepository.existsByParentEquipmentId(id))
-            throw new ResourceInUseException("Cet équipement est lié à un autre équipement.");
-        storage.delete(e.getImage());
-        equipmentRepository.delete(e);
+    public void delete(
+            Long id
+    ) {
+        Equipment equipment =
+                findEntityById(id);
+
+        removeEquipmentFromOtherLinks(
+                equipment
+        );
+
+        storage.delete(
+                equipment.getImage()
+        );
+
+        equipmentRepository.delete(
+                equipment
+        );
     }
 
-    private Equipment entity(Long id) {
-        return equipmentRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Équipement introuvable."));
+    private Equipment findEntityById(
+            Long id
+    ) {
+        return equipmentRepository
+                .findById(id)
+                .orElseThrow(
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Équipement introuvable."
+                                )
+                );
     }
 
-    private CostCenter costCenter(Long id) {
-        if (id == null) return null;
-        return costCenterRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Centre de coût introuvable."));
+    private CostCenter resolveCostCenter(
+            Long id
+    ) {
+        if (id == null) {
+            return null;
+        }
+
+        return costCenterRepository
+                .findById(id)
+                .orElseThrow(
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Centre de coût introuvable."
+                                )
+                );
     }
 
-    private Equipment parent(Long id, Long currentId) {
-        if (id == null) return null;
-        if (currentId != null && currentId.equals(id))
-            throw new IllegalArgumentException("Un équipement ne peut pas être lié à lui-même.");
-        return equipmentRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Équipement lié introuvable."));
+    private Set<Tag> resolveTags(
+            Set<Long> ids
+    ) {
+        if (
+                ids == null ||
+                ids.isEmpty()
+        ) {
+            return new HashSet<>();
+        }
+
+        List<Tag> foundTags =
+                tagRepository.findAllById(ids);
+
+        if (
+                foundTags.size() !=
+                        new HashSet<>(ids).size()
+        ) {
+            throw new ResourceNotFoundException(
+                    "Un ou plusieurs tags sont introuvables."
+            );
+        }
+
+        return new HashSet<>(foundTags);
     }
 
-    private Set<Tag> tags(Set<Long> ids) {
-        if (ids == null || ids.isEmpty()) return new HashSet<>();
-        List<Tag> result = tagRepository.findAllById(ids);
-        if (result.size() != ids.size())
-            throw new ResourceNotFoundException("Un ou plusieurs tags sont introuvables.");
-        return new HashSet<>(result);
+    private Set<Equipment> resolveLinkedEquipment(
+            Set<Long> ids,
+            Long currentEquipmentId
+    ) {
+        if (
+                ids == null ||
+                ids.isEmpty()
+        ) {
+            return new HashSet<>();
+        }
+
+        Set<Long> uniqueIds =
+                new HashSet<>(ids);
+
+        if (
+                currentEquipmentId != null &&
+                uniqueIds.contains(
+                        currentEquipmentId
+                )
+        ) {
+            throw new IllegalArgumentException(
+                    "Un équipement ne peut pas être lié à lui-même."
+            );
+        }
+
+        List<Equipment> foundEquipment =
+                equipmentRepository.findAllById(
+                        uniqueIds
+                );
+
+        if (
+                foundEquipment.size() !=
+                        uniqueIds.size()
+        ) {
+            throw new ResourceNotFoundException(
+                    "Un ou plusieurs équipements liés sont introuvables."
+            );
+        }
+
+        return new HashSet<>(
+                foundEquipment
+        );
     }
 
-    private String optional(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+    private Set<SparePart> resolveLinkedSpareParts(
+            Set<Long> ids
+    ) {
+        if (
+                ids == null ||
+                ids.isEmpty()
+        ) {
+            return new HashSet<>();
+        }
+
+        Set<Long> uniqueIds =
+                new HashSet<>(ids);
+
+        List<SparePart> foundSpareParts =
+                sparePartRepository.findAllById(
+                        uniqueIds
+                );
+
+        if (
+                foundSpareParts.size() !=
+                        uniqueIds.size()
+        ) {
+            throw new ResourceNotFoundException(
+                    "Une ou plusieurs pièces de rechange sont introuvables."
+            );
+        }
+
+        return new HashSet<>(
+                foundSpareParts
+        );
+    }
+
+    private void removeEquipmentFromOtherLinks(
+            Equipment equipmentToDelete
+    ) {
+        List<Equipment> allEquipment =
+                equipmentRepository.findAll();
+
+        for (Equipment equipment : allEquipment) {
+            if (
+                    equipment.getId().equals(
+                            equipmentToDelete.getId()
+                    )
+            ) {
+                continue;
+            }
+
+            boolean removed =
+                    equipment
+                            .getLinkedEquipment()
+                            .removeIf(
+                                    linked ->
+                                            linked.getId()
+                                                    .equals(
+                                                            equipmentToDelete.getId()
+                                                    )
+                            );
+
+            if (removed) {
+                equipmentRepository.save(
+                        equipment
+                );
+            }
+        }
+
+        equipmentToDelete
+                .getLinkedEquipment()
+                .clear();
+
+        equipmentToDelete
+                .getLinkedSpareParts()
+                .clear();
+
+        equipmentToDelete
+                .getTags()
+                .clear();
+    }
+
+    private String optional(
+            String value
+    ) {
+        return value == null ||
+                value.isBlank()
+                ? null
+                : value.trim();
     }
 }

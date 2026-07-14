@@ -9,11 +9,5 @@ public interface EquipmentRepository
 
     List<Equipment> findAllByOrderByCreatedAtDesc();
 
-    boolean existsByParentEquipmentId(
-            Long parentEquipmentId
-    );
-
-    boolean existsByCostCenterId(
-            Long costCenterId
-    );
+    boolean existsByCostCenterId(Long costCenterId);
 }

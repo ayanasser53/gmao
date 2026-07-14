@@ -7,10 +7,9 @@ import {
 
 import {
   ArrowLeft,
-  Eye,
-  EyeOff,
-  Filter,
   ImagePlus,
+  Link2,
+  Package,
   Pencil,
   Plus,
   Search,
@@ -19,6 +18,8 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+
+import { useNavigate } from "react-router-dom";
 
 import {
   createEquipment,
@@ -29,15 +30,16 @@ import {
 
 import { getTags } from "../../services/tagService";
 import { getCostCenters } from "../../services/costCenterService";
+import { getSpareParts } from "../../services/sparePartService";
 
 import type {
   Equipment,
   EquipmentPayload,
-  EquipmentVisibility,
 } from "../../types/equipment";
 
 import type { Tag } from "../../types/tag";
 import type { CostCenter } from "../../types/costCenter";
+import type { SparePart } from "../../types/sparePart";
 
 const BACKEND_URL = "http://localhost:8090";
 
@@ -47,35 +49,35 @@ const initialForm: EquipmentPayload = {
   costCenterId: null,
   gtinEanCode: "",
   itemCode: "",
-  parentEquipmentId: null,
-  visibility: "PRIVATE",
   tagIds: [],
+  linkedEquipmentIds: [],
+  linkedSparePartIds: [],
   removeImage: false,
 };
 
-function getEquipmentImageUrl(
-  imagePath: string | null,
+function getFileUrl(
+  path: string | null,
 ): string | null {
-  if (!imagePath) {
+  if (!path) {
     return null;
   }
 
   if (
-    imagePath.startsWith("http://") ||
-    imagePath.startsWith("https://") ||
-    imagePath.startsWith("blob:")
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:")
   ) {
-    return imagePath;
+    return path;
   }
 
   return `${BACKEND_URL}${
-    imagePath.startsWith("/")
-      ? imagePath
-      : `/${imagePath}`
+    path.startsWith("/") ? path : `/${path}`
   }`;
 }
 
 function EquipmentPage() {
+  const navigate = useNavigate();
+
   const [equipment, setEquipment] =
     useState<Equipment[]>([]);
 
@@ -85,17 +87,11 @@ function EquipmentPage() {
   const [costCenters, setCostCenters] =
     useState<CostCenter[]>([]);
 
+  const [spareParts, setSpareParts] =
+    useState<SparePart[]>([]);
+
   const [search, setSearch] =
     useState<string>("");
-
-  const [selectedTagIds, setSelectedTagIds] =
-    useState<number[]>([]);
-
-  const [selectedCostCenterId, setSelectedCostCenterId] =
-    useState<number | null>(null);
-
-  const [filtersOpen, setFiltersOpen] =
-    useState<boolean>(false);
 
   const [drawerOpen, setDrawerOpen] =
     useState<boolean>(false);
@@ -130,23 +126,26 @@ function EquipmentPage() {
         equipmentData,
         tagData,
         costCenterData,
+        sparePartData,
       ] = await Promise.all([
         getEquipment(),
         getTags(),
         getCostCenters(),
+        getSpareParts(),
       ]);
 
       setEquipment(equipmentData);
       setTags(tagData);
       setCostCenters(costCenterData);
+      setSpareParts(sparePartData);
     } catch (requestError) {
       console.error(
-        "Erreur chargement des données :",
+        "Erreur chargement :",
         requestError,
       );
 
       setError(
-        "Impossible de charger les équipements.",
+        "Impossible de charger les données.",
       );
     } finally {
       setLoading(false);
@@ -158,53 +157,28 @@ function EquipmentPage() {
   }, []);
 
   const filteredEquipment = useMemo(() => {
-    const searchValue =
+    const value =
       search.trim().toLowerCase();
 
     return equipment.filter((item) => {
-      const matchesSearch =
-        !searchValue ||
-        item.name
-          .toLowerCase()
-          .includes(searchValue) ||
+      return (
+        !value ||
+        item.name.toLowerCase().includes(value) ||
         item.description
           ?.toLowerCase()
-          .includes(searchValue) ||
+          .includes(value) ||
         item.itemCode
           ?.toLowerCase()
-          .includes(searchValue) ||
+          .includes(value) ||
         item.gtinEanCode
           ?.toLowerCase()
-          .includes(searchValue) ||
+          .includes(value) ||
         item.costCenterName
           ?.toLowerCase()
-          .includes(searchValue);
-
-      const matchesTags =
-        selectedTagIds.length === 0 ||
-        selectedTagIds.every((tagId) =>
-          item.tags.some(
-            (tag) => tag.id === tagId,
-          ),
-        );
-
-      const matchesCostCenter =
-        selectedCostCenterId === null ||
-        item.costCenterId ===
-          selectedCostCenterId;
-
-      return (
-        matchesSearch &&
-        matchesTags &&
-        matchesCostCenter
+          .includes(value)
       );
     });
-  }, [
-    equipment,
-    search,
-    selectedTagIds,
-    selectedCostCenterId,
-  ]);
+  }, [equipment, search]);
 
   function openCreateDrawer(): void {
     setEditingId(null);
@@ -212,6 +186,8 @@ function EquipmentPage() {
     setForm({
       ...initialForm,
       tagIds: [],
+      linkedEquipmentIds: [],
+      linkedSparePartIds: [],
     });
 
     setImageFile(null);
@@ -231,21 +207,25 @@ function EquipmentPage() {
       costCenterId: item.costCenterId,
       gtinEanCode: item.gtinEanCode ?? "",
       itemCode: item.itemCode ?? "",
-      parentEquipmentId:
-        item.parentEquipmentId,
-      visibility: item.visibility,
-      tagIds: item.tags.map(
-        (tag) => tag.id,
-      ),
+
+      tagIds:
+        item.tags?.map((tag) => tag.id) ?? [],
+
+      linkedEquipmentIds:
+        item.linkedEquipment?.map(
+          (linked) => linked.id,
+        ) ?? [],
+
+      linkedSparePartIds:
+        item.linkedSpareParts?.map(
+          (part) => part.id,
+        ) ?? [],
+
       removeImage: false,
     });
 
     setImageFile(null);
-
-    setImagePreview(
-      getEquipmentImageUrl(item.image),
-    );
-
+    setImagePreview(getFileUrl(item.image));
     setError("");
     setDrawerOpen(true);
   }
@@ -255,9 +235,7 @@ function EquipmentPage() {
       return;
     }
 
-    if (
-      imagePreview?.startsWith("blob:")
-    ) {
+    if (imagePreview?.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
 
@@ -268,43 +246,90 @@ function EquipmentPage() {
     setImagePreview(null);
   }
 
-  function toggleTag(
-    tagId: number,
+  function toggleTag(tagId: number): void {
+    setForm((previous) => ({
+      ...previous,
+
+      tagIds: previous.tagIds.includes(tagId)
+        ? previous.tagIds.filter(
+            (id) => id !== tagId,
+          )
+        : [...previous.tagIds, tagId],
+    }));
+  }
+
+  function addLinkedEquipment(
+    id: number,
+  ): void {
+    if (
+      !id ||
+      form.linkedEquipmentIds.includes(id)
+    ) {
+      return;
+    }
+
+    setForm((previous) => ({
+      ...previous,
+
+      linkedEquipmentIds: [
+        ...previous.linkedEquipmentIds,
+        id,
+      ],
+    }));
+  }
+
+  function removeLinkedEquipment(
+    id: number,
   ): void {
     setForm((previous) => ({
       ...previous,
 
-      tagIds: previous.tagIds.includes(
-        tagId,
-      )
-        ? previous.tagIds.filter(
-            (id) => id !== tagId,
-          )
-        : [
-            ...previous.tagIds,
-            tagId,
-          ],
+      linkedEquipmentIds:
+        previous.linkedEquipmentIds.filter(
+          (equipmentId) =>
+            equipmentId !== id,
+        ),
     }));
   }
 
-  function toggleFilterTag(
-    tagId: number,
+  function addLinkedSparePart(
+    id: number,
   ): void {
-    setSelectedTagIds((previous) =>
-      previous.includes(tagId)
-        ? previous.filter(
-            (id) => id !== tagId,
-          )
-        : [...previous, tagId],
-    );
+    if (
+      !id ||
+      form.linkedSparePartIds.includes(id)
+    ) {
+      return;
+    }
+
+    setForm((previous) => ({
+      ...previous,
+
+      linkedSparePartIds: [
+        ...previous.linkedSparePartIds,
+        id,
+      ],
+    }));
+  }
+
+  function removeLinkedSparePart(
+    id: number,
+  ): void {
+    setForm((previous) => ({
+      ...previous,
+
+      linkedSparePartIds:
+        previous.linkedSparePartIds.filter(
+          (sparePartId) =>
+            sparePartId !== id,
+        ),
+    }));
   }
 
   function handleImageChange(
     file: File | null,
   ): void {
-    if (
-      imagePreview?.startsWith("blob:")
-    ) {
+    if (imagePreview?.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
 
@@ -315,20 +340,15 @@ function EquipmentPage() {
       removeImage: false,
     }));
 
-    if (!file) {
-      setImagePreview(null);
-      return;
-    }
-
     setImagePreview(
-      URL.createObjectURL(file),
+      file
+        ? URL.createObjectURL(file)
+        : null,
     );
   }
 
-  function removeCurrentImage(): void {
-    if (
-      imagePreview?.startsWith("blob:")
-    ) {
+  function removeImage(): void {
+    if (imagePreview?.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
 
@@ -370,11 +390,9 @@ function EquipmentPage() {
 
         itemCode:
           form.itemCode.trim(),
-
-        tagIds: [...form.tagIds],
       };
 
-      const savedEquipment =
+      const saved =
         editingId === null
           ? await createEquipment(
               payload,
@@ -386,25 +404,20 @@ function EquipmentPage() {
               imageFile,
             );
 
-      setEquipment((previous) => {
-        if (editingId === null) {
-          return [
-            savedEquipment,
-            ...previous,
-          ];
-        }
-
-        return previous.map((item) =>
-          item.id === savedEquipment.id
-            ? savedEquipment
-            : item,
-        );
-      });
+      setEquipment((previous) =>
+        editingId === null
+          ? [saved, ...previous]
+          : previous.map((item) =>
+              item.id === saved.id
+                ? saved
+                : item,
+            ),
+      );
 
       closeDrawer();
     } catch (requestError) {
       console.error(
-        "Erreur enregistrement équipement :",
+        "Erreur enregistrement :",
         requestError,
       );
 
@@ -428,21 +441,15 @@ function EquipmentPage() {
     }
 
     try {
-      setError("");
-
       await deleteEquipment(item.id);
 
       setEquipment((previous) =>
         previous.filter(
-          (equipmentItem) =>
-            equipmentItem.id !== item.id,
+          (value) => value.id !== item.id,
         ),
       );
     } catch (requestError) {
-      console.error(
-        "Erreur suppression équipement :",
-        requestError,
-      );
+      console.error(requestError);
 
       setError(
         "Impossible de supprimer l'équipement.",
@@ -476,10 +483,7 @@ function EquipmentPage() {
       </div>
 
       {error && (
-        <div
-          className="equipment-error"
-          role="alert"
-        >
+        <div className="equipment-error">
           {error}
         </div>
       )}
@@ -497,95 +501,7 @@ function EquipmentPage() {
             }
           />
         </div>
-
-        <button
-          type="button"
-          className="equipment-filter-button"
-          onClick={() =>
-            setFiltersOpen(
-              (previous) => !previous,
-            )
-          }
-        >
-          <Filter size={18} />
-          Filtrer
-        </button>
       </div>
-
-      {filtersOpen && (
-        <div className="equipment-filters">
-          <div className="equipment-filter-field">
-            <strong>Centre de coût</strong>
-
-            <select
-              value={
-                selectedCostCenterId ?? ""
-              }
-              onChange={(event) =>
-                setSelectedCostCenterId(
-                  event.target.value
-                    ? Number(
-                        event.target.value,
-                      )
-                    : null,
-                )
-              }
-            >
-              <option value="">
-                Tous les centres de coût
-              </option>
-
-              {costCenters.map(
-                (costCenter) => (
-                  <option
-                    key={costCenter.id}
-                    value={costCenter.id}
-                  >
-                    {costCenter.name}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
-
-          <div className="equipment-filter-field">
-            <strong>Tags</strong>
-
-            <div className="equipment-tag-selector">
-              {tags.map((tag) => (
-                <button
-                  type="button"
-                  key={tag.id}
-                  className={
-                    selectedTagIds.includes(
-                      tag.id,
-                    )
-                      ? "equipment-tag-chip equipment-tag-chip-selected"
-                      : "equipment-tag-chip"
-                  }
-                  onClick={() =>
-                    toggleFilterTag(tag.id)
-                  }
-                >
-                  <TagIcon size={14} />
-                  {tag.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="equipment-clear-filter"
-            onClick={() => {
-              setSelectedTagIds([]);
-              setSelectedCostCenterId(null);
-            }}
-          >
-            Effacer les filtres
-          </button>
-        </div>
-      )}
 
       {loading ? (
         <div className="equipment-loading">
@@ -593,129 +509,126 @@ function EquipmentPage() {
         </div>
       ) : (
         <div className="equipment-list">
-          {filteredEquipment.map(
-            (item) => {
-              const imageUrl =
-                getEquipmentImageUrl(
-                  item.image,
-                );
+          {filteredEquipment.map((item) => {
+            const imageUrl =
+              getFileUrl(item.image);
 
-              return (
-                <article
-                  className="equipment-card"
-                  key={item.id}
-                >
-                  <div className="equipment-card-image">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={item.name}
-                        onError={(event) => {
-                          event.currentTarget.style.display =
-                            "none";
+            return (
+              <article
+                className="equipment-card"
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  navigate(
+                    `/admin/equipment/${item.id}`,
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    navigate(
+                      `/admin/equipment/${item.id}`,
+                    );
+                  }
+                }}
+              >
+                <div className="equipment-card-image">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={item.name}
+                    />
+                  ) : (
+                    <Wrench size={35} />
+                  )}
+                </div>
+
+                <div className="equipment-card-content">
+                  <h2>{item.name}</h2>
+
+                  <p>
+                    {item.description ||
+                      "Aucune description"}
+                  </p>
+
+                  <div className="equipment-card-meta">
+                    <span>
+                      Centre de coût :{" "}
+                      {item.costCenterName ??
+                        "Non défini"}
+                    </span>
+
+                    <span>
+                      Code article :{" "}
+                      {item.itemCode ?? "—"}
+                    </span>
+
+                    <span>
+                      GTIN/EAN :{" "}
+                      {item.gtinEanCode ?? "—"}
+                    </span>
+
+                    <span>
+                      Équipements liés :{" "}
+                      {item.linkedEquipment
+                        ?.length ?? 0}
+                    </span>
+
+                    <span>
+                      Pièces liées :{" "}
+                      {item.linkedSpareParts
+                        ?.length ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="equipment-card-tags">
+                    {item.tags?.map((tag) => (
+                      <span
+                        key={tag.id}
+                        style={{
+                          backgroundColor:
+                            tag.color ||
+                            "#7d8793",
                         }}
-                      />
-                    ) : (
-                      <Wrench size={34} />
-                    )}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
                   </div>
+                </div>
 
-                  <div className="equipment-card-content">
-                    <div className="equipment-card-title-row">
-                      <div>
-                        <h2>{item.name}</h2>
+                <div className="equipment-card-actions">
+                  <button
+                    type="button"
+                    title="Modifier"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openEditDrawer(item);
+                    }}
+                  >
+                    <Pencil size={18} />
+                  </button>
 
-                        <p>
-                          {item.description ||
-                            "Aucune description"}
-                        </p>
-                      </div>
+                  <button
+                    type="button"
+                    className="equipment-delete-button"
+                    title="Supprimer"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleDelete(item);
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
 
-                      <span className="equipment-visibility-badge">
-                        {item.visibility ===
-                        "PUBLIC" ? (
-                          <Eye size={15} />
-                        ) : (
-                          <EyeOff size={15} />
-                        )}
-
-                        {item.visibility ===
-                        "PUBLIC"
-                          ? "Public"
-                          : "Privé"}
-                      </span>
-                    </div>
-
-                    <div className="equipment-card-meta">
-                      <span>
-                        Centre de coût :{" "}
-                        {item.costCenterName ??
-                          "Non défini"}
-                      </span>
-
-                      <span>
-                        Code article :{" "}
-                        {item.itemCode ?? "—"}
-                      </span>
-
-                      <span>
-                        GTIN/EAN :{" "}
-                        {item.gtinEanCode ?? "—"}
-                      </span>
-
-                      <span>
-                        Équipement lié :{" "}
-                        {item.parentEquipmentName ??
-                          "Aucun"}
-                      </span>
-                    </div>
-
-                    <div className="equipment-card-tags">
-                      {item.tags.map((tag) => (
-                        <span
-    key={tag.id}
-    className="equipment-tag"
-    style={{
-        backgroundColor: tag.color,
-        borderColor: tag.color,
-        color: "#fff",
-    }}
->
-    {tag.name}
-</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="equipment-card-actions">
-                    <button
-                      type="button"
-                      title="Modifier"
-                      onClick={() =>
-                        openEditDrawer(item)
-                      }
-                    >
-                      <Pencil size={18} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="equipment-delete-button"
-                      title="Supprimer"
-                      onClick={() =>
-                        void handleDelete(item)
-                      }
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </article>
-              );
-            },
-          )}
-
-          {filteredEquipment.length ===
-            0 && (
+          {filteredEquipment.length === 0 && (
             <div className="equipment-empty">
               Aucun équipement trouvé.
             </div>
@@ -728,7 +641,7 @@ function EquipmentPage() {
           type="button"
           className="equipment-drawer-overlay"
           onClick={closeDrawer}
-          aria-label="Fermer le formulaire"
+          aria-label="Fermer"
         />
       )}
 
@@ -744,7 +657,6 @@ function EquipmentPage() {
             <button
               type="button"
               onClick={closeDrawer}
-              disabled={saving}
             >
               <ArrowLeft size={21} />
             </button>
@@ -758,7 +670,6 @@ function EquipmentPage() {
             <button
               type="button"
               onClick={closeDrawer}
-              disabled={saving}
             >
               <X size={20} />
             </button>
@@ -786,7 +697,6 @@ function EquipmentPage() {
                         .files?.[0] ?? null,
                     )
                   }
-                  disabled={saving}
                 />
               </label>
 
@@ -794,27 +704,23 @@ function EquipmentPage() {
                 <div className="equipment-image-preview">
                   <img
                     src={imagePreview}
-                    alt="Aperçu de l'équipement"
+                    alt="Aperçu"
                   />
 
                   <button
                     type="button"
-                    onClick={removeCurrentImage}
-                    disabled={saving}
+                    onClick={removeImage}
                   >
-                    Supprimer l'image
+                    Supprimer l’image
                   </button>
                 </div>
               )}
             </div>
 
             <div className="equipment-form-field">
-              <label htmlFor="equipment-name">
-                Nom *
-              </label>
+              <label>Nom *</label>
 
               <input
-                id="equipment-name"
                 value={form.name}
                 maxLength={255}
                 onChange={(event) =>
@@ -823,20 +729,15 @@ function EquipmentPage() {
                     name: event.target.value,
                   }))
                 }
-                disabled={saving}
                 required
               />
             </div>
 
             <div className="equipment-form-field">
-              <label htmlFor="equipment-description">
-                Description
-              </label>
+              <label>Description</label>
 
               <textarea
-                id="equipment-description"
-                rows={6}
-                maxLength={5000}
+                rows={5}
                 value={form.description}
                 onChange={(event) =>
                   setForm((previous) => ({
@@ -845,18 +746,14 @@ function EquipmentPage() {
                       event.target.value,
                   }))
                 }
-                disabled={saving}
               />
             </div>
 
             <div className="equipment-form-grid">
               <div className="equipment-form-field">
-                <label htmlFor="equipment-cost-center">
-                  Centre de coût
-                </label>
+                <label>Centre de coût</label>
 
                 <select
-                  id="equipment-cost-center"
                   value={
                     form.costCenterId ?? ""
                   }
@@ -873,7 +770,6 @@ function EquipmentPage() {
                           : null,
                     }))
                   }
-                  disabled={saving}
                 >
                   <option value="">
                     Aucun centre de coût
@@ -893,39 +789,128 @@ function EquipmentPage() {
               </div>
 
               <div className="equipment-form-field">
-                <label htmlFor="equipment-parent">
-                  Équipement lié
-                </label>
+                <label>GTIN/EAN</label>
 
-                <select
-                  id="equipment-parent"
-                  value={
-                    form.parentEquipmentId ??
-                    ""
-                  }
+                <input
+                  value={form.gtinEanCode}
                   onChange={(event) =>
                     setForm((previous) => ({
                       ...previous,
 
-                      parentEquipmentId:
-                        event.target.value
-                          ? Number(
-                              event.target
-                                .value,
-                            )
-                          : null,
+                      gtinEanCode:
+                        event.target.value,
                     }))
                   }
-                  disabled={saving}
+                />
+              </div>
+            </div>
+
+            <div className="equipment-form-field">
+              <label>Code article</label>
+
+              <input
+                value={form.itemCode}
+                onChange={(event) =>
+                  setForm((previous) => ({
+                    ...previous,
+                    itemCode:
+                      event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="equipment-form-field">
+              <label>Tags</label>
+
+              <div className="equipment-tag-selector">
+                {tags.map((tag) => {
+                  const selected =
+                    form.tagIds.includes(tag.id);
+
+                  return (
+                    <button
+                      type="button"
+                      key={tag.id}
+                      className={
+                        selected
+                          ? "equipment-tag-chip equipment-tag-chip-selected"
+                          : "equipment-tag-chip"
+                      }
+                      style={{
+                        backgroundColor:
+                          tag.color ||
+                          "#7d8793",
+                        color: "#ffffff",
+                      }}
+                      onClick={() =>
+                        toggleTag(tag.id)
+                      }
+                    >
+                      <TagIcon size={14} />
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="equipment-form-field">
+              <label>
+                <Link2 size={16} />
+                Équipements liés
+              </label>
+
+              <div className="multi-select-box">
+                <div className="multi-select-values">
+                  {equipment
+                    .filter((item) =>
+                      form.linkedEquipmentIds.includes(
+                        item.id,
+                      ),
+                    )
+                    .map((item) => (
+                      <span
+                        className="multi-select-chip"
+                        key={item.id}
+                      >
+                        {item.name}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeLinkedEquipment(
+                              item.id,
+                            )
+                          }
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+
+                <select
+                  value=""
+                  onChange={(event) =>
+                    addLinkedEquipment(
+                      Number(
+                        event.target.value,
+                      ),
+                    )
+                  }
                 >
                   <option value="">
-                    Aucun équipement lié
+                    Ajouter un équipement
                   </option>
 
                   {equipment
                     .filter(
                       (item) =>
-                        item.id !== editingId,
+                        item.id !== editingId &&
+                        !form.linkedEquipmentIds.includes(
+                          item.id,
+                        ),
                     )
                     .map((item) => (
                       <option
@@ -939,124 +924,77 @@ function EquipmentPage() {
               </div>
             </div>
 
-            <div className="equipment-form-grid">
-              <div className="equipment-form-field">
-                <label htmlFor="equipment-gtin">
-                  GTIN/EAN
-                </label>
-
-                <input
-                  id="equipment-gtin"
-                  value={form.gtinEanCode}
-                  maxLength={100}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      gtinEanCode:
-                        event.target.value,
-                    }))
-                  }
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="equipment-form-field">
-                <label htmlFor="equipment-item-code">
-                  Code article
-                </label>
-
-                <input
-                  id="equipment-item-code"
-                  value={form.itemCode}
-                  maxLength={100}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      itemCode:
-                        event.target.value,
-                    }))
-                  }
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
             <div className="equipment-form-field">
-              <label>Tags</label>
+              <label>
+                <Package size={16} />
+                Pièces de rechange liées
+              </label>
 
-              <div className="equipment-tag-selector">
-                {tags.map((tag) => (
-                  <button
-    type="button"
-    key={tag.id}
-    className={
-        form.tagIds.includes(tag.id)
-            ? "equipment-tag-chip equipment-tag-chip-selected"
-            : "equipment-tag-chip"
-    }
-    style={{
-        backgroundColor: tag.color,
-        borderColor: tag.color,
-        color: "#fff",
-    }}
-    onClick={() => toggleTag(tag.id)}
->
-    <TagIcon size={14}/>
-    {tag.name}
-</button>
-                ))}
-              </div>
-            </div>
+              <div className="multi-select-box">
+                <div className="multi-select-values">
+                  {spareParts
+                    .filter((part) =>
+                      form.linkedSparePartIds.includes(
+                        part.id,
+                      ),
+                    )
+                    .map((part) => (
+                      <span
+                        className="multi-select-chip"
+                        key={part.id}
+                      >
+                        {part.code
+                          ? `${part.code} — `
+                          : ""}
+                        {part.name}
 
-            <div className="equipment-form-field">
-              <label>Visibilité</label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeLinkedSparePart(
+                              part.id,
+                            )
+                          }
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                </div>
 
-              <div className="equipment-visibility-options">
-                {(
-                  [
-                    "PUBLIC",
-                    "PRIVATE",
-                  ] as EquipmentVisibility[]
-                ).map((visibility) => (
-                  <button
-                    type="button"
-                    key={visibility}
-                    className={
-                      form.visibility ===
-                      visibility
-                        ? "equipment-visibility-option equipment-visibility-option-active"
-                        : "equipment-visibility-option"
-                    }
-                    onClick={() =>
-                      setForm((previous) => ({
-                        ...previous,
-                        visibility,
-                      }))
-                    }
-                    disabled={saving}
-                  >
-                    {visibility ===
-                    "PUBLIC" ? (
-                      <Eye size={21} />
-                    ) : (
-                      <EyeOff size={21} />
-                    )}
+                <select
+                  value=""
+                  onChange={(event) =>
+                    addLinkedSparePart(
+                      Number(
+                        event.target.value,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">
+                    Ajouter une pièce
+                  </option>
 
-                    <strong>
-                      {visibility ===
-                      "PUBLIC"
-                        ? "Public"
-                        : "Privé"}
-                    </strong>
-
-                    <span>
-                      {visibility ===
-                      "PUBLIC"
-                        ? "Visible par les utilisateurs autorisés."
-                        : "Visible uniquement dans votre réseau."}
-                    </span>
-                  </button>
-                ))}
+                  {spareParts
+                    .filter(
+                      (part) =>
+                        !form.linkedSparePartIds.includes(
+                          part.id,
+                        ),
+                    )
+                    .map((part) => (
+                      <option
+                        key={part.id}
+                        value={part.id}
+                      >
+                        {part.code
+                          ? `${part.code} — `
+                          : ""}
+                        {part.name}
+                      </option>
+                    ))}
+                </select>
               </div>
             </div>
           </div>
@@ -1066,7 +1004,6 @@ function EquipmentPage() {
               type="button"
               className="equipment-cancel-button"
               onClick={closeDrawer}
-              disabled={saving}
             >
               Annuler
             </button>
@@ -1079,8 +1016,8 @@ function EquipmentPage() {
               {saving
                 ? "Enregistrement..."
                 : editingId === null
-                  ? "Créer l'équipement"
-                  : "Enregistrer les modifications"}
+                  ? "Créer l’équipement"
+                  : "Enregistrer"}
             </button>
           </div>
         </form>
