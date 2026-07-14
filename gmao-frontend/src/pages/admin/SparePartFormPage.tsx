@@ -1,4 +1,4 @@
-import {
+﻿import {
   useEffect,
   useState,
   type FormEvent,
@@ -22,6 +22,10 @@ import {
   getSparePartById,
   updateSparePart,
 } from "../../services/sparePartService";
+
+
+import { getCostCenters } from "../../services/costCenterService";
+import type { CostCenter } from "../../types/costCenter";
 
 import type { SparePartRequest } from "../../types/sparePart";
 
@@ -51,16 +55,24 @@ const emptyForm: SparePartFormState = {
 };
 
 function SparePartFormPage() {
+
   const navigate = useNavigate();
   const { id } = useParams();
 
   const isEditMode = Boolean(id);
 
   const [form, setForm] = useState<SparePartFormState>(emptyForm);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    getCostCenters()
+      .then(setCostCenters)
+      .catch(() => setCostCenters([]));
+  }, []);
 
   useEffect(() => {
     async function loadSparePart(): Promise<void> {
@@ -458,14 +470,20 @@ function SparePartFormPage() {
                   <label htmlFor="spare-part-cost-center">
                     Centre de couts
                   </label>
-                  <input
+                  <select
                     id="spare-part-cost-center"
                     value={form.costCenterId}
                     onChange={(event) =>
                       updateField("costCenterId", event.target.value)
                     }
-                    placeholder="Exemple : 124002"
-                  />
+                  >
+                    <option value="">Selectionner un centre de couts</option>
+                    {costCenters.map((costCenter) => (
+                      <option key={costCenter.id} value={costCenter.id}>
+                        {costCenter.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="measure-form-group">
@@ -550,3 +568,5 @@ function SparePartFormPage() {
 }
 
 export default SparePartFormPage;
+
+
