@@ -128,6 +128,31 @@ export async function deleteTask(id: number): Promise<void> {
   return handle<void>(response);
 }
 
+export interface TagOption {
+  id: number;
+  label: string;
+  color: string;
+}
+
+export async function fetchTagOptions(): Promise<TagOption[]> {
+  const response = await fetch(`${BACKEND_URL}/api/tags`, {
+    headers: authHeaders(),
+  });
+
+  if (!response.ok) {
+    console.error(`Erreur ${response.status} en chargeant /api/tags`);
+    return [];
+  }
+
+  const data = await response.json();
+
+  return (Array.isArray(data) ? data : []).map((tag) => ({
+    id: tag.id,
+    label: tag.name,
+    color: tag.color || "#7d8793",
+  }));
+}
+
 export async function fetchOptionList(
   path: string,
   labelOf: (item: any) => string,

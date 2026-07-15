@@ -318,14 +318,17 @@
   color: #087fbd;
 }
 
-.task-tag-option-active {
+.task-tag-option-colored {
   color: #ffffff;
-  background: #087fbd;
-  border-color: #087fbd;
 }
 
-.task-tag-option-active:hover {
+.task-tag-option-colored:hover {
   color: #ffffff;
+  opacity: 0.9;
+}
+
+.task-form-drawer {
+  width: min(60vw, 960px);
 }
 
 /* ---------- Pièces de rechange ---------- */

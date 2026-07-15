@@ -5,6 +5,8 @@ import com.gmao.gmao_backend.tag.Tag;
 
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -41,7 +43,7 @@ public class TaskMapper {
 
                 task.getPlannedStoppedMinutes(),
 
-                task.getStatus(),
+                resolveDisplayStatus(task),
 
                 mapAssignees(task.getAssignees()),
 
@@ -92,8 +94,30 @@ public class TaskMapper {
 
                 mapTags(task.getTags()),
 
-                task.getStatus()
+                resolveDisplayStatus(task)
         );
+    }
+
+    /**
+     * The "late" status is never stored — it is derived on every read from
+     * the task's end date/time compared to now, so the UI never needs to
+     * set it manually. A task already marked DONE is never considered
+     * late.
+     */
+    private TaskStatus resolveDisplayStatus(Task task) {
+        if (task.getStatus() == TaskStatus.DONE) {
+            return TaskStatus.DONE;
+        }
+
+        LocalTime endTime = task.isAllDay() || task.getEndHour() == null
+                ? LocalTime.of(23, 59)
+                : task.getEndHour();
+
+        LocalDateTime deadline = task.getEndDate().atTime(endTime);
+
+        return deadline.isBefore(LocalDateTime.now())
+                ? TaskStatus.LATE
+                : TaskStatus.IN_PROGRESS;
     }
 
     private TaskEquipmentResponse toEquipmentResponse(Equipment equipment) {

@@ -161,6 +161,12 @@ public class TaskService {
 
         task.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
 
+        if (request.status() == TaskStatus.LATE) {
+            throw new IllegalArgumentException(
+                    "Le statut « En retard » est calculé automatiquement et ne peut pas être défini manuellement."
+            );
+        }
+
         task.setStatus(request.status());
 
         task.setTags(resolveTags(request.tagIds()));
@@ -190,6 +196,12 @@ public class TaskService {
 
     @Transactional
     public TaskResponse updateStatus(Long id, UpdateTaskStatusRequest request) {
+        if (request.status() == TaskStatus.LATE) {
+            throw new IllegalArgumentException(
+                    "Le statut « En retard » est calculé automatiquement et ne peut pas être défini manuellement."
+            );
+        }
+
         Task task = findEntityById(id);
 
         task.setStatus(request.status());

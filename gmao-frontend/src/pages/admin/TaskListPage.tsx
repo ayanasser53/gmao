@@ -1,7 +1,5 @@
 import {
   CalendarDays,
-  CheckCircle2,
-  Clock,
   ListChecks,
   MapPin,
   Plus,
@@ -47,17 +45,10 @@ function formatDuration(hours: number, minutes: number): string {
   return `${hours}h ${minutes.toString().padStart(2, "0")}mn`;
 }
 
-const STATUS_META: Record<
-  TaskStatus,
-  { label: string; icon: typeof CheckCircle2; className: string }
-> = {
-  DONE: { label: "Terminée", icon: CheckCircle2, className: "task-status-done" },
-  LATE: { label: "En retard", icon: Clock, className: "task-status-late" },
-  IN_PROGRESS: {
-    label: "En cours",
-    icon: Timer,
-    className: "task-status-progress",
-  },
+const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
+  DONE: { label: "Terminée", className: "task-status-done" },
+  LATE: { label: "En retard", className: "task-status-late" },
+  IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
 };
 
 function TaskListPage() {
@@ -208,7 +199,6 @@ function TaskListPage() {
 
               {filteredTasks.map((task) => {
                 const status = STATUS_META[task.status];
-                const StatusIcon = status.icon;
                 const equipmentImage = getFileUrl(
                   task.equipment?.image ?? null,
                 );
@@ -292,7 +282,11 @@ function TaskListPage() {
                         <select
                           autoFocus
                           className="task-status-select"
-                          value={task.status}
+                          value={
+                            task.status === "LATE"
+                              ? "IN_PROGRESS"
+                              : task.status
+                          }
                           disabled={statusUpdating === task.id}
                           onBlur={() => setEditingStatusId(null)}
                           onChange={(event) =>
@@ -304,7 +298,6 @@ function TaskListPage() {
                         >
                           <option value="IN_PROGRESS">En cours</option>
                           <option value="DONE">Terminée</option>
-                          <option value="LATE">En retard</option>
                         </select>
                       ) : (
                         <button
@@ -312,7 +305,6 @@ function TaskListPage() {
                           className={`task-status-badge task-status-editable ${status.className}`}
                           onClick={() => setEditingStatusId(task.id)}
                         >
-                          <StatusIcon size={13} />
                           {status.label}
                         </button>
                       )}
