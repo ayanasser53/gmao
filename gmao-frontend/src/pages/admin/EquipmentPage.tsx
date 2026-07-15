@@ -476,6 +476,11 @@ return (
         </button>
       </div>
   
+      {error && (
+        <div className="supplier-error-message">
+          {error}
+        </div>
+      )}
 
       <div className="equipment-toolbar">
         <div className="equipment-search">

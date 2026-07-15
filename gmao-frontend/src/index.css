@@ -5531,9 +5531,91 @@ button.linked-compact-row:hover {
   border: 1px solid #43b43c;
 }
 
+.task-header-actions {
+  display: contents;
+}
+
+.task-list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.task-summary-chip {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: #12365f;
+  background: #ffffff;
+  border: 1px solid #cfdbe6;
+  border-radius: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.task-summary-chip svg {
+  color: #087fbd;
+}
+
+.task-summary-chip strong {
+  color: #001c3d;
+  font-size: 22px;
+}
+
+.activity-status-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.activity-status-cards button {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  color: #193858;
+  background: #ffffff;
+  border: 1px solid #cfdbe6;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-status-cards button svg {
+  width: 46px;
+  height: 46px;
+  padding: 11px;
+  color: #087fbd;
+  background: #e5f5fc;
+  border-radius: 10px;
+}
+
+.activity-status-cards button span {
+  margin-left: auto;
+  color: #001c3d;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.activity-status-cards button.active {
+  background: #ecf8fd;
+  border-color: #087fbd;
+  box-shadow: inset 4px 0 0 #087fbd;
+}
+
 @media (max-width: 900px) {
   .admin-tabs,
-  .form-grid.two {
+  .form-grid.two,
+  .activity-status-cards,
+  .task-list-toolbar {
     grid-template-columns: 1fr;
   }
 
@@ -5541,5 +5623,127 @@ button.linked-compact-row:hover {
   .admin-page .admin-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* Compact admin layout for 100% browser zoom */
+.admin-dashboard,
+.admin-module-page,
+.admin-page {
+  padding: 28px 28px 44px;
+}
+
+.suppliers-page-heading,
+.admin-page-header,
+.admin-page-heading {
+  margin-bottom: 22px;
+}
+
+.suppliers-title,
+.resource-title,
+.admin-page-header h1,
+.admin-page-heading h1 {
+  gap: 10px;
+}
+
+.suppliers-title h1,
+.resource-title h1,
+.admin-page-header h1,
+.admin-page-heading h1 {
+  font-size: 34px;
+  line-height: 1.08;
+}
+
+.resource-primary-button,
+.primary-action-button,
+.form-submit-button {
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.resource-toolbar,
+.task-list-toolbar {
+  margin-bottom: 18px;
+}
+
+.resource-search,
+.task-search,
+.search-box {
+  min-height: 44px;
+}
+
+.resource-table th,
+.resource-table td,
+.supplier-table th,
+.supplier-table td,
+.spare-parts-table th,
+.spare-parts-table td,
+.task-table th,
+.task-table td,
+.activity-table th,
+.activity-table td {
+  padding: 14px 16px;
+}
+
+.entity-form {
+  gap: 18px;
+  padding: 20px;
+}
+
+.form-grid.two {
+  gap: 14px 16px;
+}
+
+.form-field {
+  gap: 6px;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  min-height: 40px;
+  padding: 8px 11px;
+}
+
+.form-field textarea {
+  min-height: 105px;
+}
+
+.form-drawer-header h1 {
+  font-size: 28px;
+}
+
+.activity-status-cards {
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.activity-status-cards button {
+  min-height: 76px;
+  padding: 14px 16px;
+}
+
+.activity-status-cards button svg {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+}
+
+.activity-status-cards button span {
+  font-size: 24px;
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard,
+  .admin-module-page,
+  .admin-page {
+    padding: 22px 16px 36px;
+  }
+
+  .suppliers-title h1,
+  .resource-title h1,
+  .admin-page-header h1,
+  .admin-page-heading h1 {
+    font-size: 28px;
   }
 }

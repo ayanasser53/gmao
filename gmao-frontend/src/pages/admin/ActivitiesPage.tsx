@@ -50,11 +50,11 @@ function ActivitiesPage() {
         setLate(lateData);
         setHistory(historyData);
       } catch {
-        setError("Impossible de charger les activités.");
+        setError("Impossible de charger les activites.");
       }
     }
 
-    loadActivities();
+    void loadActivities();
   }, []);
 
   const activities =
@@ -81,35 +81,31 @@ function ActivitiesPage() {
   }, [activities, search]);
 
   return (
-    <section className="admin-page">
-      <div className="admin-page-header">
-        <div>
-          <span className="admin-page-eyebrow">
-            Gestion des interventions
-          </span>
-
-          <h1>
-            <ListChecks size={36} />
-            Activités
-          </h1>
+    <section className="suppliers-workspace">
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <ListChecks size={28} />
+            <h1>Activites</h1>
+          </div>
         </div>
 
         <Link
           to="/admin/activities/create"
-          className="equipment-primary-button"
+          className="supplier-primary-button"
         >
           <Plus size={18} />
-          Ajouter une activité
+          Ajouter une activite
         </Link>
       </div>
 
       {error && (
-        <div className="form-error-message">
+        <div className="supplier-error-message">
           {error}
         </div>
       )}
 
-      <div className="admin-tabs">
+      <div className="activity-status-cards">
         <button
           type="button"
           className={activeTab === "IN_PROGRESS" ? "active" : ""}
@@ -141,25 +137,26 @@ function ActivitiesPage() {
         </button>
       </div>
 
-      <div className="admin-search">
+      <div className="supplier-search-bar">
         <Search size={19} />
         <input
+          type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Rechercher une activité..."
+          placeholder="Rechercher une activite..."
         />
       </div>
 
-      <div className="admin-table-card">
-        <table className="admin-table">
+      <div className="supplier-table-wrapper">
+        <table className="supplier-table">
           <thead>
             <tr>
               <th>Equipement</th>
-              <th>Tâche</th>
-              <th>Activité</th>
+              <th>Tache</th>
+              <th>Activite</th>
               <th>Date</th>
               <th>Heure fin</th>
-              <th>Temps passé</th>
+              <th>Temps passe</th>
               <th>Statut</th>
             </tr>
           </thead>
@@ -167,8 +164,8 @@ function ActivitiesPage() {
           <tbody>
             {filteredActivities.length === 0 ? (
               <tr>
-                <td colSpan={7} className="admin-empty-cell">
-                  Aucun résultat
+                <td colSpan={7} className="supplier-empty-row">
+                  Aucun resultat
                 </td>
               </tr>
             ) : (
@@ -183,7 +180,7 @@ function ActivitiesPage() {
                   <td>
                     <span className={`status-pill ${activity.status.toLowerCase()}`}>
                       {activity.status === "DONE"
-                        ? "Terminée"
+                        ? "Terminee"
                         : activity.status === "LATE"
                           ? "En retard"
                           : "En cours"}

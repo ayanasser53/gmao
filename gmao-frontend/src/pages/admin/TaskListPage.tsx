@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  ClipboardList,
   ListChecks,
   MapPin,
   Plus,
@@ -129,7 +130,7 @@ function TaskListPage() {
       <div className="suppliers-page-heading">
         <div className="suppliers-heading-content">
           <div className="suppliers-title">
-            <Wrench size={28} />
+            <ClipboardList size={28} />
             <h1>Tâches</h1>
           </div>
 
