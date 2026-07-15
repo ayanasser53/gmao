@@ -1,6 +1,8 @@
 package com.gmao.gmao_backend.sparepart;
 
 import com.gmao.gmao_backend.costcenter.CostCenterRepository;
+import com.gmao.gmao_backend.equipment.Equipment;
+import com.gmao.gmao_backend.equipment.EquipmentRepository;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
@@ -12,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,8 @@ public class SparePartService {
     private final SupplierRepository supplierRepository;
     private final CostCenterRepository costCenterRepository;
     private final AppFileStorageService fileStorageService;
+    private final EquipmentRepository equipmentRepository;
+    private final SparePartStockMovementRepository stockMovementRepository;
 
     public List<SparePartResponse> findAll() {
         return sparePartRepository.findAll()
@@ -54,7 +60,6 @@ public class SparePartService {
         }
 
         Supplier supplier = getSupplier(request.supplierId());
-
         Long costCenterId = resolveCostCenterId(request.costCenterId());
 
         SparePart sparePart = SparePart.builder()
@@ -76,9 +81,14 @@ public class SparePartService {
                 .articleCode(request.articleCode())
                 .visibility(defaultVisibility(request.visibility()))
                 .supplier(supplier)
+                .linkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), null))
                 .build();
 
-        return toResponse(sparePartRepository.save(sparePart));
+        SparePart savedSparePart = sparePartRepository.save(sparePart);
+        syncLinkedEquipment(savedSparePart, request.linkedEquipmentIds());
+        SparePart refreshedSparePart = sparePartRepository.save(savedSparePart);
+
+        return toResponse(refreshedSparePart);
     }
 
     public SparePartResponse update(Long id, SparePartRequest request) {
@@ -89,7 +99,6 @@ public class SparePartService {
         validateRequest(request);
 
         SparePart sparePart = getSparePart(id);
-
         String code = normalizeCode(request.code());
 
         if (code != null && !code.isBlank() && !code.equals(sparePart.getCode())) {
@@ -100,7 +109,6 @@ public class SparePartService {
         }
 
         Supplier supplier = getSupplier(request.supplierId());
-
         Long costCenterId = resolveCostCenterId(request.costCenterId());
 
         sparePart.setName(request.name().trim());
@@ -120,13 +128,18 @@ public class SparePartService {
         sparePart.setArticleCode(request.articleCode());
         sparePart.setVisibility(defaultVisibility(request.visibility()));
         sparePart.setSupplier(supplier);
+        sparePart.setLinkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), sparePart.getId()));
 
-        return toResponse(sparePart);
+        syncLinkedEquipment(sparePart, request.linkedEquipmentIds());
+        SparePart savedSparePart = sparePartRepository.save(sparePart);
+
+        return toResponse(savedSparePart);
     }
 
     public void delete(Long id) {
         SparePart sparePart = getSparePart(id);
         fileStorageService.delete(sparePart.getImage(), "spare-parts");
+        syncLinkedEquipment(sparePart, List.of());
         sparePartRepository.delete(sparePart);
     }
 
@@ -153,12 +166,6 @@ public class SparePartService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Supplier not found"));
     }
 
-    /**
-     * Treats 0/negative as "no cost center" (some selects send 0 instead of
-     * null for the empty option) and makes sure a non-null id actually
-     * exists, so a stale/invalid value fails fast with a clean 404 instead
-     * of a raw SQLIntegrityConstraintViolationException at insert time.
-     */
     private Long resolveCostCenterId(Long costCenterId) {
         if (costCenterId == null || costCenterId <= 0) {
             return null;
@@ -167,11 +174,59 @@ public class SparePartService {
         if (!costCenterRepository.existsById(costCenterId)) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "Centre de coût introuvable (id=" + costCenterId + ")."
+                    "Centre de cout introuvable (id=" + costCenterId + ")."
             );
         }
 
         return costCenterId;
+    }
+
+    private Set<SparePart> resolveLinkedSpareParts(List<Long> linkedSparePartIds, Long currentSparePartId) {
+        if (linkedSparePartIds == null || linkedSparePartIds.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        Set<SparePart> linkedSpareParts = new HashSet<>();
+
+        for (Long linkedSparePartId : linkedSparePartIds) {
+            if (linkedSparePartId == null) {
+                continue;
+            }
+
+            if (currentSparePartId != null && linkedSparePartId.equals(currentSparePartId)) {
+                continue;
+            }
+
+            linkedSpareParts.add(getSparePart(linkedSparePartId));
+        }
+
+        return linkedSpareParts;
+    }
+
+    private void syncLinkedEquipment(SparePart sparePart, List<Long> linkedEquipmentIds) {
+        Long sparePartId = sparePart.getId();
+        List<Equipment> previouslyLinkedEquipment = equipmentRepository.findEquipmentsLinkedToSparePart(sparePartId);
+
+        previouslyLinkedEquipment.forEach(equipment -> equipment.getLinkedSpareParts()
+                .removeIf(linkedSparePart -> sparePartId.equals(linkedSparePart.getId())));
+        equipmentRepository.saveAll(previouslyLinkedEquipment);
+
+        if (linkedEquipmentIds == null || linkedEquipmentIds.isEmpty()) {
+            return;
+        }
+
+        List<Equipment> selectedEquipment = linkedEquipmentIds.stream()
+                .filter(equipmentId -> equipmentId != null && equipmentId > 0)
+                .distinct()
+                .map(equipmentId -> equipmentRepository.findById(equipmentId)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Equipement introuvable (id=" + equipmentId + ")."
+                        )))
+                .peek(equipment -> equipment.getLinkedSpareParts().add(sparePart))
+                .toList();
+
+        equipmentRepository.saveAll(selectedEquipment);
     }
 
     private void validateRequest(SparePartRequest request) {
@@ -215,6 +270,40 @@ public class SparePartService {
     private SparePartResponse toResponse(SparePart sparePart) {
         Supplier supplier = sparePart.getSupplier();
 
+        var linkedEquipments = equipmentRepository.findEquipmentsLinkedToSparePart(sparePart.getId())
+                .stream()
+                .map(equipment -> new SparePartResponse.LinkedEquipmentResponse(
+                        equipment.getId(),
+                        equipment.getName(),
+                        equipment.getDescription(),
+                        equipment.getImage()
+                ))
+                .toList();
+
+        var linkedSpareParts = sparePart.getLinkedSpareParts()
+                .stream()
+                .map(linked -> new SparePartResponse.LinkedSparePartResponse(
+                        linked.getId(),
+                        linked.getName(),
+                        linked.getCode(),
+                        linked.getImage()
+                ))
+                .toList();
+
+        var stockMovements = stockMovementRepository.findBySparePartIdOrderByMovementDateDesc(sparePart.getId())
+                .stream()
+                .map(movement -> new SparePartResponse.StockMovementResponse(
+                        movement.getId(),
+                        movement.getSource(),
+                        movement.getReference(),
+                        movement.getMovementType(),
+                        movement.getQuantity(),
+                        movement.getUnitCost(),
+                        movement.getUserName(),
+                        movement.getMovementDate()
+                ))
+                .toList();
+
         return new SparePartResponse(
                 sparePart.getId(),
                 sparePart.getName(),
@@ -236,6 +325,9 @@ public class SparePartService {
                 sparePart.getVisibility(),
                 supplier != null ? supplier.getId() : null,
                 supplier != null ? supplier.getName() : null,
+                linkedEquipments,
+                linkedSpareParts,
+                stockMovements,
                 sparePart.getCreatedAt(),
                 sparePart.getUpdatedAt()
         );

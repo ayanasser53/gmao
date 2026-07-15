@@ -1,5 +1,6 @@
-﻿import {
+import {
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
 } from "react";
@@ -17,17 +18,20 @@ import {
   useParams,
 } from "react-router-dom";
 
+import { getCostCenters } from "../../services/costCenterService";
+import { getEquipment } from "../../services/equipmentService";
 import {
   createSparePart,
   getSparePartById,
+  getSpareParts,
   updateSparePart,
 } from "../../services/sparePartService";
-
-
-import { getCostCenters } from "../../services/costCenterService";
 import type { CostCenter } from "../../types/costCenter";
-
-import type { SparePartRequest } from "../../types/sparePart";
+import type { Equipment } from "../../types/equipment";
+import type {
+  SparePart,
+  SparePartRequest,
+} from "../../types/sparePart";
 
 type SparePartFormState = Omit<SparePartRequest, "costCenterId"> & {
   costCenterId: string;
@@ -52,26 +56,59 @@ const emptyForm: SparePartFormState = {
   articleCode: "",
   visibility: "PRIVATE",
   supplierId: null,
+  linkedEquipmentIds: [],
+  linkedSparePartIds: [],
 };
 
 function SparePartFormPage() {
-
   const navigate = useNavigate();
   const { id } = useParams();
-
   const isEditMode = Boolean(id);
 
   const [form, setForm] = useState<SparePartFormState>(emptyForm);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
   const [error, setError] = useState("");
 
+  const selectedEquipment = useMemo(
+    () => equipment.filter((item) => form.linkedEquipmentIds.includes(item.id)),
+    [equipment, form.linkedEquipmentIds],
+  );
+
+  const selectedSpareParts = useMemo(
+    () => spareParts.filter((item) => form.linkedSparePartIds.includes(item.id)),
+    [spareParts, form.linkedSparePartIds],
+  );
+
+  const availableSpareParts = useMemo(
+    () => spareParts.filter((item) => !id || item.id !== Number(id)),
+    [id, spareParts],
+  );
+
   useEffect(() => {
-    getCostCenters()
-      .then(setCostCenters)
-      .catch(() => setCostCenters([]));
+    async function loadOptions(): Promise<void> {
+      try {
+        const [costCenterData, equipmentData, sparePartData] = await Promise.all([
+          getCostCenters(),
+          getEquipment(),
+          getSpareParts(),
+        ]);
+
+        setCostCenters(costCenterData);
+        setEquipment(equipmentData);
+        setSpareParts(sparePartData);
+      } catch {
+        setCostCenters([]);
+        setEquipment([]);
+        setSpareParts([]);
+      }
+    }
+
+    void loadOptions();
   }, []);
 
   useEffect(() => {
@@ -105,9 +142,11 @@ function SparePartFormPage() {
           articleCode: sparePart.articleCode ?? "",
           visibility: sparePart.visibility ?? "PRIVATE",
           supplierId: sparePart.supplierId,
+          linkedEquipmentIds: sparePart.linkedEquipments?.map((item) => item.id) ?? [],
+          linkedSparePartIds: sparePart.linkedSpareParts?.map((item) => item.id) ?? [],
         });
       } catch {
-        setError("Impossible de charger cette piece detachee.");
+        setError("Impossible de charger cette pièce détachée.");
       } finally {
         setPageLoading(false);
       }
@@ -140,11 +179,48 @@ function SparePartFormPage() {
     updateField(field, Number(value || 0));
   }
 
+  function addLinkedEquipment(value: string): void {
+    const equipmentId = Number(value);
+
+    if (!equipmentId || form.linkedEquipmentIds.includes(equipmentId)) {
+      return;
+    }
+
+    updateField("linkedEquipmentIds", [...form.linkedEquipmentIds, equipmentId]);
+  }
+
+  function removeLinkedEquipment(equipmentId: number): void {
+    updateField(
+      "linkedEquipmentIds",
+      form.linkedEquipmentIds.filter((itemId) => itemId !== equipmentId),
+    );
+  }
+
+  function addLinkedSparePart(value: string): void {
+    const sparePartId = Number(value);
+
+    if (
+      !sparePartId
+      || form.linkedSparePartIds.includes(sparePartId)
+      || (isEditMode && id && sparePartId === Number(id))
+    ) {
+      return;
+    }
+
+    updateField("linkedSparePartIds", [...form.linkedSparePartIds, sparePartId]);
+  }
+
+  function removeLinkedSparePart(sparePartId: number): void {
+    updateField(
+      "linkedSparePartIds",
+      form.linkedSparePartIds.filter((itemId) => itemId !== sparePartId),
+    );
+  }
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-
     setError("");
 
     if (!form.name.trim()) {
@@ -170,20 +246,18 @@ function SparePartFormPage() {
         articleCode: form.articleCode.trim(),
       };
 
-      if (isEditMode && id) {
-        await updateSparePart(Number(id), request, imageFile);
-      } else {
-        await createSparePart(request, imageFile);
-      }
+      const savedSparePart = isEditMode && id
+        ? await updateSparePart(Number(id), request, imageFile)
+        : await createSparePart(request, imageFile);
 
-      navigate("/admin/spare-parts", {
+      navigate(`/admin/spare-parts/${savedSparePart.id}`, {
         replace: true,
       });
     } catch {
       setError(
         isEditMode
-          ? "Impossible de modifier cette piece detachee."
-          : "Impossible de creer cette piece detachee.",
+          ? "Impossible de modifier cette pièce détachée."
+          : "Impossible de créer cette pièce détachée.",
       );
     } finally {
       setLoading(false);
@@ -195,7 +269,7 @@ function SparePartFormPage() {
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour aux pieces detachees"
+        aria-label="Retour aux pièces détachées"
         onClick={() => navigate("/admin/spare-parts")}
       />
 
@@ -214,15 +288,15 @@ function SparePartFormPage() {
                 type="button"
                 className="measure-drawer-back"
                 onClick={() => navigate("/admin/spare-parts")}
-                aria-label="Retour aux pieces detachees"
+                aria-label="Retour aux pièces détachées"
               >
                 <ArrowLeft size={22} />
               </button>
 
               <h2>
                 {isEditMode
-                  ? "Modifier la piece detachee"
-                  : "Creer une piece detachee"}
+                  ? "Modifier la pièce détachée"
+                  : "Créer une pièce détachée"}
               </h2>
 
               <button
@@ -244,7 +318,7 @@ function SparePartFormPage() {
 
               <div className="supplier-drawer-section-title">
                 <PackagePlus size={19} />
-                <span>Informations generales</span>
+                <span>Informations générales</span>
               </div>
 
               <div className="supplier-form-grid">
@@ -255,64 +329,45 @@ function SparePartFormPage() {
                   <input
                     id="spare-part-name"
                     value={form.name}
-                    onChange={(event) =>
-                      updateField("name", event.target.value)
-                    }
-                    placeholder="Exemple : Roulement a rouleaux"
+                    onChange={(event) => updateField("name", event.target.value)}
+                    placeholder="Exemple : Roulement à rouleaux"
                     required
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-code">
-                    Code
-                  </label>
+                  <label htmlFor="spare-part-code">Code</label>
                   <input
                     id="spare-part-code"
                     value={form.code}
-                    onChange={(event) =>
-                      updateField("code", event.target.value)
-                    }
-                    placeholder="Genere automatiquement"
+                    onChange={(event) => updateField("code", event.target.value)}
+                    placeholder="Généré automatiquement"
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-brand">
-                    Marque
-                  </label>
+                  <label htmlFor="spare-part-brand">Marque</label>
                   <input
                     id="spare-part-brand"
                     value={form.brand}
-                    onChange={(event) =>
-                      updateField("brand", event.target.value)
-                    }
+                    onChange={(event) => updateField("brand", event.target.value)}
                     placeholder="Exemple : SNR"
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-reference">
-                    Reference fabricant
-                  </label>
+                  <label htmlFor="spare-part-reference">Référence fabricant</label>
                   <input
                     id="spare-part-reference"
                     value={form.manufacturerReference}
-                    onChange={(event) =>
-                      updateField(
-                        "manufacturerReference",
-                        event.target.value,
-                      )
-                    }
+                    onChange={(event) => updateField("manufacturerReference", event.target.value)}
                     placeholder="Exemple : NJ312ECM/C3"
                   />
                 </div>
               </div>
 
               <div className="measure-form-group">
-                <label htmlFor="spare-part-image">
-                  Image
-                </label>
+                <label htmlFor="spare-part-image">Image</label>
                 <label className="asset-image-picker" htmlFor="spare-part-image">
                   <ImagePlus size={30} />
                   <strong>
@@ -325,6 +380,7 @@ function SparePartFormPage() {
                     onChange={(event) => {
                       const file = event.target.files?.[0] ?? null;
                       setImageFile(file);
+
                       if (file) {
                         updateField("image", file.name);
                       }
@@ -340,31 +396,23 @@ function SparePartFormPage() {
 
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-unit-price">
-                    Prix unitaire
-                  </label>
+                  <label htmlFor="spare-part-unit-price">Prix unitaire</label>
                   <input
                     id="spare-part-unit-price"
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.unitPrice}
-                    onChange={(event) =>
-                      updateNumberField("unitPrice", event.target.value)
-                    }
+                    onChange={(event) => updateNumberField("unitPrice", event.target.value)}
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-currency">
-                    Devise
-                  </label>
+                  <label htmlFor="spare-part-currency">Devise</label>
                   <select
                     id="spare-part-currency"
                     value={form.currency}
-                    onChange={(event) =>
-                      updateField("currency", event.target.value)
-                    }
+                    onChange={(event) => updateField("currency", event.target.value)}
                   >
                     <option value="EUR">EUR</option>
                     <option value="MAD">MAD</option>
@@ -373,111 +421,78 @@ function SparePartFormPage() {
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-quantity">
-                    Quantite
-                  </label>
+                  <label htmlFor="spare-part-quantity">Quantité</label>
                   <input
                     id="spare-part-quantity"
                     type="number"
                     min="0"
                     step="1"
                     value={form.quantity}
-                    onChange={(event) =>
-                      updateNumberField("quantity", event.target.value)
-                    }
+                    onChange={(event) => updateNumberField("quantity", event.target.value)}
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-reorder">
-                    Lot de reapprovisionnement
-                  </label>
+                  <label htmlFor="spare-part-reorder">Lot de réapprovisionnement</label>
                   <input
                     id="spare-part-reorder"
                     type="number"
                     min="0"
                     step="1"
                     value={form.reorderQuantity}
-                    onChange={(event) =>
-                      updateNumberField(
-                        "reorderQuantity",
-                        event.target.value,
-                      )
-                    }
+                    onChange={(event) => updateNumberField("reorderQuantity", event.target.value)}
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-min-stock">
-                    Stock minimum
-                  </label>
+                  <label htmlFor="spare-part-min-stock">Stock minimum</label>
                   <input
                     id="spare-part-min-stock"
                     type="number"
                     min="0"
                     step="1"
                     value={form.minimumStock}
-                    onChange={(event) =>
-                      updateNumberField(
-                        "minimumStock",
-                        event.target.value,
-                      )
-                    }
+                    onChange={(event) => updateNumberField("minimumStock", event.target.value)}
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-max-stock">
-                    Stock maximum
-                  </label>
+                  <label htmlFor="spare-part-max-stock">Stock maximum</label>
                   <input
                     id="spare-part-max-stock"
                     type="number"
                     min="0"
                     step="1"
                     value={form.maximumStock}
-                    onChange={(event) =>
-                      updateNumberField(
-                        "maximumStock",
-                        event.target.value,
-                      )
-                    }
+                    onChange={(event) => updateNumberField("maximumStock", event.target.value)}
                   />
                 </div>
               </div>
 
               <div className="supplier-drawer-section-title">
                 <PackagePlus size={19} />
-                <span>Localisation et references</span>
+                <span>Localisation et références</span>
               </div>
 
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-location">
-                    Emplacement
-                  </label>
+                  <label htmlFor="spare-part-location">Emplacement</label>
                   <input
                     id="spare-part-location"
                     value={form.location}
-                    onChange={(event) =>
-                      updateField("location", event.target.value)
-                    }
+                    onChange={(event) => updateField("location", event.target.value)}
                     placeholder="Exemple : 8"
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-cost-center">
-                    Centre de couts
-                  </label>
+                  <label htmlFor="spare-part-cost-center">Centre de coûts</label>
                   <select
                     id="spare-part-cost-center"
                     value={form.costCenterId}
-                    onChange={(event) =>
-                      updateField("costCenterId", event.target.value)
-                    }
+                    onChange={(event) => updateField("costCenterId", event.target.value)}
                   >
-                    <option value="">Selectionner un centre de couts</option>
+                    <option value="">Sélectionner un centre de coûts</option>
                     {costCenters.map((costCenter) => (
                       <option key={costCenter.id} value={costCenter.id}>
                         {costCenter.name}
@@ -487,39 +502,100 @@ function SparePartFormPage() {
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-gtin">
-                    Code GTIN/EAN
-                  </label>
+                  <label htmlFor="spare-part-gtin">Code GTIN/EAN</label>
                   <input
                     id="spare-part-gtin"
                     value={form.gtin}
-                    onChange={(event) =>
-                      updateField("gtin", event.target.value)
-                    }
+                    onChange={(event) => updateField("gtin", event.target.value)}
                   />
                 </div>
 
                 <div className="measure-form-group">
-                  <label htmlFor="spare-part-article-code">
-                    Code article
-                  </label>
+                  <label htmlFor="spare-part-article-code">Code article</label>
                   <input
                     id="spare-part-article-code"
                     value={form.articleCode}
-                    onChange={(event) =>
-                      updateField("articleCode", event.target.value)
-                    }
+                    onChange={(event) => updateField("articleCode", event.target.value)}
                   />
                 </div>
               </div>
 
+              <div className="supplier-drawer-section-title">
+                <PackagePlus size={19} />
+                <span>Liaisons</span>
+              </div>
+
+              <div className="supplier-form-grid">
+                <div className="measure-form-group">
+                  <label htmlFor="spare-part-linked-equipment">Équipements liés</label>
+                  <div className="multi-select-box">
+                    <select
+                      id="spare-part-linked-equipment"
+                      value=""
+                      onChange={(event) => addLinkedEquipment(event.target.value)}
+                    >
+                      <option value="">Sélectionner un équipement</option>
+                      {equipment.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="multi-select-values">
+                      {selectedEquipment.map((item) => (
+                        <span key={item.id} className="multi-select-chip">
+                          {item.name}
+                          <button
+                            type="button"
+                            onClick={() => removeLinkedEquipment(item.id)}
+                            aria-label={`Retirer ${item.name}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="measure-form-group">
+                  <label htmlFor="spare-part-linked-spare-parts">Pièces détachées liées</label>
+                  <div className="multi-select-box">
+                    <select
+                      id="spare-part-linked-spare-parts"
+                      value=""
+                      onChange={(event) => addLinkedSparePart(event.target.value)}
+                    >
+                      <option value="">Sélectionner une pièce détachée</option>
+                      {availableSpareParts.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="multi-select-values">
+                      {selectedSpareParts.map((item) => (
+                        <span key={item.id} className="multi-select-chip">
+                          {item.name}
+                          <button
+                            type="button"
+                            onClick={() => removeLinkedSparePart(item.id)}
+                            aria-label={`Retirer ${item.name}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="measure-form-group">
-                <label htmlFor="spare-part-description">
-                  Description
-                </label>
+                <label htmlFor="spare-part-description">Description</label>
                 <div className="measure-editor">
                   <div className="measure-editor-toolbar">
-                    <span>Apercu</span>
+                    <span>Aperçu</span>
                     <strong>B</strong>
                     <em>I</em>
                     <span>/</span>
@@ -529,9 +605,7 @@ function SparePartFormPage() {
                     id="spare-part-description"
                     rows={6}
                     value={form.description}
-                    onChange={(event) =>
-                      updateField("description", event.target.value)
-                    }
+                    onChange={(event) => updateField("description", event.target.value)}
                   />
                 </div>
               </div>
@@ -557,7 +631,7 @@ function SparePartFormPage() {
                   ? "Enregistrement..."
                   : isEditMode
                     ? "Enregistrer"
-                    : "Creer la piece"}
+                    : "Créer la pièce"}
               </button>
             </div>
           </form>
@@ -568,5 +642,3 @@ function SparePartFormPage() {
 }
 
 export default SparePartFormPage;
-
-

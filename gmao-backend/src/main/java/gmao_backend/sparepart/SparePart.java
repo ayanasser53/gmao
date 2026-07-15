@@ -9,6 +9,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "spare_parts")
 @Getter
@@ -65,6 +68,15 @@ public class SparePart {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
+
+    @ManyToMany
+@JoinTable(
+        name = "spare_part_links",
+        joinColumns = @JoinColumn(name = "spare_part_id"),
+        inverseJoinColumns = @JoinColumn(name = "linked_spare_part_id")
+)
+@Builder.Default
+private Set<SparePart> linkedSpareParts = new HashSet<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;

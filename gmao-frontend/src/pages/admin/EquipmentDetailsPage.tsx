@@ -26,8 +26,11 @@ import type { Equipment } from "../../types/equipment";
 
 const BACKEND_URL = "http://localhost:8090";
 
+type UploadFolder = "equipment" | "spare-parts";
+
 function getFileUrl(
   path: string | null,
+  folder?: UploadFolder,
 ): string | null {
   if (!path) {
     return null;
@@ -41,11 +44,16 @@ function getFileUrl(
     return path;
   }
 
-  return `${BACKEND_URL}${
-    path.startsWith("/") ? path : `/${path}`
-  }`;
-}
+  if (path.startsWith("/uploads/") || path.startsWith("uploads/") || path.includes("/")) {
+    return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  }
 
+  if (folder) {
+    return `${BACKEND_URL}/uploads/${folder}/${path}`;
+  }
+
+  return `${BACKEND_URL}/${path}`;
+}
 type DetailTab =
   | "information"
   | "linked-equipment"
@@ -132,7 +140,7 @@ function EquipmentDetailsPage() {
   }
 
   const imageUrl =
-    getFileUrl(equipment.image);
+    getFileUrl(equipment.image, "equipment");
 
   const linkedEquipment =
     equipment.linkedEquipment ?? [];
@@ -371,7 +379,14 @@ function EquipmentDetailsPage() {
                     }
                   >
                     <div className="linked-compact-icon">
-                      <Wrench size={22} />
+                      {getFileUrl(linked.image, "equipment") ? (
+                        <img
+                          src={getFileUrl(linked.image, "equipment") ?? ""}
+                          alt={linked.name}
+                        />
+                      ) : (
+                        <Wrench size={22} />
+                      )}
                     </div>
 
                     <div className="linked-compact-content">
@@ -419,12 +434,25 @@ function EquipmentDetailsPage() {
             {linkedSpareParts.length > 0 ? (
               linkedSpareParts.map(
                 (part) => (
-                  <article
+                  <button
+                    type="button"
                     key={part.id}
-                    className="linked-compact-row linked-compact-row-static"
+                    className="linked-compact-row"
+                    onClick={() =>
+                      navigate(
+                        `/admin/spare-parts/${part.id}`,
+                      )
+                    }
                   >
                     <div className="linked-compact-icon">
-                      <Package size={22} />
+                      {getFileUrl(part.imageUrl, "spare-parts") ? (
+                        <img
+                          src={getFileUrl(part.imageUrl, "spare-parts") ?? ""}
+                          alt={part.name}
+                        />
+                      ) : (
+                        <Package size={22} />
+                      )}
                     </div>
 
                     <div className="linked-compact-content">
@@ -445,7 +473,17 @@ function EquipmentDetailsPage() {
                         </span>
                       </div>
                     </div>
-                  </article>
+                  
+                    <div className="linked-compact-action">
+                      <span>
+                        Voir le détail
+                      </span>
+
+                      <ChevronRight
+                        size={18}
+                      />
+                    </div>
+                  </button>
                 ),
               )
             ) : (

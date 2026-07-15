@@ -1,10 +1,9 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import {
+  ArrowLeft,
   BadgeCheck,
+  ChevronRight,
   Boxes,
   CircleDollarSign,
   FileText,
@@ -12,13 +11,12 @@ import {
   Layers,
   MapPin,
   PackagePlus,
+  Search,
   Shield,
   Tag,
 } from "lucide-react";
 
-import {
-  useParams,
-} from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { getSparePartById } from "../../services/sparePartService";
 
@@ -26,7 +24,12 @@ import type { SparePart } from "../../types/sparePart";
 
 const BACKEND_URL = "http://localhost:8090";
 
-function getImageUrl(imagePath: string | null | undefined): string | null {
+type UploadFolder = "equipment" | "spare-parts";
+
+function getImageUrl(
+  imagePath: string | null | undefined,
+  folder: UploadFolder,
+): string | null {
   if (!imagePath) {
     return null;
   }
@@ -39,7 +42,15 @@ function getImageUrl(imagePath: string | null | undefined): string | null {
     return imagePath;
   }
 
-  return `${BACKEND_URL}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+  if (imagePath.startsWith("/uploads/") || imagePath.startsWith("uploads/")) {
+    return `${BACKEND_URL}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+  }
+
+  if (imagePath.includes("/")) {
+    return `${BACKEND_URL}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+  }
+
+  return `${BACKEND_URL}/uploads/${folder}/${imagePath}`;
 }
 
 function displayValue(value: string | null): string {
@@ -56,6 +67,9 @@ function SparePartDetailsPage() {
   const [sparePart, setSparePart] = useState<SparePart | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeLinkedTab, setActiveLinkedTab] = useState<
+    "equipment" | "spare-parts" | "movements"
+  >("equipment");
 
   useEffect(() => {
     async function loadSparePart(): Promise<void> {
@@ -84,9 +98,7 @@ function SparePartDetailsPage() {
   if (loading) {
     return (
       <section className="supplier-detail-workspace">
-        <div className="supplier-loading">
-          Chargement de la pièce détachée...
-        </div>
+        <div className="supplier-loading">Chargement de la pièce détachée...</div>
       </section>
     );
   }
@@ -101,9 +113,13 @@ function SparePartDetailsPage() {
     );
   }
 
+  const linkedEquipments = sparePart.linkedEquipments ?? [];
+  const linkedSpareParts = sparePart.linkedSpareParts ?? [];
+  const stockMovements = sparePart.stockMovements ?? [];
+
   return (
     <section className="supplier-detail-workspace">
-      <div className="supplier-detail-header">
+      <div className="supplier-detail-header spare-detail-header-actions">
         <div className="supplier-detail-title">
           <Boxes size={22} />
 
@@ -114,6 +130,11 @@ function SparePartDetailsPage() {
             Pièce détachée
           </span>
         </div>
+
+        <Link to="/admin/spare-parts" className="equipment-primary-button">
+          <ArrowLeft size={17} />
+          Retour aux pièces détachées
+        </Link>
       </div>
 
       <div className="supplier-detail-tabs">
@@ -126,7 +147,7 @@ function SparePartDetailsPage() {
         <div className="supplier-detail-logo-panel">
           {sparePart.image ? (
             <img
-              src={getImageUrl(sparePart.image) ?? ""}
+              src={getImageUrl(sparePart.image, "spare-parts") ?? ""}
               alt={sparePart.name}
               className="supplier-detail-logo"
             />
@@ -185,9 +206,7 @@ function SparePartDetailsPage() {
             <Shield size={18} />
             <div>
               <span>Visibilité</span>
-              <strong>
-                {sparePart.visibility === "PRIVATE" ? "Privé" : "Public"}
-              </strong>
+              <strong>{sparePart.visibility === "PRIVATE" ? "Privé" : "Public"}</strong>
             </div>
           </div>
 
@@ -219,7 +238,9 @@ function SparePartDetailsPage() {
             <MapPin size={18} />
             <div>
               <span>Centre de coûts</span>
-              <strong>{displayValue(sparePart.costCenterId != null ? String(sparePart.costCenterId) : null)}</strong>
+              <strong>
+                {displayValue(sparePart.costCenterId != null ? String(sparePart.costCenterId) : null)}
+              </strong>
             </div>
           </div>
 
@@ -251,13 +272,168 @@ function SparePartDetailsPage() {
             <FileText size={18} />
             <div>
               <span>Description</span>
-              <p>
-                {sparePart.description?.trim() ||
-                  "Aucune description renseignée."}
-              </p>
+              <p>{sparePart.description?.trim() || "Aucune description renseignée."}</p>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="spare-detail-linked-panel">
+        <div className="spare-detail-linked-tabs">
+          <button
+            type="button"
+            className={activeLinkedTab === "equipment" ? "active" : ""}
+            onClick={() => setActiveLinkedTab("equipment")}
+          >
+            Équipements liés
+          </button>
+
+          <button
+            type="button"
+            className={activeLinkedTab === "spare-parts" ? "active" : ""}
+            onClick={() => setActiveLinkedTab("spare-parts")}
+          >
+            Pièces détachées liées
+          </button>
+
+          <button
+            type="button"
+            className={activeLinkedTab === "movements" ? "active" : ""}
+            onClick={() => setActiveLinkedTab("movements")}
+          >
+            Historique des mouvements
+          </button>
+        </div>
+
+        {activeLinkedTab === "equipment" && (
+          <div className="spare-detail-tab-body">
+            <div className="spare-detail-search">
+              <Search size={18} />
+              <span>Rechercher le nom ou la description d'un équipement lié</span>
+            </div>
+
+            {linkedEquipments.length === 0 ? (
+              <p className="spare-detail-empty-line">Aucun équipement lié.</p>
+            ) : (
+              <div className="spare-detail-linked-list">
+                {linkedEquipments.map((equipment) => {
+                  const imageUrl = getImageUrl(equipment.image, "equipment");
+
+                  return (
+                    <div key={equipment.id} className="spare-detail-linked-row">
+                      <div className="spare-detail-linked-thumb">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={equipment.name} />
+                        ) : (
+                          <Boxes size={24} />
+                        )}
+                      </div>
+
+                      <div className="spare-detail-linked-main">
+                        <strong>{equipment.name}</strong>
+                        <div className="spare-detail-linked-meta">
+                          <span>Code article : Non défini</span>
+                          <span>Identifiant : {equipment.id}</span>
+                        </div>
+                      </div>
+
+                      <Link className="spare-detail-linked-action" to={`/admin/equipment/${equipment.id}`}>
+                        Voir le détail
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeLinkedTab === "spare-parts" && (
+          <div className="spare-detail-tab-body">
+            <div className="spare-detail-search">
+              <Search size={18} />
+              <span>Rechercher par nom, description ou code article</span>
+            </div>
+
+            {linkedSpareParts.length === 0 ? (
+              <p className="spare-detail-empty-line">Aucune pièce détachée liée.</p>
+            ) : (
+              <div className="spare-detail-linked-list">
+                {linkedSpareParts.map((part) => {
+                  const imageUrl = getImageUrl(part.image, "spare-parts");
+
+                  return (
+                    <div key={part.id} className="spare-detail-linked-row">
+                      <div className="spare-detail-linked-thumb">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={part.name} />
+                        ) : (
+                          <PackagePlus size={24} />
+                        )}
+                      </div>
+
+                      <div className="spare-detail-linked-main">
+                        <strong>{part.name}</strong>
+                        <div className="spare-detail-linked-meta">
+                          <span>Code article : {part.code || "Non défini"}</span>
+                          <span>Identifiant : {part.id}</span>
+                        </div>
+                      </div>
+
+                      <Link className="spare-detail-linked-action" to={`/admin/spare-parts/${part.id}`}>
+                        Voir le détail
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeLinkedTab === "movements" && (
+          <div className="spare-detail-tab-body spare-detail-tab-body-table">
+            <table className="spare-detail-movement-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Bon de commande</th>
+                  <th>Date</th>
+                  <th>Utilisateur</th>
+                  <th>Quantité</th>
+                  <th>Coût</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {stockMovements.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="spare-detail-table-empty">
+                      Aucun mouvement enregistré.
+                    </td>
+                  </tr>
+                ) : (
+                  stockMovements.map((movement) => (
+                    <tr key={movement.id}>
+                      <td>{movement.source}</td>
+                      <td>{movement.reference || "-"}</td>
+                      <td>{new Date(movement.movementDate).toLocaleString("fr-FR")}</td>
+                      <td>{movement.userName || "-"}</td>
+                      <td>{movement.quantity}</td>
+                      <td>
+                        {movement.unitCost != null
+                          ? `${movement.unitCost} ${sparePart.currency}`
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

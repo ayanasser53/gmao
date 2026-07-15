@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.sparepart;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record SparePartRequest(
         String name,
@@ -20,6 +21,8 @@ public record SparePartRequest(
         String gtin,
         String articleCode,
         SparePartVisibility visibility,
-        Long supplierId
+        Long supplierId,
+        List<Long> linkedEquipmentIds,
+        List<Long> linkedSparePartIds
 ) {
 }

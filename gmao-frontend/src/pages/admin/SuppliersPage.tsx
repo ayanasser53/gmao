@@ -166,8 +166,7 @@ function SuppliersPage() {
                 <th>Telephone</th>
                 <th>Reference</th>
                 <th>Ville</th>
-                <th>Visibilite</th>
-                <th className="supplier-actions-header">
+              <th className="supplier-actions-header">
                   Actions
                 </th>
               </tr>
@@ -228,26 +227,7 @@ function SuppliersPage() {
                   <td>{supplier.reference || "-"}</td>
                   <td>{supplier.city || "-"}</td>
 
-                  <td>
-                    <span
-                      className={`supplier-visibility-badge ${
-                        supplier.visibility === "PRIVATE"
-                          ? "supplier-visibility-private"
-                          : "supplier-visibility-public"
-                      }`}
-                    >
-                      {supplier.visibility === "PRIVATE" ? (
-                        <Building2 size={14} />
-                      ) : (
-                        <Globe2 size={14} />
-                      )}
-
-                      {supplier.visibility === "PRIVATE"
-                        ? "Mon reseau"
-                        : "Public"}
-                    </span>
-                  </td>
-
+                  
                   <td>
                     <div className="supplier-row-actions">
                       <button

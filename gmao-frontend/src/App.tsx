@@ -30,6 +30,7 @@ import UnitFormPage from "./pages/admin/UnitFormPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
 import SupplierFormPage from "./pages/admin/SupplierFormPage";
 import SupplierDetailsPage from "./pages/admin/SupplierDetailsPage";
+import SupplierCatalogPage from "./pages/admin/SupplierCatalogPage";
 
 import SparePartsPage from "./pages/admin/SparePartsPage";
 import SparePartFormPage from "./pages/admin/SparePartFormPage";
@@ -185,8 +186,7 @@ function App() {
           <Route
             path="supplier-catalog"
             element={
-              <ModulePlaceholderPage />
-            }
+              <SupplierCatalogPage />}
           />
 
           <Route

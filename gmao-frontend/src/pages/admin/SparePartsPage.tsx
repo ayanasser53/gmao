@@ -185,8 +185,7 @@ function getStockDotClass(part: SparePart): string {
                 <th>Stock</th>
                 <th>Emplacement</th>
                 <th>Prix</th>
-                <th>Visibilité</th>
-                <th className="supplier-actions-header">
+              <th className="supplier-actions-header">
                   Actions
                 </th>
               </tr>
@@ -271,20 +270,7 @@ function getStockDotClass(part: SparePart): string {
                     {part.unitPrice} {part.currency}
                   </td>
 
-                  <td>
-                    <span
-                      className={`supplier-visibility-badge ${
-                        part.visibility === "PRIVATE"
-                          ? "supplier-visibility-private"
-                          : "supplier-visibility-public"
-                      }`}
-                    >
-                      {part.visibility === "PRIVATE"
-                        ? "Privé"
-                        : "Public"}
-                    </span>
-                  </td>
-
+                  
                   <td>
                     <div className="supplier-row-actions">
                       <button
