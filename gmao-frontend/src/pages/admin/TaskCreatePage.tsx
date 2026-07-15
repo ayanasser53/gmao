@@ -39,7 +39,7 @@ interface OptionItem {
 function TaskCreatePage() {
   const navigate = useNavigate();
 
-  const [equipmentOnly, setEquipmentOnly] = useState(true);
+  const [equipmentOnly] = useState(true);
   const [equipmentId, setEquipmentId] = useState<number | "">("");
   const [description, setDescription] = useState("");
 
@@ -63,7 +63,7 @@ function TaskCreatePage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [files, setFiles] = useState<File[]>([]);
 
-  const [notify, setNotify] = useState(true);
+  const [notify] = useState(true);
 
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);

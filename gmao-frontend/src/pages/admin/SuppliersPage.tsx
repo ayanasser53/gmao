@@ -7,7 +7,6 @@ import {
 import {
   Building2,
   CirclePlus,
-  Globe2,
   Mail,
   Pencil,
   Phone,
