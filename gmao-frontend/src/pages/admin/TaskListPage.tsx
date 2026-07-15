@@ -127,11 +127,14 @@ function TaskListPage() {
 
   return (
     <section className="admin-page">
-      <div className="resource-page-header">
-        <div>
-          <span className="admin-page-eyebrow">Maintenance</span>
-          <h1>Tâches</h1>
-          <p>Suivi des interventions planifiées sur vos équipements.</p>
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <Wrench size={28} />
+            <h1>Tâches</h1>
+          </div>
+
+          
         </div>
 
         <div className="resource-header-actions">

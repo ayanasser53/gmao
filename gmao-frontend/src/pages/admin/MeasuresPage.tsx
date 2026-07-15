@@ -430,21 +430,23 @@ function MeasuresPage() {
     unitDrawerOpen ||
     unitManagementOpen;
 
-  return (
+ return (
     <section className="measures-workspace">
-      <div className="measures-page-heading">
-        <div className="measures-title">
-          <Ruler size={25} />
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <Ruler size={28} />
 
-          <h1>Mesures</h1>
+            <h1>Mesures</h1>
 
-          <button
-            type="button"
-            className="measure-help-button"
-            aria-label="Aide sur les mesures"
-          >
-            <CircleHelp size={20} />
-          </button>
+            <button
+              type="button"
+              className="measure-help-button"
+              aria-label="Aide sur les mesures"
+            >
+              <CircleHelp size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="measures-heading-actions">

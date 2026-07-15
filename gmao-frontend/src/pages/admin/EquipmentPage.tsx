@@ -456,20 +456,14 @@ function EquipmentPage() {
       );
     }
   }
-
-  return (
+return (
     <section className="equipment-workspace">
-      <div className="equipment-page-header">
-        <div>
-          <span className="admin-page-eyebrow">
-            Gestion des actifs
-          </span>
-
-          <h1>Équipements</h1>
-
-          <p>
-            {filteredEquipment.length} équipement(s)
-          </p>
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <Wrench size={28} />
+            <h1>Équipements</h1>
+          </div>
         </div>
 
         <button
@@ -481,12 +475,7 @@ function EquipmentPage() {
           Créer un équipement
         </button>
       </div>
-
-      {error && (
-        <div className="equipment-error">
-          {error}
-        </div>
-      )}
+  
 
       <div className="equipment-toolbar">
         <div className="equipment-search">

@@ -11,11 +11,23 @@ import {
   type TagOption,
 } from "../../services/taskService";
 
+import { getSpareParts } from "../../services/sparePartService";
+
+import { getEquipment } from "../../services/equipmentService";
+
 import type {
   AssigneeInput,
   LinkInput,
   SparePartLineInput,
 } from "../../types/task";
+
+import type { SparePart } from "../../types/sparePart";
+
+import type { Equipment } from "../../types/equipment";
+
+import SparePartSelect from "../../components/admin/SparePartSelect";
+
+import EquipmentSelect from "../../components/admin/EquipmentSelect";
 
 import "./task-styles.css";
 
@@ -42,13 +54,9 @@ function TaskCreatePage() {
   const [stoppedHours, setStoppedHours] = useState(0);
   const [stoppedMinutes, setStoppedMinutes] = useState(0);
 
-  const [assignees, setAssignees] = useState<
-    { key: string; userId?: number; label: string }[]
-  >([]);
+  const [assignees, setAssignees] = useState<{ key: string; userId?: number; label: string }[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
-  const [spareLines, setSpareLines] = useState<
-    { sparePartId: number; label: string; quantity: number }[]
-  >([]);
+  const [spareLines, setSpareLines] = useState<{ sparePartId: number; sparePart: SparePart; quantity: number }[]>([]);
 
   const [links, setLinks] = useState<LinkInput[]>([]);
   const [linkName, setLinkName] = useState("");
@@ -57,10 +65,10 @@ function TaskCreatePage() {
 
   const [notify, setNotify] = useState(true);
 
-  const [equipmentOptions, setEquipmentOptions] = useState<OptionItem[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
   const [userOptions, setUserOptions] = useState<OptionItem[]>([]);
-  const [sparePartOptions, setSparePartOptions] = useState<OptionItem[]>([]);
+  const [sparePartOptions, setSparePartOptions] = useState<SparePart[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -69,10 +77,16 @@ function TaskCreatePage() {
     void (async () => {
       const [equipmentList, tagList, userList, sparePartList] =
         await Promise.all([
-          fetchOptionList("/api/equipment", (e) => e.name),
+          getEquipment().catch((fetchError) => {
+            console.error(fetchError);
+            return [] as Equipment[];
+          }),
           fetchTagOptions(),
           fetchOptionList("/api/users", (u) => `${u.firstName} ${u.lastName}`),
-          fetchOptionList("/api/spare-parts", (s) => s.name),
+          getSpareParts().catch((fetchError) => {
+            console.error(fetchError);
+            return [] as SparePart[];
+          }),
         ]);
 
       setEquipmentOptions(equipmentList);
@@ -103,21 +117,14 @@ function TaskCreatePage() {
     ]);
   }
 
-  function addSparePart(sparePartId: number): void {
-    const option = sparePartOptions.find(
-      (option) => option.id === sparePartId,
-    );
-
-    if (
-      !option ||
-      spareLines.some((line) => line.sparePartId === sparePartId)
-    ) {
+  function addSparePart(sparePart: SparePart): void {
+    if (spareLines.some((line) => line.sparePartId === sparePart.id)) {
       return;
     }
 
     setSpareLines((current) => [
       ...current,
-      { sparePartId, label: option.label, quantity: 1 },
+      { sparePartId: sparePart.id, sparePart, quantity: 1 },
     ]);
   }
 
@@ -248,21 +255,11 @@ function TaskCreatePage() {
                 <label>
                   Équipement <span>*</span>
                 </label>
-                <select
+                <EquipmentSelect
+                  equipmentList={equipmentOptions}
                   value={equipmentId}
-                  onChange={(e) =>
-                    setEquipmentId(
-                      e.target.value ? Number(e.target.value) : "",
-                    )
-                  }
-                >
-                  <option value="">Sélectionner un équipement</option>
-                  {equipmentOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  onSelect={(equipment) => setEquipmentId(equipment.id)}
+                />
               </div>
 
               <div className="measure-form-group">
@@ -489,7 +486,12 @@ function TaskCreatePage() {
 
                 {spareLines.map((line) => (
                   <span className="task-spare-line" key={line.sparePartId}>
-                    {line.label}
+                    <span className="task-spare-line-info">
+                      <strong>{line.sparePart.name}</strong>
+                      {line.sparePart.code && (
+                        <em>Code : {line.sparePart.code}</em>
+                      )}
+                    </span>
 
                     <input
                       type="number"
@@ -518,7 +520,7 @@ function TaskCreatePage() {
                           ),
                         )
                       }
-                      aria-label={`Retirer ${line.label}`}
+                      aria-label={`Retirer ${line.sparePart.name}`}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -526,20 +528,12 @@ function TaskCreatePage() {
                 ))}
               </div>
 
-              <select
-                className="task-add-select"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addSparePart(Number(e.target.value));
-                }}
-              >
-                <option value="">+ Ajouter une pièce de rechange</option>
-                {sparePartOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <SparePartSelect
+                spareParts={sparePartOptions}
+                excludedIds={spareLines.map((line) => line.sparePartId)}
+                onSelect={addSparePart}
+                placeholder="+ Ajouter une pièce de rechange"
+              />
             </div>
 
             {/* Documents */}
@@ -582,47 +576,7 @@ function TaskCreatePage() {
                   ))}
                 </div>
               )}
-
-              <div className="task-link-row">
-                <input
-                  type="text"
-                  placeholder="Nom du lien"
-                  value={linkName}
-                  onChange={(e) => setLinkName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="https://…"
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                />
-                <button type="button" onClick={addLink}>
-                  Ajouter le lien
-                </button>
-              </div>
-
-              {links.length > 0 && (
-                <div className="task-chip-list" style={{ marginTop: 12 }}>
-                  {links.map((link, index) => (
-                    <span className="task-chip" key={`${link.url}-${index}`}>
-                      {link.name}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLinks((current) =>
-                            current.filter((_, i) => i !== index),
-                          )
-                        }
-                        aria-label={`Retirer ${link.name}`}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-
           </div>
 
           <div className="measure-drawer-footer">

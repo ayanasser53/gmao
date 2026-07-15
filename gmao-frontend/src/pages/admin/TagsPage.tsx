@@ -261,10 +261,13 @@ function TagsPage() {
 
   return (
     <section className="tags-workspace">
-      <div className="tags-header">
-        <div className="tags-heading">
-          <h1>Tags</h1>
-          <CircleHelp size={20} />
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <Tags size={28} />
+            <h1>Tags</h1>
+            <CircleHelp size={20} />
+          </div>
         </div>
 
         <button
