@@ -1,5 +1,7 @@
 package com.gmao.gmao_backend.task;
 
+import com.gmao.gmao_backend.activity.ActivityResponse;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -45,7 +47,9 @@ public record TaskResponse(
 
         LocalDateTime createdAt,
 
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        Set<ActivityResponse> activities
 
 ) {
 }

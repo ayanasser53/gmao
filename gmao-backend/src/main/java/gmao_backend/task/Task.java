@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import com.gmao.gmao_backend.activity.Activity;
 
 @Entity
 @Table(name = "tasks")
@@ -137,4 +138,12 @@ public class Task {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+@OneToMany(
+        mappedBy = "task",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+)
+@Builder.Default
+private Set<Activity> activities = new LinkedHashSet<>();
 }

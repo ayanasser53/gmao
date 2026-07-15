@@ -2,6 +2,8 @@ package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.activity.Activity;
+import com.gmao.gmao_backend.activity.ActivityResponse;
 
 import org.springframework.stereotype.Component;
 
@@ -55,7 +57,9 @@ public class TaskMapper {
 
                 task.getCreatedAt(),
 
-                task.getUpdatedAt()
+                task.getUpdatedAt(),
+
+                mapActivities(task.getActivities())
         );
     }
 
@@ -210,6 +214,31 @@ public class TaskMapper {
                         document.getFileType(),
                         document.isLink(),
                         document.getUploadedAt()
+                ))
+                .collect(Collectors.toSet());
+    }
+
+    private Set<ActivityResponse> mapActivities(Set<Activity> activities) {
+        if (activities == null) {
+            return Collections.emptySet();
+        }
+
+        return activities.stream()
+                .map(activity -> new ActivityResponse(
+                        activity.getId(),
+                        activity.getTask() != null ? activity.getTask().getId() : null,
+                        activity.getTask() != null ? activity.getTask().getDescription() : null,
+                        activity.getTask() != null && activity.getTask().getEquipment() != null
+                                ? activity.getTask().getEquipment().getName()
+                                : null,
+                        activity.getDescription(),
+                        activity.getPerformedDate(),
+                        activity.getPerformedEndTime(),
+                        activity.getSpentHours(),
+                        activity.getSpentMinutes(),
+                        activity.getStatus(),
+                        activity.getCreatedAt(),
+                        activity.getUpdatedAt()
                 ))
                 .collect(Collectors.toSet());
     }

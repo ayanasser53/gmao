@@ -36,6 +36,9 @@ import SparePartsPage from "./pages/admin/SparePartsPage";
 import SparePartFormPage from "./pages/admin/SparePartFormPage";
 import SparePartDetailsPage from "./pages/admin/SparePartDetailsPage";
 
+import ActivitiesPage from "./pages/admin/ActivitiesPage";
+import ActivityFormPage from "./pages/admin/ActivityFormPage";
+
 function App() {
   return (
     <BrowserRouter>
@@ -170,12 +173,14 @@ function App() {
           />
 
           <Route
-            path="activities"
-            element={
-              <ModulePlaceholderPage />
-            }
-          />
+  path="activities"
+  element={<ActivitiesPage />}
+/>
 
+<Route
+  path="activities/create"
+  element={<ActivityFormPage />}
+/>
           <Route
             path="maintenance-plans"
             element={
