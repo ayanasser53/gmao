@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
+﻿import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 
 import { useEffect, useState } from "react";
 
@@ -59,8 +59,6 @@ function TaskCreatePage() {
   const [spareLines, setSpareLines] = useState<{ sparePartId: number; sparePart: SparePart; quantity: number }[]>([]);
 
   const [links, setLinks] = useState<LinkInput[]>([]);
-  const [linkName, setLinkName] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
   const [files, setFiles] = useState<File[]>([]);
 
   const [notify] = useState(true);
@@ -128,18 +126,6 @@ function TaskCreatePage() {
     ]);
   }
 
-  function addLink(): void {
-    if (!linkName.trim() || !linkUrl.trim()) {
-      return;
-    }
-
-    setLinks((current) => [
-      ...current,
-      { name: linkName.trim(), url: linkUrl.trim() },
-    ]);
-    setLinkName("");
-    setLinkUrl("");
-  }
 
   async function handleSubmit(
     event: React.FormEvent,
@@ -148,7 +134,7 @@ function TaskCreatePage() {
     event.preventDefault();
 
     if (!equipmentId || !description.trim() || !startDate || !endDate) {
-      setError("Merci de compléter les champs obligatoires.");
+      setError("Merci de complÃ©ter les champs obligatoires.");
       return;
     }
 
@@ -200,7 +186,7 @@ function TaskCreatePage() {
       }
     } catch (submitError) {
       console.error(submitError);
-      setError("La création de la tâche a échoué. Réessayez.");
+      setError("La crÃ©ation de la tÃ¢che a Ã©chouÃ©. RÃ©essayez.");
     } finally {
       setSubmitting(false);
     }
@@ -211,7 +197,7 @@ function TaskCreatePage() {
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour aux tâches"
+        aria-label="Retour aux tÃ¢ches"
         onClick={() => navigate("/admin/tasks")}
       />
 
@@ -225,12 +211,12 @@ function TaskCreatePage() {
               type="button"
               className="measure-drawer-back"
               onClick={() => navigate("/admin/tasks")}
-              aria-label="Retour aux tâches"
+              aria-label="Retour aux tÃ¢ches"
             >
               <ArrowLeft size={22} />
             </button>
 
-            <h2>Créer une tâche</h2>
+            <h2>CrÃ©er une tÃ¢che</h2>
 
             <button
               type="button"
@@ -253,7 +239,7 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Équipement <span>*</span>
+                  Ã‰quipement <span>*</span>
                 </label>
                 <EquipmentSelect
                   equipmentList={equipmentOptions}
@@ -264,11 +250,11 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Description de la tâche <span>*</span>
+                  Description de la tÃ¢che <span>*</span>
                 </label>
                 <textarea
                   rows={5}
-                  placeholder="Décrivez la panne, l'équipement concerné et tout détail utile…"
+                  placeholder="DÃ©crivez la panne, l'Ã©quipement concernÃ© et tout dÃ©tail utileâ€¦"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -282,7 +268,7 @@ function TaskCreatePage() {
               </div>
 
               <label className="task-toggle-row">
-                <span>Toute la journée</span>
+                <span>Toute la journÃ©e</span>
                 <input
                   type="checkbox"
                   checked={allDay}
@@ -293,7 +279,7 @@ function TaskCreatePage() {
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
                   <label>
-                    Date de début <span>*</span>
+                    Date de dÃ©but <span>*</span>
                   </label>
                   <input
                     type="date"
@@ -305,7 +291,7 @@ function TaskCreatePage() {
                 {!allDay && (
                   <div className="measure-form-group">
                     <label>
-                      Heure de début <span>*</span>
+                      Heure de dÃ©but <span>*</span>
                     </label>
                     <input
                       type="time"
@@ -342,7 +328,7 @@ function TaskCreatePage() {
 
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
-                  <label>Temps de maintenance — heures</label>
+                  <label>Temps de maintenance â€” heures</label>
                   <input
                     type="number"
                     min={0}
@@ -367,7 +353,7 @@ function TaskCreatePage() {
                 </div>
 
                 <div className="measure-form-group">
-                  <label>Temps d'arrêt — heures</label>
+                  <label>Temps d'arrÃªt â€” heures</label>
                   <input
                     type="number"
                     min={0}
@@ -396,12 +382,12 @@ function TaskCreatePage() {
             {/* Assignees */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>Assignés</span>
+                <span>AssignÃ©s</span>
               </div>
 
               <div className="task-chip-list">
                 {assignees.length === 0 && (
-                  <p className="task-empty-hint">Aucun assigné.</p>
+                  <p className="task-empty-hint">Aucun assignÃ©.</p>
                 )}
 
                 {assignees.map((assignee) => (
@@ -429,7 +415,7 @@ function TaskCreatePage() {
                   if (e.target.value) addAssignee(Number(e.target.value));
                 }}
               >
-                <option value="">+ Sélectionner un utilisateur</option>
+                <option value="">+ SÃ©lectionner un utilisateur</option>
                 {userOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -476,12 +462,12 @@ function TaskCreatePage() {
             {/* Spare parts */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>Pièces de rechange à fournir</span>
+                <span>PiÃ¨ces de rechange Ã  fournir</span>
               </div>
 
               <div className="task-chip-list">
                 {spareLines.length === 0 && (
-                  <p className="task-empty-hint">Aucune pièce liée.</p>
+                  <p className="task-empty-hint">Aucune piÃ¨ce liÃ©e.</p>
                 )}
 
                 {spareLines.map((line) => (
@@ -532,7 +518,7 @@ function TaskCreatePage() {
                 spareParts={sparePartOptions}
                 excludedIds={spareLines.map((line) => line.sparePartId)}
                 onSelect={addSparePart}
-                placeholder="+ Ajouter une pièce de rechange"
+                placeholder="+ Ajouter une piÃ¨ce de rechange"
               />
             </div>
 
@@ -553,7 +539,7 @@ function TaskCreatePage() {
                     ])
                   }
                 />
-                Déposer un fichier ici ou <span>parcourir</span>
+                DÃ©poser un fichier ici ou <span>parcourir</span>
               </label>
 
               {files.length > 0 && (
@@ -586,7 +572,7 @@ function TaskCreatePage() {
               disabled={submitting}
               onClick={(e) => handleSubmit(e, true)}
             >
-              Créer et créer une autre
+              CrÃ©er et crÃ©er une autre
             </button>
 
             <button
@@ -596,7 +582,7 @@ function TaskCreatePage() {
               onClick={(e) => handleSubmit(e, false)}
             >
               <Plus size={16} />
-              {submitting ? "Création…" : "Créer la tâche"}
+              {submitting ? "CrÃ©ationâ€¦" : "CrÃ©er la tÃ¢che"}
             </button>
           </div>
         </form>
@@ -606,3 +592,5 @@ function TaskCreatePage() {
 }
 
 export default TaskCreatePage;
+
+
