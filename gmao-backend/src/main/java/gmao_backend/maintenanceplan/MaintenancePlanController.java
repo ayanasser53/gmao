@@ -43,6 +43,13 @@ public class MaintenancePlanController {
         return ResponseEntity.ok(maintenancePlanService.update(id, request));
     }
 
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<MaintenancePlanResponse> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody MaintenancePlanStatusRequest request
+    ) {
+        return ResponseEntity.ok(maintenancePlanService.updateStatus(id, request.status()));
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long id

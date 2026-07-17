@@ -2,6 +2,8 @@ package com.gmao.gmao_backend.maintenanceplan;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.sparepart.SparePart;
+import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,7 @@ public class MaintenancePlanService {
 
     private final MaintenancePlanRepository maintenancePlanRepository;
     private final EquipmentRepository equipmentRepository;
+    private final SparePartRepository sparePartRepository;
 
     public List<MaintenancePlanResponse> findAll() {
         return maintenancePlanRepository.findAll()
@@ -47,9 +50,10 @@ public class MaintenancePlanService {
                 .plannedMaintenanceMinutes(request.plannedMaintenanceMinutes())
                 .plannedStoppedHours(request.plannedStoppedHours())
                 .plannedStoppedMinutes(request.plannedStoppedMinutes())
-                .status(resolveStatus(request.nextDueDate()))
+                .status(MaintenancePlanStatus.PLANNED)
                 .build();
 
+        applySpareParts(plan, request.spareParts());
         return toResponse(maintenancePlanRepository.save(plan));
     }
 
@@ -73,13 +77,50 @@ public class MaintenancePlanService {
         plan.setPlannedMaintenanceMinutes(request.plannedMaintenanceMinutes());
         plan.setPlannedStoppedHours(request.plannedStoppedHours());
         plan.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
-        plan.setStatus(resolveStatus(plan.getNextDueDate()));
+        plan.setStatus(resolveSavedStatus(request.status()));
+        applySpareParts(plan, request.spareParts());
 
+        return toResponse(maintenancePlanRepository.save(plan));
+    }
+
+    public MaintenancePlanResponse updateStatus(Long id, MaintenancePlanStatus status) {
+        MaintenancePlan plan = maintenancePlanRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
+
+        plan.setStatus(resolveSavedStatus(status));
         return toResponse(maintenancePlanRepository.save(plan));
     }
 
     public void delete(Long id) {
         maintenancePlanRepository.deleteById(id);
+    }
+
+    private void applySpareParts(
+            MaintenancePlan plan,
+            List<MaintenancePlanSparePartRequest> sparePartRequests
+    ) {
+        plan.getSpareParts().clear();
+
+        if (sparePartRequests == null) {
+            return;
+        }
+
+        for (MaintenancePlanSparePartRequest item : sparePartRequests) {
+            if (item.sparePartId() == null) {
+                continue;
+            }
+
+            SparePart sparePart = sparePartRepository.findById(item.sparePartId())
+                    .orElseThrow(() -> new RuntimeException("Pièce détachée introuvable"));
+
+            plan.getSpareParts().add(
+                    MaintenancePlanSparePart.builder()
+                            .maintenancePlan(plan)
+                            .sparePart(sparePart)
+                            .quantity(Math.max(1, item.quantity()))
+                            .build()
+            );
+        }
     }
 
     private MaintenancePlanResponse toResponse(MaintenancePlan plan) {
@@ -97,7 +138,7 @@ public class MaintenancePlanService {
                 plan.isEquipmentOnly(),
                 plan.isRegulatory(),
                 plan.getTriggerType(),
-                getTriggerLabel(plan.getTriggerType()),
+                getTriggerLabel(plan),
                 plan.getFrequencyValue(),
                 plan.getFrequencyUnit(),
                 getFrequencyLabel(plan),
@@ -108,8 +149,26 @@ public class MaintenancePlanService {
                 plan.getPlannedStoppedHours(),
                 plan.getPlannedStoppedMinutes(),
                 plan.getStatus(),
+                plan.getSpareParts()
+                        .stream()
+                        .map(this::toSparePartResponse)
+                        .toList(),
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
+        );
+    }
+
+    private MaintenancePlanSparePartResponse toSparePartResponse(
+            MaintenancePlanSparePart planSparePart
+    ) {
+        SparePart sparePart = planSparePart.getSparePart();
+
+        return new MaintenancePlanSparePartResponse(
+                sparePart.getId(),
+                sparePart.getName(),
+                sparePart.getCode(),
+                sparePart.getImage(),
+                planSparePart.getQuantity()
         );
     }
 
@@ -121,23 +180,29 @@ public class MaintenancePlanService {
         return request.startDate();
     }
 
-    private MaintenancePlanStatus resolveStatus(LocalDate nextDueDate) {
-        if (nextDueDate != null && nextDueDate.isBefore(LocalDate.now())) {
-            return MaintenancePlanStatus.LATE;
+    private MaintenancePlanStatus resolveSavedStatus(MaintenancePlanStatus requestedStatus) {
+        return requestedStatus == null ? MaintenancePlanStatus.PLANNED : requestedStatus;
+    }
+
+    private String getTriggerLabel(MaintenancePlan plan) {
+        if (plan.getTriggerType() == MaintenanceTriggerType.FIXED_DATE) {
+            if (plan.getFrequencyValue() == 1 && "WEEKS".equals(plan.getFrequencyUnit())) {
+                return "Hebdomadaire";
+            }
+            if (plan.getFrequencyValue() == 1 && "MONTHS".equals(plan.getFrequencyUnit())) {
+                return "Mensuel";
+            }
+            if (plan.getFrequencyValue() == 3 && "MONTHS".equals(plan.getFrequencyUnit())) {
+                return "Trimestriel";
+            }
+            if (plan.getFrequencyValue() == 1 && "YEARS".equals(plan.getFrequencyUnit())) {
+                return "Annuel";
+            }
+            return "Date fixe";
         }
 
-        return MaintenancePlanStatus.IN_PROGRESS;
+        return "Date fixe";
     }
-
-    private String getTriggerLabel(MaintenanceTriggerType triggerType) {
-        return switch (triggerType) {
-            case FIXED_DATE -> "Date fixe";
-            case TASK_CLOSURE -> "Clôture de la tâche";
-            case EXTERNAL_API -> "Déclencheur externe (API)";
-            case COUNTER -> "Déclenché par un compteur";
-        };
-    }
-
     private String getFrequencyLabel(MaintenancePlan plan) {
         String unit = switch (plan.getFrequencyUnit()) {
             case "DAYS" -> "jours";

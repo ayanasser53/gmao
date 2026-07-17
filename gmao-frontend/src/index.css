@@ -365,7 +365,7 @@ a {
 }
 
 /* =========================================================
-   FONCTIONNALITÃ‰S
+   FONCTIONNALITÃƒâ€°S
    ========================================================= */
 
 .features-section {
@@ -528,7 +528,7 @@ a {
 }
 
 /* =========================================================
-   SECTION DE PRÃ‰SENTATION
+   SECTION DE PRÃƒâ€°SENTATION
    ========================================================= */
 
 .security-section {
@@ -1792,7 +1792,7 @@ a {
   }
 }
 /* =========================================================
-   MODULE MESURES ET UNITÃ‰S
+   MODULE MESURES ET UNITÃƒâ€°S
    ========================================================= */
 
 .resource-page-header {
@@ -2397,7 +2397,7 @@ a {
   }
 }
 /* =========================================================
-   MESURES â€” DESIGN TYPE MOBILITY WORK
+   MESURES Ã¢â‚¬â€ DESIGN TYPE MOBILITY WORK
    ========================================================= */
 
 .measures-workspace {
@@ -2874,7 +2874,7 @@ a {
   margin-bottom: 0;
 }
 
-/* CRÃ‰ATION UNITÃ‰ */
+/* CRÃƒâ€°ATION UNITÃƒâ€° */
 
 .measure-resume-notice {
   display: grid;
@@ -2940,7 +2940,7 @@ a {
 }
 
 .measure-unit-type-card-active::after {
-  content: "âœ“";
+  content: "Ã¢Å“â€œ";
 
   position: absolute;
   top: 7px;
@@ -6364,4 +6364,248 @@ button.linked-compact-row:hover {
   .admin-page-hero h1 {
     font-size: 32px;
   }
+}
+
+.linked-equipment-action {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linked-equipment-action:hover strong {
+  color: #0078bd;
+}
+
+.maintenance-spare-card {
+  margin-top: 18px;
+}
+
+.maintenance-spare-selector {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 160px auto;
+  gap: 12px;
+  align-items: center;
+  margin: 14px 0 18px;
+}
+
+.maintenance-spare-selector select,
+.maintenance-spare-selector input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #b8c7d6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #092948;
+  font-size: 15px;
+  padding: 0 12px;
+}
+
+.compact-action {
+  min-height: 44px;
+  padding-inline: 18px;
+}
+
+.maintenance-spare-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.maintenance-spare-item {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #d3e0ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.maintenance-spare-item img,
+.maintenance-spare-placeholder {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #e8f6fd;
+}
+
+.maintenance-spare-placeholder {
+  display: grid;
+  place-items: center;
+  color: #0089ce;
+}
+
+.maintenance-spare-item strong {
+  display: block;
+  color: #0b3158;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.maintenance-spare-item span {
+  display: block;
+  margin-top: 4px;
+  color: #5c6f84;
+  font-size: 13px;
+}
+
+.icon-link-button.danger {
+  color: #d73027;
+}
+
+@media (max-width: 760px) {
+  .maintenance-spare-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-spare-item {
+    grid-template-columns: 44px 1fr auto;
+  }
+
+  .maintenance-spare-item img,
+  .maintenance-spare-placeholder {
+    width: 44px;
+    height: 44px;
+  }
+}
+.maintenance-view-switch {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  margin: 0 0 18px;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.maintenance-view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-right: 1px solid #dbe5ee;
+  background: transparent;
+  color: #314960;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.maintenance-view-switch button:last-child {
+  border-right: 0;
+}
+
+.maintenance-view-switch button.active {
+  background: #e8f6ff;
+  color: #0078b8;
+  box-shadow: inset 0 -3px 0 #008bd2;
+}
+
+.maintenance-view-switch button span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: #314960;
+  font-size: 12px;
+}
+
+.maintenance-plan-link {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #0d2f57;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+}
+
+.maintenance-plan-link:hover {
+  color: #0078b8;
+  text-decoration: underline;
+}
+
+.status-badge.planned {
+  background: #fff7d9;
+  color: #9a6a00;
+}
+
+.table-actions button.danger-action {
+  color: #d52828;
+}
+
+.table-actions button.danger-action:hover {
+  background: #ffe7e7;
+}
+
+.single-search-toolbar .search-field {
+  flex: 1;
+}
+
+.clickable-table-row {
+  cursor: pointer;
+}
+
+.clickable-table-row:hover {
+  background: #f5fbff;
+}
+
+.maintenance-status-select {
+  min-height: 36px;
+  padding: 0 34px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8f6ff;
+  color: #0078b8;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.maintenance-status-select.planned {
+  background: #fff7d9;
+  color: #9a6a00;
+}
+
+.maintenance-status-select.in_progress {
+  background: #e8f6ff;
+  color: #0078b8;
+}
+
+.maintenance-status-select.late {
+  background: #ffe7e7;
+  color: #d52828;
+}
+
+.maintenance-status-select.done {
+  background: #e7f8ea;
+  color: #238b32;
+}
+
+.maintenance-status-select:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+/* Maintenance done status final override */
+.status-pill.done,
+.status-badge.done,
+.maintenance-status-select.done {
+  background: #dff6e8 !important;
+  color: #198754 !important;
+  border-color: #bce9cd !important;
 }

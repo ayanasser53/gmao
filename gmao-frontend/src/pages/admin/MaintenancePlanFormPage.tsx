@@ -8,7 +8,6 @@ import {
   Check,
   Clock,
   Info,
-  RotateCcw,
   Save,
   Scale,
   Wrench,
@@ -17,7 +16,7 @@ import type {
   MaintenanceFrequencyUnit,
   MaintenancePlan,
   MaintenancePlanPayload,
-  MaintenanceTriggerType,
+  MaintenancePlanStatus,
 } from "../../types/maintenancePlan";
 import {
   createMaintenancePlan,
@@ -31,6 +30,22 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getStatusForForm(plan: MaintenancePlan): MaintenancePlanStatus {
+  if (
+    plan.status === "DONE" ||
+    plan.status === "IN_PROGRESS" ||
+    plan.status === "LATE"
+  ) {
+    return plan.status;
+  }
+
+  const referenceDate = plan.startDate || plan.nextDueDate;
+  if (referenceDate && referenceDate.slice(0, 10) < today()) {
+    return "LATE";
+  }
+
+  return "PLANNED";
+}
 const defaultPayload: MaintenancePlanPayload = {
   equipmentId: 0,
   description: "",
@@ -45,7 +60,28 @@ const defaultPayload: MaintenancePlanPayload = {
   plannedMaintenanceMinutes: 0,
   plannedStoppedHours: 0,
   plannedStoppedMinutes: 0,
+  status: "PLANNED",
 };
+
+type MaintenanceSchedulePreset =
+  | "FIXED_DATE"
+  | "WEEKLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "YEARLY";
+
+const scheduleOptions: {
+  value: MaintenanceSchedulePreset;
+  label: string;
+  frequencyValue: number;
+  frequencyUnit: MaintenanceFrequencyUnit;
+}[] = [
+  { value: "FIXED_DATE", label: "Date fixe", frequencyValue: 1, frequencyUnit: "DAYS" },
+  { value: "WEEKLY", label: "Hebdomadaire", frequencyValue: 1, frequencyUnit: "WEEKS" },
+  { value: "MONTHLY", label: "Mensuel", frequencyValue: 1, frequencyUnit: "MONTHS" },
+  { value: "QUARTERLY", label: "Trimestriel", frequencyValue: 3, frequencyUnit: "MONTHS" },
+  { value: "YEARLY", label: "Annuel", frequencyValue: 1, frequencyUnit: "YEARS" },
+];
 
 function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
   return {
@@ -62,13 +98,14 @@ function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
     plannedMaintenanceMinutes: plan.plannedMaintenanceMinutes,
     plannedStoppedHours: plan.plannedStoppedHours,
     plannedStoppedMinutes: plan.plannedStoppedMinutes,
+    status: getStatusForForm(plan),
   };
 }
 
 function addDays(dateValue: string | null, days: number) {
   if (!dateValue) return null;
 
-  const date = new Date(dateValue);
+  const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
 }
@@ -78,6 +115,13 @@ function getFrequencyInDays(value: number, unit: MaintenanceFrequencyUnit) {
   if (unit === "MONTHS") return value * 30;
   if (unit === "YEARS") return value * 365;
   return value;
+}
+
+function getUnitLabel(unit: MaintenanceFrequencyUnit) {
+  if (unit === "DAYS") return "jours";
+  if (unit === "WEEKS") return "semaines";
+  if (unit === "MONTHS") return "mois";
+  return "années";
 }
 
 export default function MaintenancePlanFormPage() {
@@ -118,17 +162,23 @@ export default function MaintenancePlanFormPage() {
     }));
   }
 
-  function updateFrequency(
-    value: number,
-    unit: MaintenanceFrequencyUnit = form.frequencyUnit
-  ) {
-    const safeValue = Math.max(1, value || 1);
-    const days = getFrequencyInDays(safeValue, unit);
+  function getSchedulePreset(): MaintenanceSchedulePreset {
+    if (form.frequencyUnit === "WEEKS" && form.frequencyValue === 1) return "WEEKLY";
+    if (form.frequencyUnit === "MONTHS" && form.frequencyValue === 1) return "MONTHLY";
+    if (form.frequencyUnit === "MONTHS" && form.frequencyValue === 3) return "QUARTERLY";
+    if (form.frequencyUnit === "YEARS" && form.frequencyValue === 1) return "YEARLY";
+    return "FIXED_DATE";
+  }
+
+  function updateSchedulePreset(value: MaintenanceSchedulePreset) {
+    const option = scheduleOptions.find((item) => item.value === value) ?? scheduleOptions[0];
+    const days = getFrequencyInDays(option.frequencyValue, option.frequencyUnit);
 
     setForm((current) => ({
       ...current,
-      frequencyValue: safeValue,
-      frequencyUnit: unit,
+      triggerType: "FIXED_DATE",
+      frequencyValue: option.frequencyValue,
+      frequencyUnit: option.frequencyUnit,
       nextDueDate: addDays(current.startDate, days),
     }));
   }
@@ -158,7 +208,11 @@ export default function MaintenancePlanFormPage() {
       if (isEdit && id) {
         await updateMaintenancePlan(Number(id), form);
       } else {
-        await createMaintenancePlan(form);
+        const creationPayload: MaintenancePlanPayload = {
+          ...form,
+          status: "PLANNED",
+        };
+        await createMaintenancePlan(creationPayload);
       }
 
       navigate("/admin/maintenance-plans");
@@ -285,8 +339,31 @@ export default function MaintenancePlanFormPage() {
               <span>Ce plan de maintenance est réglementaire</span>
             </label>
 
+            <label className="form-field">
+              <span>Statut utilisateur</span>
+              <select
+                value={form.status || "PLANNED"}
+                onChange={(event) =>
+                  updateField("status", event.target.value as MaintenancePlanStatus)
+                }
+              >
+                <option value="PLANNED">Planifié</option>
+                {isEdit && (
+                  <>
+                    <option value="IN_PROGRESS">En cours</option>
+                    <option value="LATE">En retard</option>
+                    <option value="DONE">Terminé</option>
+                  </>
+                )}
+              </select>
+            </label>
+
             <div className="form-actions">
-              <button type="button" className="secondary-action" disabled>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => navigate("/admin/maintenance-plans")}
+              >
                 Annuler
               </button>
 
@@ -309,60 +386,19 @@ export default function MaintenancePlanFormPage() {
                 <h2>Déclencheur</h2>
               </div>
 
-              {(
-                [
-                  ["FIXED_DATE", "Date fixe"],
-                  ["TASK_CLOSURE", "Clôture de la tâche"],
-                  ["EXTERNAL_API", "Déclencheur externe (API)"],
-                  ["COUNTER", "Déclenché par un compteur"],
-                ] as [MaintenanceTriggerType, string][]
-              ).map(([value, label]) => (
-                <label key={value} className="radio-line">
-                  <input
-                    type="radio"
-                    checked={form.triggerType === value}
-                    onChange={() => updateField("triggerType", value)}
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-
-              <div className="form-section-title">
-                <RotateCcw size={22} />
-                <h2>Répéter</h2>
+              <div className="maintenance-schedule-options">
+                {scheduleOptions.map((option) => (
+                  <label key={option.value} className="radio-line">
+                    <input
+                      type="radio"
+                      checked={getSchedulePreset() === option.value}
+                      onChange={() => updateSchedulePreset(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
               </div>
 
-              <div className="form-grid two">
-                <label className="form-field">
-                  <span>Fréquence</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.frequencyValue}
-                    onChange={(event) =>
-                      updateFrequency(Number(event.target.value))
-                    }
-                  />
-                </label>
-
-                <label className="form-field">
-                  <span>Unité</span>
-                  <select
-                    value={form.frequencyUnit}
-                    onChange={(event) =>
-                      updateFrequency(
-                        form.frequencyValue,
-                        event.target.value as MaintenanceFrequencyUnit
-                      )
-                    }
-                  >
-                    <option value="DAYS">Jours</option>
-                    <option value="WEEKS">Semaines</option>
-                    <option value="MONTHS">Mois</option>
-                    <option value="YEARS">Années</option>
-                  </select>
-                </label>
-              </div>
 
               <div className="form-section-title">
                 <Clock size={22} />
@@ -402,7 +438,7 @@ export default function MaintenancePlanFormPage() {
                 </label>
 
                 <label className="form-field">
-                  <span>Heures d’arrêt</span>
+                  <span>Heures d'arrêt</span>
                   <input
                     type="number"
                     min={0}
@@ -414,7 +450,7 @@ export default function MaintenancePlanFormPage() {
                 </label>
 
                 <label className="form-field">
-                  <span>Minutes d’arrêt</span>
+                  <span>Minutes d'arrêt</span>
                   <input
                     type="number"
                     min={0}
@@ -449,14 +485,7 @@ export default function MaintenancePlanFormPage() {
               <h2>Prévisualisation</h2>
 
               <strong>
-                Tous les {form.frequencyValue}{" "}
-                {form.frequencyUnit === "DAYS"
-                  ? "jours"
-                  : form.frequencyUnit === "WEEKS"
-                  ? "semaines"
-                  : form.frequencyUnit === "MONTHS"
-                  ? "mois"
-                  : "années"}
+                Tous les {form.frequencyValue} {getUnitLabel(form.frequencyUnit)}
               </strong>
 
               <span>
@@ -465,7 +494,7 @@ export default function MaintenancePlanFormPage() {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
-                }).format(new Date(form.startDate || today()))}
+                }).format(new Date(`${form.startDate || today()}T00:00:00`))}
               </span>
 
               <ol>
@@ -476,7 +505,7 @@ export default function MaintenancePlanFormPage() {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
-                    }).format(new Date(date))}
+                    }).format(new Date(`${date}T00:00:00`))}
                   </li>
                 ))}
               </ol>
@@ -512,8 +541,9 @@ export default function MaintenancePlanFormPage() {
 
               <p>{form.description || "Aucune description."}</p>
               <p>
-                Tous les {form.frequencyValue} {form.frequencyUnit.toLowerCase()}
+                Tous les {form.frequencyValue} {getUnitLabel(form.frequencyUnit)}
               </p>
+              <p>Statut : {form.status === "DONE" ? "Terminé" : form.status === "LATE" ? "En retard" : form.status === "PLANNED" ? "Planifié" : "En cours"}</p>
 
               <div className="soft-pill">
                 <Scale size={16} />
@@ -529,12 +559,11 @@ export default function MaintenancePlanFormPage() {
 
               <p>À partir de {form.startDate || "-"}</p>
               <p>
-                Temps de maintenance planifié :{" "}
-                {form.plannedMaintenanceHours}h{" "}
+                Temps de maintenance planifié : {form.plannedMaintenanceHours}h{" "}
                 {form.plannedMaintenanceMinutes}mn.
               </p>
               <p>
-                Temps d’arrêt planifié : {form.plannedStoppedHours}h{" "}
+                Temps d'arrêt planifié : {form.plannedStoppedHours}h{" "}
                 {form.plannedStoppedMinutes}mn.
               </p>
             </aside>

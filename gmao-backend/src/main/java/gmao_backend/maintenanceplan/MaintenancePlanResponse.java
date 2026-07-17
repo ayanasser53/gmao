@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.maintenanceplan;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record MaintenancePlanResponse(
         Long id,
@@ -24,6 +25,7 @@ public record MaintenancePlanResponse(
         int plannedStoppedHours,
         int plannedStoppedMinutes,
         MaintenancePlanStatus status,
+        List<MaintenancePlanSparePartResponse> spareParts,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

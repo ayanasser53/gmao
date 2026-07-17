@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record MaintenancePlanRequest(
         @NotNull
@@ -33,6 +34,10 @@ public record MaintenancePlanRequest(
 
         int plannedStoppedHours,
 
-        int plannedStoppedMinutes
+        int plannedStoppedMinutes,
+
+        MaintenancePlanStatus status,
+
+        List<MaintenancePlanSparePartRequest> spareParts
 ) {
 }

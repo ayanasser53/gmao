@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowLeft,
   CalendarDays,
   ChevronRight,
@@ -21,6 +21,7 @@ import {
 } from "react-router-dom";
 
 import { getEquipmentById } from "../../services/equipmentService";
+import { getMaintenancePlans } from "../../services/maintenancePlanService";
 
 import type { Equipment } from "../../types/equipment";
 
@@ -28,8 +29,13 @@ const BACKEND_URL = "http://localhost:8090";
 
 type UploadFolder = "equipment" | "spare-parts";
 
+type DetailTab =
+  | "information"
+  | "linked-equipment"
+  | "linked-spare-parts";
+
 function getFileUrl(
-  path: string | null,
+  path: string | null | undefined,
   folder?: UploadFolder,
 ): string | null {
   if (!path) {
@@ -54,10 +60,6 @@ function getFileUrl(
 
   return `${BACKEND_URL}/${path}`;
 }
-type DetailTab =
-  | "information"
-  | "linked-equipment"
-  | "linked-spare-parts";
 
 function EquipmentDetailsPage() {
   const { id } = useParams();
@@ -65,15 +67,14 @@ function EquipmentDetailsPage() {
 
   const [equipment, setEquipment] =
     useState<Equipment | null>(null);
-
   const [activeTab, setActiveTab] =
-  useState<DetailTab>("linked-equipment");
-
+    useState<DetailTab>("linked-equipment");
   const [loading, setLoading] =
     useState<boolean>(true);
-
   const [error, setError] =
     useState<string>("");
+  const [maintenancePlanSparePartIds, setMaintenancePlanSparePartIds] =
+    useState<Set<number>>(new Set());
 
   useEffect(() => {
     async function loadEquipment(): Promise<void> {
@@ -87,11 +88,22 @@ function EquipmentDetailsPage() {
         setLoading(true);
         setError("");
 
-        const data = await getEquipmentById(
-          Number(id),
+        const equipmentId = Number(id);
+        const [data, maintenancePlans] = await Promise.all([
+          getEquipmentById(equipmentId),
+          getMaintenancePlans().catch(() => []),
+        ]);
+
+        const maintenanceSparePartIds = new Set(
+          maintenancePlans
+            .filter((plan) => plan.equipmentId === equipmentId)
+            .flatMap((plan) =>
+              (plan.spareParts ?? []).map((part) => part.sparePartId),
+            ),
         );
 
         setEquipment(data);
+        setMaintenancePlanSparePartIds(maintenanceSparePartIds);
         setActiveTab("linked-equipment");
       } catch (requestError) {
         console.error(
@@ -113,7 +125,7 @@ function EquipmentDetailsPage() {
   if (loading) {
     return (
       <div className="equipment-detail-state">
-        Chargement de l’équipement...
+        Chargement de l'équipement...
       </div>
     );
   }
@@ -122,16 +134,13 @@ function EquipmentDetailsPage() {
     return (
       <div className="equipment-detail-state">
         <p>
-          {error ||
-            "Équipement introuvable."}
+          {error || "Équipement introuvable."}
         </p>
 
         <button
           type="button"
           className="equipment-primary-button"
-          onClick={() =>
-            navigate("/admin/equipment")
-          }
+          onClick={() => navigate("/admin/equipment")}
         >
           Retour aux équipements
         </button>
@@ -139,17 +148,12 @@ function EquipmentDetailsPage() {
     );
   }
 
-  const imageUrl =
-    getFileUrl(equipment.image, "equipment");
-
-  const linkedEquipment =
-    equipment.linkedEquipment ?? [];
-
-  const linkedSpareParts =
-    equipment.linkedSpareParts ?? [];
-
-  const tags =
-    equipment.tags ?? [];
+  const imageUrl = getFileUrl(equipment.image, "equipment");
+  const linkedEquipment = equipment.linkedEquipment ?? [];
+  const linkedSpareParts = (equipment.linkedSpareParts ?? []).filter(
+    (part) => !maintenancePlanSparePartIds.has(part.id),
+  );
+  const tags = equipment.tags ?? [];
 
   return (
     <section className="equipment-detail-page">
@@ -157,9 +161,7 @@ function EquipmentDetailsPage() {
         <button
           type="button"
           className="equipment-detail-back"
-          onClick={() =>
-            navigate("/admin/equipment")
-          }
+          onClick={() => navigate("/admin/equipment")}
           aria-label="Retour aux équipements"
         >
           <ArrowLeft size={20} />
@@ -215,8 +217,7 @@ function EquipmentDetailsPage() {
                   <span>Centre de coût</span>
 
                   <strong>
-                    {equipment.costCenterName ||
-                      "Non défini"}
+                    {equipment.costCenterName || "Non défini"}
                   </strong>
                 </div>
               </div>
@@ -228,7 +229,7 @@ function EquipmentDetailsPage() {
                   <span>Code article</span>
 
                   <strong>
-                    {equipment.itemCode || "—"}
+                    {equipment.itemCode || "-"}
                   </strong>
                 </div>
               </div>
@@ -240,8 +241,7 @@ function EquipmentDetailsPage() {
                   <span>GTIN/EAN</span>
 
                   <strong>
-                    {equipment.gtinEanCode ||
-                      "—"}
+                    {equipment.gtinEanCode || "-"}
                   </strong>
                 </div>
               </div>
@@ -258,9 +258,7 @@ function EquipmentDetailsPage() {
                     <span
                       key={tag.id}
                       style={{
-                        backgroundColor:
-                          tag.color ||
-                          "#7d8793",
+                        backgroundColor: tag.color || "#7d8793",
                       }}
                     >
                       <TagIcon size={14} />
@@ -279,34 +277,33 @@ function EquipmentDetailsPage() {
       </div>
 
       <div className="equipment-detail-tabs">
+        <button
+          type="button"
+          className={
+            activeTab === "linked-equipment"
+              ? "equipment-detail-tab-active"
+              : ""
+          }
+          onClick={() => setActiveTab("linked-equipment")}
+        >
+          Équipements liés
+          <span>{linkedEquipment.length}</span>
+        </button>
 
-  <button
-    type="button"
-    className={
-      activeTab === "linked-equipment"
-        ? "equipment-detail-tab-active"
-        : ""
-    }
-    onClick={() => setActiveTab("linked-equipment")}
-  >
-    Équipements liés
-    <span>{linkedEquipment.length}</span>
-  </button>
+        <button
+          type="button"
+          className={
+            activeTab === "linked-spare-parts"
+              ? "equipment-detail-tab-active"
+              : ""
+          }
+          onClick={() => setActiveTab("linked-spare-parts")}
+        >
+          Pièces liées
+          <span>{linkedSpareParts.length}</span>
+        </button>
+      </div>
 
-  <button
-    type="button"
-    className={
-      activeTab === "linked-spare-parts"
-        ? "equipment-detail-tab-active"
-        : ""
-    }
-    onClick={() => setActiveTab("linked-spare-parts")}
-  >
-    Pièces liées
-    <span>{linkedSpareParts.length}</span>
-  </button>
-
-</div>
       <div className="equipment-detail-tab-content">
         {activeTab === "information" && (
           <div className="equipment-detail-table">
@@ -315,111 +312,74 @@ function EquipmentDetailsPage() {
 
               <strong>
                 {equipment.createdAt
-                  ? new Date(
-                      equipment.createdAt,
-                    ).toLocaleString(
-                      "fr-FR",
-                    )
-                  : "—"}
+                  ? new Date(equipment.createdAt).toLocaleString("fr-FR")
+                  : "-"}
               </strong>
             </div>
 
             <div>
-              <span>
-                Dernière modification
-              </span>
+              <span>Dernière modification</span>
 
               <strong>
                 {equipment.updatedAt
-                  ? new Date(
-                      equipment.updatedAt,
-                    ).toLocaleString(
-                      "fr-FR",
-                    )
-                  : "—"}
+                  ? new Date(equipment.updatedAt).toLocaleString("fr-FR")
+                  : "-"}
               </strong>
             </div>
 
             <div>
-              <span>
-                Nombre d’équipements liés
-              </span>
+              <span>Nombre d'équipements liés</span>
 
-              <strong>
-                {linkedEquipment.length}
-              </strong>
+              <strong>{linkedEquipment.length}</strong>
             </div>
 
             <div>
-              <span>
-                Nombre de pièces liées
-              </span>
+              <span>Nombre de pièces liées</span>
 
-              <strong>
-                {linkedSpareParts.length}
-              </strong>
+              <strong>{linkedSpareParts.length}</strong>
             </div>
           </div>
         )}
 
-        {activeTab ===
-          "linked-equipment" && (
+        {activeTab === "linked-equipment" && (
           <div className="linked-compact-list">
             {linkedEquipment.length > 0 ? (
-              linkedEquipment.map(
-                (linked) => (
-                  <button
-                    type="button"
-                    key={linked.id}
-                    className="linked-compact-row"
-                    onClick={() =>
-                      navigate(
-                        `/admin/equipment/${linked.id}`,
-                      )
-                    }
-                  >
-                    <div className="linked-compact-icon">
-                      {getFileUrl(linked.image, "equipment") ? (
-                        <img
-                          src={getFileUrl(linked.image, "equipment") ?? ""}
-                          alt={linked.name}
-                        />
-                      ) : (
-                        <Wrench size={22} />
-                      )}
-                    </div>
+              linkedEquipment.map((linked) => (
+                <button
+                  type="button"
+                  key={linked.id}
+                  className="linked-compact-row"
+                  onClick={() => navigate(`/admin/equipment/${linked.id}`)}
+                >
+                  <div className="linked-compact-icon">
+                    {getFileUrl(linked.image, "equipment") ? (
+                      <img
+                        src={getFileUrl(linked.image, "equipment") ?? ""}
+                        alt={linked.name}
+                      />
+                    ) : (
+                      <Wrench size={22} />
+                    )}
+                  </div>
 
-                    <div className="linked-compact-content">
-                      <strong>
-                        {linked.name}
-                      </strong>
+                  <div className="linked-compact-content">
+                    <strong>{linked.name}</strong>
 
-                      <div className="linked-compact-meta">
-                        <span>
-                          Code article :{" "}
-                          {linked.itemCode ||
-                            "Non défini"}
-                        </span>
-
-                        <span>
-                          Identifiant :{" "}
-                          {linked.id}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="linked-compact-action">
+                    <div className="linked-compact-meta">
                       <span>
-                        Voir le détail
+                        Code article : {linked.itemCode || "Non défini"}
                       </span>
 
-                      <ChevronRight
-                        size={18}
-                      />
+                      <span>Identifiant : {linked.id}</span>
                     </div>
-                  </button>
-                ),
-              )
+                  </div>
+
+                  <div className="linked-compact-action">
+                    <span>Voir le détail</span>
+                    <ChevronRight size={18} />
+                  </div>
+                </button>
+              ))
             ) : (
               <div className="equipment-detail-empty">
                 Aucun équipement lié.
@@ -428,64 +388,43 @@ function EquipmentDetailsPage() {
           </div>
         )}
 
-        {activeTab ===
-          "linked-spare-parts" && (
+        {activeTab === "linked-spare-parts" && (
           <div className="linked-compact-list">
             {linkedSpareParts.length > 0 ? (
-              linkedSpareParts.map(
-                (part) => (
-                  <button
-                    type="button"
-                    key={part.id}
-                    className="linked-compact-row"
-                    onClick={() =>
-                      navigate(
-                        `/admin/spare-parts/${part.id}`,
-                      )
-                    }
-                  >
-                    <div className="linked-compact-icon">
-                      {getFileUrl(part.imageUrl, "spare-parts") ? (
-                        <img
-                          src={getFileUrl(part.imageUrl, "spare-parts") ?? ""}
-                          alt={part.name}
-                        />
-                      ) : (
-                        <Package size={22} />
-                      )}
-                    </div>
-
-                    <div className="linked-compact-content">
-                      <strong>
-                        {part.name}
-                      </strong>
-
-                      <div className="linked-compact-meta">
-                        <span>
-                          Code :{" "}
-                          {part.code ||
-                            "Non défini"}
-                        </span>
-
-                        <span>
-                          Quantité en stock :{" "}
-                          {part.quantity ?? 0}
-                        </span>
-                      </div>
-                    </div>
-                  
-                    <div className="linked-compact-action">
-                      <span>
-                        Voir le détail
-                      </span>
-
-                      <ChevronRight
-                        size={18}
+              linkedSpareParts.map((part) => (
+                <button
+                  type="button"
+                  key={part.id}
+                  className="linked-compact-row"
+                  onClick={() => navigate(`/admin/spare-parts/${part.id}`)}
+                >
+                  <div className="linked-compact-icon">
+                    {getFileUrl(part.imageUrl, "spare-parts") ? (
+                      <img
+                        src={getFileUrl(part.imageUrl, "spare-parts") ?? ""}
+                        alt={part.name}
                       />
+                    ) : (
+                      <Package size={22} />
+                    )}
+                  </div>
+
+                  <div className="linked-compact-content">
+                    <strong>{part.name}</strong>
+
+                    <div className="linked-compact-meta">
+                      <span>Code : {part.code || "Non défini"}</span>
+
+                      <span>Quantité en stock : {part.quantity ?? 0}</span>
                     </div>
-                  </button>
-                ),
-              )
+                  </div>
+
+                  <div className="linked-compact-action">
+                    <span>Voir le détail</span>
+                    <ChevronRight size={18} />
+                  </div>
+                </button>
+              ))
             ) : (
               <div className="equipment-detail-empty">
                 Aucune pièce de rechange liée.
@@ -499,3 +438,8 @@ function EquipmentDetailsPage() {
 }
 
 export default EquipmentDetailsPage;
+
+
+
+
+

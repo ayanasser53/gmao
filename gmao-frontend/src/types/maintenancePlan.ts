@@ -1,4 +1,4 @@
-export type MaintenancePlanStatus = "IN_PROGRESS" | "DONE" | "LATE";
+export type MaintenancePlanStatus = "PLANNED" | "IN_PROGRESS" | "DONE" | "LATE";
 
 export type MaintenanceTriggerType =
   | "FIXED_DATE"
@@ -7,6 +7,14 @@ export type MaintenanceTriggerType =
   | "COUNTER";
 
 export type MaintenanceFrequencyUnit = "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
+
+export interface MaintenancePlanSparePart {
+  sparePartId: number;
+  sparePartName: string;
+  sparePartCode?: string | null;
+  sparePartImage?: string | null;
+  quantity: number;
+}
 
 export interface MaintenancePlan {
   id: number;
@@ -29,6 +37,7 @@ export interface MaintenancePlan {
   plannedStoppedHours: number;
   plannedStoppedMinutes: number;
   status: MaintenancePlanStatus;
+  spareParts: MaintenancePlanSparePart[];
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -47,4 +56,10 @@ export interface MaintenancePlanPayload {
   plannedMaintenanceMinutes: number;
   plannedStoppedHours: number;
   plannedStoppedMinutes: number;
+  status?: MaintenancePlanStatus;
+  spareParts?: {
+    sparePartId: number;
+    quantity: number;
+  }[];
 }
+

@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -44,7 +46,7 @@ public class MaintenancePlan {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MaintenancePlanStatus status = MaintenancePlanStatus.IN_PROGRESS;
+    private MaintenancePlanStatus status = MaintenancePlanStatus.PLANNED;
 
     @Column(nullable = false)
     private boolean regulatory = false;
@@ -67,6 +69,10 @@ public class MaintenancePlan {
 
     @Column(name = "checklist_id")
     private Long checklistId;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MaintenancePlanSparePart> spareParts = new HashSet<>();
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;

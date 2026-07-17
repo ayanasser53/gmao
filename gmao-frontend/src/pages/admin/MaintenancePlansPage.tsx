@@ -2,19 +2,23 @@
 import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
-  Eye,
-  Filter,
-  Pause,
+  Pencil,
   Plus,
   Search,
   Trash2,
   Wrench,
 } from "lucide-react";
-import type { MaintenancePlan } from "../../types/maintenancePlan";
+import type {
+  MaintenancePlan,
+  MaintenancePlanStatus,
+} from "../../types/maintenancePlan";
 import {
   deleteMaintenancePlan,
   getMaintenancePlans,
+  updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
+
+type DisplayStatus = "planned" | "in_progress" | "late" | "done";
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -23,13 +27,48 @@ function formatDate(value?: string | null) {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
 }
 
-function getStatusLabel(status: MaintenancePlan["status"]) {
-  if (status === "DONE") return "Terminé";
-  if (status === "LATE") return "En retard";
+function getDateOnly(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
+  if (plan.status === "DONE") return "done";
+  if (plan.status === "IN_PROGRESS") return "in_progress";
+  if (plan.status === "LATE") return "late";
+
+  const referenceDate = getDateOnly(plan.nextDueDate) ?? getDateOnly(plan.startDate);
+  const today = getToday();
+
+  if (referenceDate && referenceDate < today) return "late";
+  if (referenceDate && referenceDate > today) return "planned";
+
+  return "in_progress";
+}
+
+function getStatusLabel(status: DisplayStatus) {
+  if (status === "done") return "Terminé";
+  if (status === "late") return "En retard";
+  if (status === "planned") return "Planifié";
   return "En cours";
+}
+
+function getStoredStatus(status: DisplayStatus): MaintenancePlanStatus {
+  if (status === "done") return "DONE";
+  if (status === "late") return "LATE";
+  if (status === "planned") return "PLANNED";
+  return "IN_PROGRESS";
 }
 
 export default function MaintenancePlansPage() {
@@ -37,6 +76,8 @@ export default function MaintenancePlansPage() {
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
   useEffect(() => {
     loadPlans();
@@ -63,23 +104,58 @@ export default function MaintenancePlansPage() {
     }
   }
 
+  async function handleStatusChange(plan: MaintenancePlan, status: MaintenancePlanStatus) {
+    try {
+      setError("");
+      setUpdatingStatusId(plan.id);
+      const updatedPlan = await updateMaintenancePlanStatus(plan.id, status);
+      setPlans((current) =>
+        current.map((item) => (item.id === updatedPlan.id ? updatedPlan : item)),
+      );
+    } catch {
+      setError("Impossible de modifier le statut du plan de maintenance.");
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  }
+
+  const planGroups = useMemo(() => {
+    return plans.reduce(
+      (groups, plan) => {
+        const status = getDisplayStatus(plan);
+        if (status === "done") {
+          groups.history.push(plan);
+        } else {
+          groups.active.push(plan);
+        }
+        return groups;
+      },
+      { active: [] as MaintenancePlan[], history: [] as MaintenancePlan[] },
+    );
+  }, [plans]);
+
   const filteredPlans = useMemo(() => {
+    const source = viewMode === "history" ? planGroups.history : planGroups.active;
     const query = search.trim().toLowerCase();
 
-    if (!query) return plans;
+    if (!query) {
+      return source;
+    }
 
-    return plans.filter((plan) => {
+    return source.filter((plan) => {
+      const status = getDisplayStatus(plan);
       return [
         plan.description,
         plan.equipmentName,
         plan.costCenter,
         plan.triggerLabel,
         plan.frequencyLabel,
+        getStatusLabel(status),
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     });
-  }, [plans, search]);
+  }, [planGroups, search, viewMode]);
 
   return (
     <main className="admin-page maintenance-page">
@@ -112,10 +188,24 @@ export default function MaintenancePlansPage() {
             placeholder="Rechercher un plan de maintenance..."
           />
         </label>
+      </section>
 
-        <button type="button" className="secondary-action">
-          <Filter size={19} />
-          Filtrer
+      <section className="maintenance-view-switch" aria-label="Vue des plans">
+        <button
+          type="button"
+          className={viewMode === "active" ? "active" : ""}
+          onClick={() => setViewMode("active")}
+        >
+          Plans actifs
+          <span>{planGroups.active.length}</span>
+        </button>
+        <button
+          type="button"
+          className={viewMode === "history" ? "active" : ""}
+          onClick={() => setViewMode("history")}
+        >
+          Historique
+          <span>{planGroups.history.length}</span>
         </button>
       </section>
 
@@ -136,73 +226,111 @@ export default function MaintenancePlansPage() {
             {filteredPlans.length === 0 ? (
               <tr>
                 <td colSpan={6} className="empty-table-cell">
-                  Aucun plan de maintenance trouvé.
+                  {viewMode === "history"
+                    ? "Aucun plan de maintenance terminé."
+                    : "Aucun plan de maintenance trouvé."}
                 </td>
               </tr>
             ) : (
-              filteredPlans.map((plan) => (
-                <tr key={plan.id}>
-                  <td>
-                    <div className="maintenance-plan-cell">
-                      <strong>{plan.description}</strong>
-                      <span>{plan.frequencyLabel}</span>
-                    </div>
-                  </td>
+              filteredPlans.map((plan) => {
+                const displayStatus = getDisplayStatus(plan);
+                return (
+                  <tr
+                    key={plan.id}
+                    className="clickable-table-row"
+                    onClick={() => navigate(`/admin/maintenance-plans/${plan.id}`)}
+                  >
+                    <td>
+                      <div className="maintenance-plan-cell">
+                        <button
+                          type="button"
+                          className="maintenance-plan-link"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/admin/maintenance-plans/${plan.id}`);
+                          }}
+                        >
+                          {plan.description}
+                        </button>
+                        <span>{plan.frequencyLabel}</span>
+                      </div>
+                    </td>
 
-                  <td>
-                    <span className="soft-pill">
-                      <Wrench size={16} />
-                      {plan.equipmentName || "-"}
-                    </span>
-                  </td>
+                    <td>
+                      <span className="soft-pill">
+                        <Wrench size={16} />
+                        {plan.equipmentName || "-"}
+                      </span>
+                    </td>
 
-                  <td>{plan.triggerLabel}</td>
+                    <td>{plan.triggerLabel}</td>
 
-                  <td>
-                    <span
-                      className={
-                        plan.status === "LATE"
-                          ? "status-pill status-late"
-                          : "status-pill"
-                      }
-                    >
-                      {formatDate(plan.nextDueDate)}
-                    </span>
-                  </td>
-
-                  <td>
-                    <span className={`status-badge ${plan.status.toLowerCase()}`}>
-                      {getStatusLabel(plan.status)}
-                    </span>
-                  </td>
-
-                  <td>
-                    <div className="table-actions">
-                      <button
-                        type="button"
-                        title="Voir le détail"
-                        onClick={() =>
-                          navigate(`/admin/maintenance-plans/${plan.id}`)
+                    <td>
+                      <span
+                        className={
+                          displayStatus === "late"
+                            ? "status-pill status-late"
+                            : "status-pill"
                         }
                       >
-                        <Eye size={18} />
-                      </button>
+                        {formatDate(plan.nextDueDate)}
+                      </span>
+                    </td>
 
-                      <button type="button" title="Mettre en pause">
-                        <Pause size={18} />
-                      </button>
+                    <td>
+                      {viewMode === "history" ? (
+                        <span className="status-pill done">Terminé</span>
+                      ) : (
+                        <select
+                          className={`maintenance-status-select ${displayStatus}`}
+                          value={displayStatus}
+                          disabled={updatingStatusId === plan.id}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) =>
+                            handleStatusChange(
+                              plan,
+                              getStoredStatus(event.target.value as DisplayStatus),
+                            )
+                          }
+                          aria-label="Modifier le statut du plan"
+                        >
+                          <option value="planned">Planifié</option>
+                          <option value="in_progress">En cours</option>
+                          <option value="late">En retard</option>
+                          <option value="done">Terminé</option>
+                        </select>
+                      )}
+                    </td>
 
-                      <button
-                        type="button"
-                        title="Supprimer"
-                        onClick={() => handleDelete(plan.id)}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    <td>
+                      <div className="table-actions">
+                        <button
+                          type="button"
+                          title="Modifier"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/admin/maintenance-plans/${plan.id}/edit`);
+                          }}
+                        >
+                          <Pencil size={18} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="danger-action"
+                          title="Supprimer"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDelete(plan.id);
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -210,3 +338,6 @@ export default function MaintenancePlansPage() {
     </main>
   );
 }
+
+
+

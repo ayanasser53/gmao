@@ -1,7 +1,8 @@
-import api from "./api";
+﻿import api from "./api";
 import type {
   MaintenancePlan,
   MaintenancePlanPayload,
+  MaintenancePlanStatus,
 } from "../types/maintenancePlan";
 
 const BASE_URL = "/maintenance-plans";
@@ -33,6 +34,14 @@ export async function updateMaintenancePlan(
   return response.data;
 }
 
+export async function updateMaintenancePlanStatus(
+  id: number,
+  status: MaintenancePlanStatus
+): Promise<MaintenancePlan> {
+  const response = await api.patch<MaintenancePlan>(`${BASE_URL}/${id}/status`, { status });
+  return response.data;
+}
 export async function deleteMaintenancePlan(id: number): Promise<void> {
   await api.delete(`${BASE_URL}/${id}`);
 }
+
