@@ -8,13 +8,10 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
-
 import { useEffect, useMemo, useState } from "react";
-
 import { useNavigate } from "react-router-dom";
 
 import { getTasks, getTaskSummary, updateTaskStatus } from "../../services/taskService";
-
 import type { TaskListItem, TaskStatus, TaskSummary } from "../../types/task";
 
 import "./task-styles.css";
@@ -57,6 +54,7 @@ function TaskListPage() {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [summary, setSummary] = useState<TaskSummary | null>(null);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<"active" | "history">("active");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
@@ -106,14 +104,20 @@ function TaskListPage() {
     }
   }
 
+  const activeTasksCount = tasks.filter((task) => task.status !== "DONE").length;
+  const historyTasksCount = tasks.filter((task) => task.status === "DONE").length;
+
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const scopedTasks = tasks.filter((task) =>
+      activeTab === "history" ? task.status === "DONE" : task.status !== "DONE",
+    );
 
     if (!query) {
-      return tasks;
+      return scopedTasks;
     }
 
-    return tasks.filter((task) =>
+    return scopedTasks.filter((task) =>
       [
         task.description,
         task.equipment?.name,
@@ -123,7 +127,7 @@ function TaskListPage() {
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query)),
     );
-  }, [tasks, search]);
+  }, [tasks, search, activeTab]);
 
   return (
     <section className="admin-page">
@@ -133,8 +137,6 @@ function TaskListPage() {
             <ClipboardList size={28} />
             <h1>Tâches</h1>
           </div>
-
-          
         </div>
 
         <div className="resource-header-actions">
@@ -154,7 +156,7 @@ function TaskListPage() {
           <Search size={17} />
           <input
             type="text"
-            placeholder="Rechercher une tâche, un équipement, un centre de coût…"
+            placeholder="Rechercher une tâche, un équipement, un centre de coût..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -172,7 +174,24 @@ function TaskListPage() {
         )}
       </div>
 
-      {loading && <div className="resource-loading">Chargement…</div>}
+      <div className="task-history-tabs">
+        <button
+          type="button"
+          className={activeTab === "active" ? "active" : ""}
+          onClick={() => setActiveTab("active")}
+        >
+          Tâches actives <span>{activeTasksCount}</span>
+        </button>
+        <button
+          type="button"
+          className={activeTab === "history" ? "active" : ""}
+          onClick={() => setActiveTab("history")}
+        >
+          Historique <span>{historyTasksCount}</span>
+        </button>
+      </div>
+
+      {loading && <div className="resource-loading">Chargement...</div>}
 
       {!loading && error && (
         <div className="resource-error-message">{error}</div>
@@ -195,7 +214,9 @@ function TaskListPage() {
               {filteredTasks.length === 0 && (
                 <tr>
                   <td colSpan={5} className="resource-table-empty">
-                    Aucune tâche ne correspond à votre recherche.
+                    {activeTab === "history"
+                      ? "Aucune tâche terminée dans l'historique."
+                      : "Aucune tâche active ne correspond à votre recherche."}
                   </td>
                 </tr>
               )}
@@ -205,6 +226,8 @@ function TaskListPage() {
                 const equipmentImage = getFileUrl(
                   task.equipment?.image ?? null,
                 );
+                const selectedStatus =
+                  task.status === "LATE" ? "IN_PROGRESS" : task.status;
 
                 return (
                   <tr
@@ -252,7 +275,7 @@ function TaskListPage() {
                             <Wrench size={16} />
                           )}
                         </span>
-                        {task.equipment?.name || "—"}
+                        {task.equipment?.name || "-"}
                       </span>
                     </td>
 
@@ -284,12 +307,8 @@ function TaskListPage() {
                       {editingStatusId === task.id ? (
                         <select
                           autoFocus
-                          className="task-status-select"
-                          value={
-                            task.status === "LATE"
-                              ? "IN_PROGRESS"
-                              : task.status
-                          }
+                          className={`task-status-select ${STATUS_META[selectedStatus].className}`}
+                          value={selectedStatus}
                           disabled={statusUpdating === task.id}
                           onBlur={() => setEditingStatusId(null)}
                           onChange={(event) =>

@@ -134,7 +134,7 @@ function TaskCreatePage() {
     event.preventDefault();
 
     if (!equipmentId || !description.trim() || !startDate || !endDate) {
-      setError("Merci de complÃ©ter les champs obligatoires.");
+      setError("Merci de compléter les champs obligatoires.");
       return;
     }
 
@@ -186,7 +186,7 @@ function TaskCreatePage() {
       }
     } catch (submitError) {
       console.error(submitError);
-      setError("La crÃ©ation de la tÃ¢che a Ã©chouÃ©. RÃ©essayez.");
+      setError("La création de la tâche a échoué. Réessayez.");
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +197,7 @@ function TaskCreatePage() {
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour aux tÃ¢ches"
+        aria-label="Retour aux tâches"
         onClick={() => navigate("/admin/tasks")}
       />
 
@@ -211,12 +211,12 @@ function TaskCreatePage() {
               type="button"
               className="measure-drawer-back"
               onClick={() => navigate("/admin/tasks")}
-              aria-label="Retour aux tÃ¢ches"
+              aria-label="Retour aux tâches"
             >
               <ArrowLeft size={22} />
             </button>
 
-            <h2>CrÃ©er une tÃ¢che</h2>
+            <h2>Créer une tâche</h2>
 
             <button
               type="button"
@@ -239,7 +239,7 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Ã‰quipement <span>*</span>
+                  Équipement <span>*</span>
                 </label>
                 <EquipmentSelect
                   equipmentList={equipmentOptions}
@@ -250,11 +250,11 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Description de la tÃ¢che <span>*</span>
+                  Description de la tâche <span>*</span>
                 </label>
                 <textarea
                   rows={5}
-                  placeholder="DÃ©crivez la panne, l'Ã©quipement concernÃ© et tout dÃ©tail utileâ€¦"
+                  placeholder="Décrivez la panne, l'équipement concerné et tout détail utile..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -268,7 +268,7 @@ function TaskCreatePage() {
               </div>
 
               <label className="task-toggle-row">
-                <span>Toute la journÃ©e</span>
+                <span>Toute la journée</span>
                 <input
                   type="checkbox"
                   checked={allDay}
@@ -279,7 +279,7 @@ function TaskCreatePage() {
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
                   <label>
-                    Date de dÃ©but <span>*</span>
+                    Date de début <span>*</span>
                   </label>
                   <input
                     type="date"
@@ -291,7 +291,7 @@ function TaskCreatePage() {
                 {!allDay && (
                   <div className="measure-form-group">
                     <label>
-                      Heure de dÃ©but <span>*</span>
+                      Heure de début <span>*</span>
                     </label>
                     <input
                       type="time"
@@ -328,7 +328,7 @@ function TaskCreatePage() {
 
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
-                  <label>Temps de maintenance â€” heures</label>
+                  <label>Temps de maintenance - heures</label>
                   <input
                     type="number"
                     min={0}
@@ -353,7 +353,7 @@ function TaskCreatePage() {
                 </div>
 
                 <div className="measure-form-group">
-                  <label>Temps d'arrÃªt â€” heures</label>
+                  <label>Temps d'arrêt - heures</label>
                   <input
                     type="number"
                     min={0}
@@ -382,12 +382,12 @@ function TaskCreatePage() {
             {/* Assignees */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>AssignÃ©s</span>
+                <span>Assignés</span>
               </div>
 
               <div className="task-chip-list">
                 {assignees.length === 0 && (
-                  <p className="task-empty-hint">Aucun assignÃ©.</p>
+                  <p className="task-empty-hint">Aucun assigné.</p>
                 )}
 
                 {assignees.map((assignee) => (
@@ -415,7 +415,7 @@ function TaskCreatePage() {
                   if (e.target.value) addAssignee(Number(e.target.value));
                 }}
               >
-                <option value="">+ SÃ©lectionner un utilisateur</option>
+                <option value="">+ Sélectionner un utilisateur</option>
                 {userOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -462,12 +462,12 @@ function TaskCreatePage() {
             {/* Spare parts */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>PiÃ¨ces de rechange Ã  fournir</span>
+                <span>Pièces de rechange à fournir</span>
               </div>
 
               <div className="task-chip-list">
                 {spareLines.length === 0 && (
-                  <p className="task-empty-hint">Aucune piÃ¨ce liÃ©e.</p>
+                  <p className="task-empty-hint">Aucune pièce liée.</p>
                 )}
 
                 {spareLines.map((line) => (
@@ -518,7 +518,7 @@ function TaskCreatePage() {
                 spareParts={sparePartOptions}
                 excludedIds={spareLines.map((line) => line.sparePartId)}
                 onSelect={addSparePart}
-                placeholder="+ Ajouter une piÃ¨ce de rechange"
+                placeholder="+ Ajouter une pièce de rechange"
               />
             </div>
 
@@ -539,7 +539,7 @@ function TaskCreatePage() {
                     ])
                   }
                 />
-                DÃ©poser un fichier ici ou <span>parcourir</span>
+                Déposer un fichier ici ou <span>parcourir</span>
               </label>
 
               {files.length > 0 && (
@@ -572,7 +572,7 @@ function TaskCreatePage() {
               disabled={submitting}
               onClick={(e) => handleSubmit(e, true)}
             >
-              CrÃ©er et crÃ©er une autre
+              Créer et créer une autre
             </button>
 
             <button
@@ -582,7 +582,7 @@ function TaskCreatePage() {
               onClick={(e) => handleSubmit(e, false)}
             >
               <Plus size={16} />
-              {submitting ? "CrÃ©ationâ€¦" : "CrÃ©er la tÃ¢che"}
+              {submitting ? "Création..." : "Créer la tâche"}
             </button>
           </div>
         </form>

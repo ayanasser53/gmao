@@ -1,19 +1,30 @@
 package com.gmao.gmao_backend.activity;
 
+import com.gmao.gmao_backend.sparepart.SparePart;
+import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.task.Task;
 import com.gmao.gmao_backend.task.TaskRepository;
 import com.gmao.gmao_backend.task.TaskStatus;
+import com.gmao.gmao_backend.user.User;
+import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final TaskRepository taskRepository;
+    private final SparePartRepository sparePartRepository;
+    private final UserRepository userRepository;
+    private final ActivitySparePartRepository activitySparePartRepository;
+    private final ActivityIntervenantRepository activityIntervenantRepository;
+    private final ActivityAdditionalCostRepository activityAdditionalCostRepository;
 
     public List<ActivityResponse> findAll() {
         return activityRepository.findAllByOrderByPerformedDateDescPerformedEndTimeDesc()
@@ -63,7 +74,10 @@ public class ActivityService {
                 .status(request.status() != null ? request.status() : ActivityStatus.IN_PROGRESS)
                 .build();
 
-        return toResponse(activityRepository.save(activity));
+        Activity savedActivity = activityRepository.save(activity);
+        saveActivityDetails(savedActivity, request);
+
+        return toResponse(savedActivity);
     }
 
     public ActivityResponse createForTask(Long taskId, ActivityRequest request) {
@@ -74,7 +88,10 @@ public class ActivityService {
                 request.performedEndTime(),
                 request.spentHours(),
                 request.spentMinutes(),
-                request.status()
+                request.status(),
+                request.spareParts(),
+                request.intervenantIds(),
+                request.additionalCosts()
         );
 
         return create(normalizedRequest);
@@ -102,7 +119,15 @@ public class ActivityService {
         activity.setSpentMinutes(request.spentMinutes());
         activity.setStatus(request.status() != null ? request.status() : activity.getStatus());
 
-        return toResponse(activityRepository.save(activity));
+        Activity savedActivity = activityRepository.save(activity);
+
+        activitySparePartRepository.deleteByActivityId(savedActivity.getId());
+        activityIntervenantRepository.deleteByActivityId(savedActivity.getId());
+        activityAdditionalCostRepository.deleteByActivityId(savedActivity.getId());
+
+        saveActivityDetails(savedActivity, request);
+
+        return toResponse(savedActivity);
     }
 
     public ActivityResponse updateStatus(Long id, ActivityStatus status) {
@@ -114,6 +139,82 @@ public class ActivityService {
 
     public void delete(Long id) {
         activityRepository.delete(findActivity(id));
+    }
+
+    private void saveActivityDetails(Activity activity, ActivityRequest request) {
+        saveSpareParts(activity, request.spareParts());
+        saveIntervenants(activity, request.intervenantIds());
+        saveAdditionalCosts(activity, request.additionalCosts());
+    }
+
+    private void saveSpareParts(Activity activity, List<ActivitySparePartRequest> spareParts) {
+        if (spareParts == null) {
+            return;
+        }
+
+        for (ActivitySparePartRequest item : spareParts) {
+            if (item.sparePartId() == null) {
+                continue;
+            }
+
+            SparePart sparePart = sparePartRepository.findById(item.sparePartId())
+                    .orElseThrow(() -> new IllegalArgumentException("Pièce détachée introuvable."));
+
+            int quantity = item.quantity() > 0 ? item.quantity() : 1;
+
+            ActivitySparePart activitySparePart = ActivitySparePart.builder()
+                    .id(new ActivitySparePartId(activity.getId(), sparePart.getId()))
+                    .activity(activity)
+                    .sparePart(sparePart)
+                    .quantity(quantity)
+                    .build();
+
+            activitySparePartRepository.save(activitySparePart);
+        }
+    }
+
+    private void saveIntervenants(Activity activity, List<Long> intervenantIds) {
+        if (intervenantIds == null) {
+            return;
+        }
+
+        for (Long userId : intervenantIds) {
+            if (userId == null) {
+                continue;
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Intervenant introuvable."));
+
+            ActivityIntervenant intervenant = ActivityIntervenant.builder()
+                    .id(new ActivityIntervenantId(activity.getId(), user.getId()))
+                    .activity(activity)
+                    .user(user)
+                    .build();
+
+            activityIntervenantRepository.save(intervenant);
+        }
+    }
+
+    private void saveAdditionalCosts(Activity activity, List<ActivityAdditionalCostRequest> costs) {
+        if (costs == null) {
+            return;
+        }
+
+        for (ActivityAdditionalCostRequest item : costs) {
+            if (item.label() == null || item.label().isBlank() || item.amount() == null) {
+                continue;
+            }
+
+            ActivityAdditionalCost cost = ActivityAdditionalCost.builder()
+                    .activity(activity)
+                    .label(item.label())
+                    .amount(item.amount())
+                    .currency(item.currency() != null && !item.currency().isBlank() ? item.currency() : "EUR")
+                    .build();
+
+            activityAdditionalCostRepository.save(cost);
+        }
     }
 
     private Task findTask(Long taskId) {
@@ -140,8 +241,49 @@ public class ActivityService {
                 activity.getSpentHours(),
                 activity.getSpentMinutes(),
                 activity.getStatus(),
+                getSparePartResponses(activity.getId()),
+                getIntervenantResponses(activity.getId()),
+                getAdditionalCostResponses(activity.getId()),
                 activity.getCreatedAt(),
                 activity.getUpdatedAt()
         );
+    }
+
+    private List<ActivitySparePartResponse> getSparePartResponses(Long activityId) {
+        return activitySparePartRepository.findByActivityId(activityId)
+                .stream()
+                .map(item -> new ActivitySparePartResponse(
+                        item.getSparePart().getId(),
+                        item.getSparePart().getName(),
+                        item.getSparePart().getCode(),
+                        item.getQuantity(),
+                        item.getSparePart().getUnitPrice(),
+                        item.getSparePart().getCurrency()
+                ))
+                .toList();
+    }
+
+    private List<ActivityIntervenantResponse> getIntervenantResponses(Long activityId) {
+        return activityIntervenantRepository.findByActivityId(activityId)
+                .stream()
+                .map(item -> new ActivityIntervenantResponse(
+                        item.getUser().getId(),
+                        item.getUser().getFirstName(),
+                        item.getUser().getLastName(),
+                        item.getUser().getEmail()
+                ))
+                .toList();
+    }
+
+    private List<ActivityAdditionalCostResponse> getAdditionalCostResponses(Long activityId) {
+        return activityAdditionalCostRepository.findByActivityId(activityId)
+                .stream()
+                .map(item -> new ActivityAdditionalCostResponse(
+                        item.getId(),
+                        item.getLabel(),
+                        item.getAmount(),
+                        item.getCurrency()
+                ))
+                .toList();
     }
 }

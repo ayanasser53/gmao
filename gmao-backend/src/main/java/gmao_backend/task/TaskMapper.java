@@ -237,6 +237,9 @@ public class TaskMapper {
                         activity.getSpentHours(),
                         activity.getSpentMinutes(),
                         activity.getStatus(),
+                        Collections.emptyList(),
+                        Collections.emptyList(),
+                        Collections.emptyList(),
                         activity.getCreatedAt(),
                         activity.getUpdatedAt()
                 ))

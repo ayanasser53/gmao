@@ -1,9 +1,14 @@
 import {
   ArrowLeft,
   Clock,
+  Coins,
+  Gauge,
   ListChecks,
+  PackagePlus,
   Plus,
   Save,
+  Trash2,
+  Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -14,8 +19,12 @@ import {
   createActivity,
   createActivityAndFinishTask,
 } from "../../services/activityService";
+import { getSpareParts } from "../../services/sparePartService";
 import { getTasks } from "../../services/taskService";
+import { getUsers } from "../../services/userService";
+import type { SparePart } from "../../types/sparePart";
 import type { TaskListItem } from "../../types/task";
+import type { UserSummary } from "../../types/user";
 
 import "./task-styles.css";
 
@@ -27,35 +36,69 @@ function currentTime() {
   return new Date().toTimeString().slice(0, 5);
 }
 
+function parseDecimal(value: string) {
+  return Number(value.replace(",", "."));
+}
+
+function userLabel(user: UserSummary) {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return fullName || user.email || `Utilisateur ${user.id}`;
+}
+
 function ActivityFormPage() {
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
+  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [users, setUsers] = useState<UserSummary[]>([]);
   const [taskId, setTaskId] = useState("");
   const [description, setDescription] = useState("");
   const [performedDate, setPerformedDate] = useState(today());
   const [performedEndTime, setPerformedEndTime] = useState(currentTime());
   const [spentHours, setSpentHours] = useState(0);
   const [spentMinutes, setSpentMinutes] = useState(0);
+  const [showSparePartLine, setShowSparePartLine] = useState(false);
+  const [sparePartId, setSparePartId] = useState("");
+  const [sparePartQuantity, setSparePartQuantity] = useState(1);
+  const [showAdditionalCostLine, setShowAdditionalCostLine] = useState(false);
+  const [additionalCostAmount, setAdditionalCostAmount] = useState("");
+  const [additionalCostLabel, setAdditionalCostLabel] = useState("");
+  const [intervenantId, setIntervenantId] = useState("");
+  const [intervenantIds, setIntervenantIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadTasks() {
+    async function loadData() {
       try {
-        const data = await getTasks();
-        setTasks(data);
+        const [tasksData, sparePartsData, usersData] = await Promise.all([
+          getTasks(),
+          getSpareParts(),
+          getUsers(),
+        ]);
+
+        setTasks(tasksData);
+        setSpareParts(sparePartsData);
+        setUsers(usersData.filter((user) => user.active));
       } catch {
-        setError("Impossible de charger les taches.");
+        setError("Impossible de charger les donnees.");
       }
     }
 
-    void loadTasks();
+    void loadData();
   }, []);
 
   const selectedTask = useMemo(() => {
     return tasks.find((task) => task.id === Number(taskId));
   }, [tasks, taskId]);
+
+  const selectedIntervenants = useMemo(() => {
+    return users.filter((user) => intervenantIds.includes(user.id));
+  }, [users, intervenantIds]);
+
+  const availableIntervenants = useMemo(() => {
+    return users.filter((user) => !intervenantIds.includes(user.id));
+  }, [users, intervenantIds]);
 
   function closeForm() {
     navigate("/admin/activities");
@@ -68,11 +111,69 @@ function ActivityFormPage() {
     setSpentMinutes(total % 60);
   }
 
+  function addIntervenant(value: string) {
+    const nextId = Number(value);
+
+    if (!nextId || intervenantIds.includes(nextId)) {
+      setIntervenantId("");
+      return;
+    }
+
+    setIntervenantIds((current) => [...current, nextId]);
+    setIntervenantId("");
+  }
+
+  function removeIntervenant(userId: number) {
+    setIntervenantIds((current) => current.filter((id) => id !== userId));
+  }
+
   async function submit(finishTask: boolean) {
     if (!taskId || !description.trim()) {
       setError("Selectionnez une tache et saisissez une description.");
       return;
     }
+
+    if (
+      showSparePartLine &&
+      (!sparePartId ||
+        !Number.isFinite(sparePartQuantity) ||
+        sparePartQuantity <= 0)
+    ) {
+      setError("Selectionnez une piece detachee et une quantite valide.");
+      return;
+    }
+
+    const additionalCostAmountValue = parseDecimal(additionalCostAmount);
+
+    if (
+      showAdditionalCostLine &&
+      (!Number.isFinite(additionalCostAmountValue) ||
+        additionalCostAmountValue <= 0)
+    ) {
+      setError("Saisissez un cout additionnel superieur a 0.");
+      return;
+    }
+
+    const selectedSpareParts =
+      showSparePartLine && sparePartId
+        ? [
+            {
+              sparePartId: Number(sparePartId),
+              quantity: sparePartQuantity,
+            },
+          ]
+        : [];
+
+    const selectedAdditionalCosts =
+      showAdditionalCostLine && additionalCostAmount
+        ? [
+            {
+              label: additionalCostLabel.trim() || "Cout additionnel",
+              amount: additionalCostAmountValue,
+              currency: "EUR",
+            },
+          ]
+        : [];
 
     const payload = {
       taskId: Number(taskId),
@@ -82,6 +183,9 @@ function ActivityFormPage() {
       spentHours,
       spentMinutes,
       status: finishTask ? "DONE" as const : "IN_PROGRESS" as const,
+      spareParts: selectedSpareParts,
+      intervenantIds,
+      additionalCosts: selectedAdditionalCosts,
     };
 
     try {
@@ -264,6 +368,163 @@ function ActivityFormPage() {
                   +1h
                 </button>
               </div>
+
+              <div className="activity-extra-actions">
+                <button
+                  type="button"
+                  disabled
+                  title="Compteur non disponible pour le moment"
+                >
+                  <Gauge size={18} />
+                  Compteur
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSparePartLine((current) => !current)}
+                >
+                  <PackagePlus size={18} />
+                  Piece detachee
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowAdditionalCostLine((current) => !current)
+                  }
+                >
+                  <Coins size={18} />
+                  Cout additionnel
+                </button>
+              </div>
+
+              {showSparePartLine && (
+                <div className="activity-extra-line">
+                  <div className="measure-form-group">
+                    <label>
+                      Piece detachee <span>*</span>
+                    </label>
+                    <select
+                      value={sparePartId}
+                      onChange={(event) => setSparePartId(event.target.value)}
+                    >
+                      <option value="">Selectionner une piece detachee</option>
+                      {spareParts.map((sparePart) => (
+                        <option key={sparePart.id} value={sparePart.id}>
+                          {sparePart.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="measure-form-group">
+                    <label>Quantite</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={sparePartQuantity}
+                      onChange={(event) =>
+                        setSparePartQuantity(Number(event.target.value))
+                      }
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="activity-remove-line"
+                    onClick={() => {
+                      setShowSparePartLine(false);
+                      setSparePartId("");
+                      setSparePartQuantity(1);
+                    }}
+                    aria-label="Retirer la piece detachee"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              )}
+
+              {showAdditionalCostLine && (
+                <div className="activity-extra-line">
+                  <div className="measure-form-group">
+                    <label>
+                      Cout additionnel <span>*</span>
+                    </label>
+                    <div className="activity-money-input">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={additionalCostAmount}
+                        onChange={(event) =>
+                          setAdditionalCostAmount(event.target.value)
+                        }
+                        placeholder="Ex : 12,50"
+                      />
+                      <span>EUR</span>
+                    </div>
+                  </div>
+
+                  <div className="measure-form-group">
+                    <label>Libelle</label>
+                    <input
+                      type="text"
+                      maxLength={255}
+                      value={additionalCostLabel}
+                      onChange={(event) =>
+                        setAdditionalCostLabel(event.target.value)
+                      }
+                      placeholder="Ex : Retrofit presse hydraulique"
+                    />
+                    <small>{additionalCostLabel.length} / 255</small>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="activity-remove-line"
+                    onClick={() => {
+                      setShowAdditionalCostLine(false);
+                      setAdditionalCostAmount("");
+                      setAdditionalCostLabel("");
+                    }}
+                    aria-label="Retirer le cout additionnel"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              )}
+
+              <div className="measure-form-group activity-intervenants-field">
+                <label>Intervenants additionnels</label>
+                <select
+                  value={intervenantId}
+                  onChange={(event) => addIntervenant(event.target.value)}
+                >
+                  <option value="">
+                    Selectionnez un administrateur ou technicien
+                  </option>
+                  {availableIntervenants.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {userLabel(user)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedIntervenants.length > 0 && (
+                <div className="activity-selected-users">
+                  {selectedIntervenants.map((user) => (
+                    <span key={user.id}>
+                      <Users size={15} />
+                      {userLabel(user)}
+                      <button
+                        type="button"
+                        onClick={() => removeIntervenant(user.id)}
+                        aria-label={`Retirer ${userLabel(user)}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

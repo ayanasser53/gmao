@@ -5,26 +5,18 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public record ActivityRequest(
-
-        @NotNull
-        Long taskId,
-
-        @NotBlank
-        String description,
-
-        @NotNull
-        LocalDate performedDate,
-
-        @NotNull
-        LocalTime performedEndTime,
-
+        @NotNull Long taskId,
+        @NotBlank String description,
+        @NotNull LocalDate performedDate,
+        @NotNull LocalTime performedEndTime,
         int spentHours,
-
         int spentMinutes,
-
-        ActivityStatus status
-
+        ActivityStatus status,
+        List<ActivitySparePartRequest> spareParts,
+        List<Long> intervenantIds,
+        List<ActivityAdditionalCostRequest> additionalCosts
 ) {
 }
