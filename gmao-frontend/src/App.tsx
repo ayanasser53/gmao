@@ -43,6 +43,7 @@ import ActivityFormPage from "./pages/admin/ActivityFormPage";
 import MaintenancePlansPage from "./pages/admin/MaintenancePlansPage";
 import MaintenancePlanDetailsPage from "./pages/admin/MaintenancePlanDetailsPage";
 import MaintenancePlanFormPage from "./pages/admin/MaintenancePlanFormPage";
+import TeamsPage from "./pages/admin/TeamsPage";
 
 function App() {
   return (
@@ -209,9 +210,7 @@ function App() {
 
           <Route
             path="teams"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<TeamsPage />}
           />
 
           <Route

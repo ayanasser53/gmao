@@ -39,8 +39,8 @@ function getStatusForForm(plan: MaintenancePlan): MaintenancePlanStatus {
     return plan.status;
   }
 
-  const referenceDate = plan.startDate || plan.nextDueDate;
-  if (referenceDate && referenceDate.slice(0, 10) < today()) {
+  const referenceDate = plan.nextDueDate || plan.startDate;
+  if (referenceDate && referenceDate.slice(0, 10) <= today()) {
     return "LATE";
   }
 
@@ -172,24 +172,21 @@ export default function MaintenancePlanFormPage() {
 
   function updateSchedulePreset(value: MaintenanceSchedulePreset) {
     const option = scheduleOptions.find((item) => item.value === value) ?? scheduleOptions[0];
-    const days = getFrequencyInDays(option.frequencyValue, option.frequencyUnit);
 
     setForm((current) => ({
       ...current,
       triggerType: "FIXED_DATE",
       frequencyValue: option.frequencyValue,
       frequencyUnit: option.frequencyUnit,
-      nextDueDate: addDays(current.startDate, days),
+      nextDueDate: current.startDate,
     }));
   }
 
   function updateStartDate(value: string) {
-    const days = getFrequencyInDays(form.frequencyValue, form.frequencyUnit);
-
     setForm((current) => ({
       ...current,
       startDate: value,
-      nextDueDate: addDays(value, days),
+      nextDueDate: value,
     }));
   }
 

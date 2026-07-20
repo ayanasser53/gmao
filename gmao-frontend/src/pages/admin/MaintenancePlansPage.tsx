@@ -30,31 +30,29 @@ function formatDate(value?: string | null) {
   }).format(new Date(`${value.slice(0, 10)}T00:00:00`));
 }
 
-function getDateOnly(value?: string | null) {
-  if (!value) return null;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  date.setHours(0, 0, 0, 0);
-  return date;
+function getDateKey(value?: string | null) {
+  return value ? value.slice(0, 10) : null;
 }
 
-function getToday() {
+function getTodayKey() {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   if (plan.status === "DONE") return "done";
-  if (plan.status === "IN_PROGRESS") return "in_progress";
   if (plan.status === "LATE") return "late";
+  if (plan.status === "IN_PROGRESS") return "in_progress";
 
-  const referenceDate = getDateOnly(plan.nextDueDate) ?? getDateOnly(plan.startDate);
-  const today = getToday();
+  const referenceDate = getDateKey(plan.nextDueDate) ?? getDateKey(plan.startDate);
+  const today = getTodayKey();
 
-  if (referenceDate && referenceDate < today) return "late";
-  if (referenceDate && referenceDate > today) return "planned";
+  if (referenceDate && referenceDate <= today) return "late";
 
-  return "in_progress";
+  return "planned";
 }
 
 function getStatusLabel(status: DisplayStatus) {
@@ -110,7 +108,9 @@ export default function MaintenancePlansPage() {
       setUpdatingStatusId(plan.id);
       const updatedPlan = await updateMaintenancePlanStatus(plan.id, status);
       setPlans((current) =>
-        current.map((item) => (item.id === updatedPlan.id ? updatedPlan : item)),
+        current.map((item) =>
+          item.id === updatedPlan.id ? { ...updatedPlan, status } : item,
+        ),
       );
     } catch {
       setError("Impossible de modifier le statut du plan de maintenance.");
