@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -134,11 +134,7 @@ export default function MaintenancePlanFormPage() {
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
 
-  useEffect(() => {
-    loadInitialData();
-  }, [id]);
-
-  async function loadInitialData() {
+  const loadInitialData = useCallback(async () => {
     try {
       const equipmentData = await getEquipment();
       setEquipments(equipmentData);
@@ -150,7 +146,11 @@ export default function MaintenancePlanFormPage() {
     } catch {
       setError("Impossible de charger les données.");
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   function updateField<K extends keyof MaintenancePlanPayload>(
     key: K,

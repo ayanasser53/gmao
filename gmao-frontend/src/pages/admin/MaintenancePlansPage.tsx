@@ -1,7 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
+  Clock,
+  History,
   Pencil,
   Plus,
   Search,
@@ -18,7 +20,36 @@ import {
   updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
 
+import "./task-styles.css";
+
 type DisplayStatus = "planned" | "in_progress" | "late" | "done";
+
+const STATUS_TABS = [
+  {
+    status: "planned",
+    label: "Planifié",
+    className: "tab-planned",
+    icon: CalendarClock,
+  },
+  {
+    status: "in_progress",
+    label: "En cours",
+    className: "tab-progress",
+    icon: Clock,
+  },
+  {
+    status: "late",
+    label: "En retard",
+    className: "tab-late",
+    icon: Clock,
+  },
+  {
+    status: "done",
+    label: "Terminé",
+    className: "tab-done",
+    icon: History,
+  },
+] as const;
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -34,12 +65,19 @@ function getDateKey(value?: string | null) {
   return value ? value.slice(0, 10) : null;
 }
 
-function getTodayKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  return toDateKey(new Date());
+}
+
+function getPlanDateKey(plan: MaintenancePlan) {
+  return getDateKey(plan.nextDueDate) ?? getDateKey(plan.startDate);
 }
 
 function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
@@ -47,10 +85,9 @@ function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   if (plan.status === "LATE") return "late";
   if (plan.status === "IN_PROGRESS") return "in_progress";
 
-  const referenceDate = getDateKey(plan.nextDueDate) ?? getDateKey(plan.startDate);
-  const today = getTodayKey();
+  const referenceDate = getPlanDateKey(plan);
 
-  if (referenceDate && referenceDate <= today) return "late";
+  if (referenceDate && referenceDate < getTodayKey()) return "late";
 
   return "planned";
 }
@@ -74,7 +111,7 @@ export default function MaintenancePlansPage() {
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [activeTab, setActiveTab] = useState<DisplayStatus>("planned");
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -102,11 +139,15 @@ export default function MaintenancePlansPage() {
     }
   }
 
-  async function handleStatusChange(plan: MaintenancePlan, status: MaintenancePlanStatus) {
+  async function handleStatusChange(
+    plan: MaintenancePlan,
+    status: MaintenancePlanStatus,
+  ) {
     try {
       setError("");
       setUpdatingStatusId(plan.id);
       const updatedPlan = await updateMaintenancePlanStatus(plan.id, status);
+
       setPlans((current) =>
         current.map((item) =>
           item.id === updatedPlan.id ? { ...updatedPlan, status } : item,
@@ -119,30 +160,30 @@ export default function MaintenancePlansPage() {
     }
   }
 
-  const planGroups = useMemo(() => {
-    return plans.reduce(
-      (groups, plan) => {
-        const status = getDisplayStatus(plan);
-        if (status === "done") {
-          groups.history.push(plan);
-        } else {
-          groups.active.push(plan);
-        }
-        return groups;
-      },
-      { active: [] as MaintenancePlan[], history: [] as MaintenancePlan[] },
+  const statusCounts = useMemo(() => {
+    return STATUS_TABS.reduce(
+      (counts, tab) => ({
+        ...counts,
+        [tab.status]: plans.filter((plan) => getDisplayStatus(plan) === tab.status).length,
+      }),
+      {
+        planned: 0,
+        in_progress: 0,
+        late: 0,
+        done: 0,
+      } as Record<DisplayStatus, number>,
     );
   }, [plans]);
 
   const filteredPlans = useMemo(() => {
-    const source = viewMode === "history" ? planGroups.history : planGroups.active;
     const query = search.trim().toLowerCase();
+    const scopedPlans = plans.filter((plan) => getDisplayStatus(plan) === activeTab);
 
     if (!query) {
-      return source;
+      return scopedPlans;
     }
 
-    return source.filter((plan) => {
+    return scopedPlans.filter((plan) => {
       const status = getDisplayStatus(plan);
       return [
         plan.description,
@@ -155,62 +196,73 @@ export default function MaintenancePlansPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     });
-  }, [planGroups, search, viewMode]);
+  }, [activeTab, plans, search]);
 
   return (
-    <main className="admin-page maintenance-page">
-      <section className="admin-page-hero">
-        <div>
-          <h1>
-            <CalendarClock size={38} />
-            Plans de maintenance
-          </h1>
+    <section className="admin-page maintenance-page">
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <CalendarClock size={28} />
+            <h1>Plans de maintenance</h1>
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="primary-action"
-          onClick={() => navigate("/admin/maintenance-plans/new")}
-        >
-          <Plus size={19} />
-          Créer un plan
-        </button>
-      </section>
+        <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={() => navigate("/admin/maintenance-plans/calendar")}
+          >
+            <CalendarClock size={17} />
+            Calendrier
+          </button>
+
+          <button
+            type="button"
+            className="resource-primary-button"
+            onClick={() => navigate("/admin/maintenance-plans/new")}
+          >
+            <Plus size={17} />
+            Créer un plan
+          </button>
+        </div>
+      </div>
 
       {error && <div className="form-error">{error}</div>}
 
-      <section className="table-toolbar">
-        <label className="search-field">
-          <Search size={20} />
+      <div className="resource-toolbar">
+        <div className="resource-search">
+          <Search size={17} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Rechercher un plan de maintenance..."
+            placeholder="Rechercher un plan, un équipement, un déclencheur..."
           />
-        </label>
-      </section>
+        </div>
+      </div>
 
-      <section className="maintenance-view-switch" aria-label="Vue des plans">
-        <button
-          type="button"
-          className={viewMode === "active" ? "active" : ""}
-          onClick={() => setViewMode("active")}
-        >
-          Plans actifs
-          <span>{planGroups.active.length}</span>
-        </button>
-        <button
-          type="button"
-          className={viewMode === "history" ? "active" : ""}
-          onClick={() => setViewMode("history")}
-        >
-          Historique
-          <span>{planGroups.history.length}</span>
-        </button>
-      </section>
+      <div className="task-status-cards">
+        {STATUS_TABS.map((tab) => {
+          const Icon = tab.icon;
 
-      <section className="data-table-card">
-        <table className="data-table">
+          return (
+            <button
+              type="button"
+              key={tab.status}
+              className={`${tab.className} ${activeTab === tab.status ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.status)}
+            >
+              <Icon size={18} />
+              {tab.label}
+              <span>{statusCounts[tab.status]}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="resource-table-container">
+        <table className="resource-table">
           <thead>
             <tr>
               <th>Plan de maintenance</th>
@@ -225,15 +277,14 @@ export default function MaintenancePlansPage() {
           <tbody>
             {filteredPlans.length === 0 ? (
               <tr>
-                <td colSpan={6} className="empty-table-cell">
-                  {viewMode === "history"
-                    ? "Aucun plan de maintenance terminé."
-                    : "Aucun plan de maintenance trouvé."}
+                <td colSpan={6} className="resource-table-empty">
+                  {`Aucun plan de maintenance avec le statut "${getStatusLabel(activeTab)}".`}
                 </td>
               </tr>
             ) : (
               filteredPlans.map((plan) => {
                 const displayStatus = getDisplayStatus(plan);
+
                 return (
                   <tr
                     key={plan.id}
@@ -278,28 +329,24 @@ export default function MaintenancePlansPage() {
                     </td>
 
                     <td>
-                      {viewMode === "history" ? (
-                        <span className="status-pill done">Terminé</span>
-                      ) : (
-                        <select
-                          className={`maintenance-status-select ${displayStatus}`}
-                          value={displayStatus}
-                          disabled={updatingStatusId === plan.id}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) =>
-                            handleStatusChange(
-                              plan,
-                              getStoredStatus(event.target.value as DisplayStatus),
-                            )
-                          }
-                          aria-label="Modifier le statut du plan"
-                        >
-                          <option value="planned">Planifié</option>
-                          <option value="in_progress">En cours</option>
-                          <option value="late">En retard</option>
-                          <option value="done">Terminé</option>
-                        </select>
-                      )}
+                      <select
+                        className={`maintenance-status-select ${displayStatus}`}
+                        value={displayStatus}
+                        disabled={updatingStatusId === plan.id}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) =>
+                          handleStatusChange(
+                            plan,
+                            getStoredStatus(event.target.value as DisplayStatus),
+                          )
+                        }
+                        aria-label="Modifier le statut du plan"
+                      >
+                        <option value="planned">Planifié</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="late">En retard</option>
+                        <option value="done">Terminé</option>
+                      </select>
                     </td>
 
                     <td>
@@ -334,10 +381,7 @@ export default function MaintenancePlansPage() {
             )}
           </tbody>
         </table>
-      </section>
-    </main>
+      </div>
+    </section>
   );
 }
-
-
-

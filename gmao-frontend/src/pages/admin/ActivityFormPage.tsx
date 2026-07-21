@@ -18,6 +18,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   createActivity,
   createActivityAndFinishTask,
+  createActivityForTask,
 } from "../../services/activityService";
 import { getMeasures } from "../../services/measureService";
 import { getSpareParts } from "../../services/sparePartService";
@@ -237,6 +238,8 @@ function ActivityFormPage() {
 
       if (finishTask) {
         await createActivityAndFinishTask(Number(taskId), payload);
+      } else if (presetTaskId) {
+        await createActivityForTask(Number(taskId), payload);
       } else {
         await createActivity(payload);
       }

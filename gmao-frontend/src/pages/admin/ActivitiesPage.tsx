@@ -1,33 +1,24 @@
 import {
-  Clock,
-  History,
   ListChecks,
   Plus,
   Search,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
-  getActivityHistory,
-  getInProgressActivities,
-  getLateActivities,
+  getActivities,
 } from "../../services/activityService";
 import type { Activity } from "../../types/activity";
-
-type ActivityTab = "IN_PROGRESS" | "LATE" | "HISTORY";
 
 function formatSpentTime(activity: Activity) {
   return `${activity.spentHours}h ${activity.spentMinutes}min`;
 }
 
 function ActivitiesPage() {
-  const [activeTab, setActiveTab] =
-    useState<ActivityTab>("IN_PROGRESS");
+  const navigate = useNavigate();
 
-  const [inProgress, setInProgress] = useState<Activity[]>([]);
-  const [late, setLate] = useState<Activity[]>([]);
-  const [history, setHistory] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
@@ -36,19 +27,8 @@ function ActivitiesPage() {
       try {
         setError("");
 
-        const [
-          inProgressData,
-          lateData,
-          historyData,
-        ] = await Promise.all([
-          getInProgressActivities(),
-          getLateActivities(),
-          getActivityHistory(),
-        ]);
-
-        setInProgress(inProgressData);
-        setLate(lateData);
-        setHistory(historyData);
+        const activitiesData = await getActivities();
+        setActivities(activitiesData);
       } catch {
         setError("Impossible de charger les activites.");
       }
@@ -56,13 +36,6 @@ function ActivitiesPage() {
 
     void loadActivities();
   }, []);
-
-  const activities =
-    activeTab === "IN_PROGRESS"
-      ? inProgress
-      : activeTab === "LATE"
-        ? late
-        : history;
 
   const filteredActivities = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -105,38 +78,6 @@ function ActivitiesPage() {
         </div>
       )}
 
-      <div className="activity-status-cards">
-        <button
-          type="button"
-          className={activeTab === "IN_PROGRESS" ? "active" : ""}
-          onClick={() => setActiveTab("IN_PROGRESS")}
-        >
-          <Clock size={18} />
-          En cours
-          <span>{inProgress.length}</span>
-        </button>
-
-        <button
-          type="button"
-          className={activeTab === "LATE" ? "active" : ""}
-          onClick={() => setActiveTab("LATE")}
-        >
-          <Clock size={18} />
-          En retard
-          <span>{late.length}</span>
-        </button>
-
-        <button
-          type="button"
-          className={activeTab === "HISTORY" ? "active" : ""}
-          onClick={() => setActiveTab("HISTORY")}
-        >
-          <History size={18} />
-          Historique
-          <span>{history.length}</span>
-        </button>
-      </div>
-
       <div className="supplier-search-bar">
         <Search size={19} />
         <input
@@ -157,35 +98,29 @@ function ActivitiesPage() {
               <th>Date</th>
               <th>Heure fin</th>
               <th>Temps passe</th>
-              <th>Statut</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredActivities.length === 0 ? (
               <tr>
-                <td colSpan={7} className="supplier-empty-row">
+                <td colSpan={6} className="supplier-empty-row">
                   Aucun resultat
                 </td>
               </tr>
             ) : (
               filteredActivities.map((activity) => (
-                <tr key={activity.id}>
+                <tr
+                  key={activity.id}
+                  className="supplier-clickable-row"
+                  onClick={() => navigate(`/admin/tasks/${activity.taskId}`)}
+                >
                   <td>{activity.equipmentName || "-"}</td>
                   <td>{activity.taskDescription}</td>
                   <td>{activity.description}</td>
                   <td>{activity.performedDate}</td>
                   <td>{activity.performedEndTime}</td>
                   <td>{formatSpentTime(activity)}</td>
-                  <td>
-                    <span className={`status-pill ${activity.status.toLowerCase()}`}>
-                      {activity.status === "DONE"
-                        ? "Terminee"
-                        : activity.status === "LATE"
-                          ? "En retard"
-                          : "En cours"}
-                    </span>
-                  </td>
                 </tr>
               ))
             )}

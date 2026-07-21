@@ -41,12 +41,16 @@ import ActivitiesPage from "./pages/admin/ActivitiesPage";
 import ActivityFormPage from "./pages/admin/ActivityFormPage";
 
 import MaintenancePlansPage from "./pages/admin/MaintenancePlansPage";
+import MaintenancePlansCalendarPage from "./pages/admin/MaintenancePlansCalendarPage";
 import MaintenancePlanDetailsPage from "./pages/admin/MaintenancePlanDetailsPage";
 import MaintenancePlanFormPage from "./pages/admin/MaintenancePlanFormPage";
 
 import TeamsPage from "./pages/admin/TeamsPage";
 import InviteColleaguePage from "./pages/admin/InviteColleaguePage";
 import CreateTeamPage from "./pages/admin/CreateTeamPage";
+import PurchaseOrdersPage from "./pages/admin/PurchaseOrdersPage";
+import PurchaseOrderCreatePage from "./pages/admin/PurchaseOrderCreatePage";
+import PurchaseOrderDetailsPage from "./pages/admin/PurchaseOrderDetailsPage";
 
 function App() {
   return (
@@ -74,11 +78,6 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/admin/tasks" element={<TaskListPage />} />
-
-          <Route path="/admin/tasks/:id" element={<TaskDetailsPage />} />
-          
-<Route path="/admin/tasks/new" element={<TaskCreatePage />} />
           <Route
             index
             element={
@@ -93,6 +92,22 @@ function App() {
           <Route
             path="dashboard"
             element={<DashboardPage />}
+          />
+
+          {/* Tâches */}
+          <Route
+            path="tasks"
+            element={<TaskListPage />}
+          />
+
+          <Route
+            path="tasks/new"
+            element={<TaskCreatePage />}
+          />
+
+          <Route
+            path="tasks/:id"
+            element={<TaskDetailsPage />}
           />
 
           {/* Équipements */}
@@ -176,14 +191,6 @@ function App() {
             element={<SupplierFormPage />}
           />
 
-          {/* Autres modules */}
-          <Route
-            path="tasks"
-            element={
-              <ModulePlaceholderPage />
-            }
-          />
-
           <Route
   path="activities"
   element={<ActivitiesPage />}
@@ -194,6 +201,7 @@ function App() {
   element={<ActivityFormPage />}
 />
           <Route path="maintenance-plans" element={<MaintenancePlansPage />} />
+<Route path="maintenance-plans/calendar" element={<MaintenancePlansCalendarPage />} />
 <Route path="maintenance-plans/new" element={<MaintenancePlanFormPage />} />
 <Route path="maintenance-plans/:id" element={<MaintenancePlanDetailsPage />} />
 <Route path="maintenance-plans/:id/edit" element={<MaintenancePlanFormPage />} />
@@ -206,9 +214,17 @@ function App() {
 
           <Route
             path="purchase-orders"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<PurchaseOrdersPage />}
+          />
+
+          <Route
+            path="purchase-orders/create"
+            element={<PurchaseOrderCreatePage />}
+          />
+
+          <Route
+            path="purchase-orders/:id"
+            element={<PurchaseOrderDetailsPage />}
           />
 
           <Route
