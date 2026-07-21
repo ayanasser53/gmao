@@ -1,6 +1,7 @@
 import {
   CalendarClock,
   CalendarDays,
+  CheckCircle2,
   ClipboardList,
   Clock,
   History,
@@ -9,9 +10,9 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Tag,
   Users,
   Wrench,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -62,6 +63,30 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
 };
 
+const AVATAR_COLORS = [
+  "#087fbd",
+  "#6b46c1",
+  "#198754",
+  "#a3660f",
+  "#b42318",
+  "#0f766e",
+];
+
+function avatarColor(id: number): string {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function initials(firstName: string, lastName: string): string {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0) ?? "";
+  const second = parts.length > 1 ? parts[1].charAt(0) : parts[0]?.charAt(1) ?? "";
+  return `${first}${second}`.toUpperCase();
+}
+
 function TaskListPage() {
   const navigate = useNavigate();
 
@@ -75,6 +100,9 @@ function TaskListPage() {
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
 
   const [showFilters, setShowFilters] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<
+    "assignedTo" | "reportedBy" | "tags" | "equipment" | null
+  >(null);
   const [userOptions, setUserOptions] = useState<UserDetail[]>([]);
   const [teamOptions, setTeamOptions] = useState<Team[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
@@ -88,6 +116,16 @@ function TaskListPage() {
   const [filterCostCenterId, setFilterCostCenterId] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+
+  const [appliedFilters, setAppliedFilters] = useState({
+    assignedTo: "",
+    reportedBy: "",
+    tagId: "",
+    equipmentId: "",
+    costCenterId: "",
+    startDate: "",
+    endDate: "",
+  });
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -176,8 +214,8 @@ function TaskListPage() {
         }
       }
 
-      if (filterAssignedTo) {
-        const [type, idValue] = filterAssignedTo.split("-");
+      if (appliedFilters.assignedTo) {
+        const [type, idValue] = appliedFilters.assignedTo.split("-");
         const id = Number(idValue);
 
         const matches = task.assignedTo.some((assignee) =>
@@ -191,8 +229,8 @@ function TaskListPage() {
         }
       }
 
-      if (filterReportedBy) {
-        const id = Number(filterReportedBy);
+      if (appliedFilters.reportedBy) {
+        const id = Number(appliedFilters.reportedBy);
         const matches = task.assignees.some(
           (assignee) => assignee.type === "USER" && assignee.userId === id,
         );
@@ -202,57 +240,55 @@ function TaskListPage() {
         }
       }
 
-      if (filterTagId) {
-        const id = Number(filterTagId);
+      if (appliedFilters.tagId) {
+        const id = Number(appliedFilters.tagId);
         if (!task.tags.some((tag) => tag.id === id)) {
           return false;
         }
       }
 
-      if (filterEquipmentId) {
-        if (task.equipment?.id !== Number(filterEquipmentId)) {
+      if (appliedFilters.equipmentId) {
+        if (task.equipment?.id !== Number(appliedFilters.equipmentId)) {
           return false;
         }
       }
 
-      if (filterCostCenterId) {
-        if (task.costCenterId !== Number(filterCostCenterId)) {
+      if (appliedFilters.costCenterId) {
+        if (task.costCenterId !== Number(appliedFilters.costCenterId)) {
           return false;
         }
       }
 
-      if (filterStartDate && task.startDate < filterStartDate) {
+      if (
+        appliedFilters.startDate &&
+        task.startDate < appliedFilters.startDate
+      ) {
         return false;
       }
 
-      if (filterEndDate && task.startDate > filterEndDate) {
+      if (appliedFilters.endDate && task.startDate > appliedFilters.endDate) {
         return false;
       }
 
       return true;
     });
-  }, [
-    tasks,
-    search,
-    activeTab,
-    filterAssignedTo,
-    filterReportedBy,
-    filterTagId,
-    filterEquipmentId,
-    filterCostCenterId,
-    filterStartDate,
-    filterEndDate,
-  ]);
+  }, [tasks, search, activeTab, appliedFilters]);
 
-  const activeFilterCount = [
-    filterAssignedTo,
-    filterReportedBy,
-    filterTagId,
-    filterEquipmentId,
-    filterCostCenterId,
-    filterStartDate,
-    filterEndDate,
-  ].filter(Boolean).length;
+  const activeFilterCount = Object.values(appliedFilters).filter(
+    Boolean,
+  ).length;
+
+  function applyFilters(): void {
+    setAppliedFilters({
+      assignedTo: filterAssignedTo,
+      reportedBy: filterReportedBy,
+      tagId: filterTagId,
+      equipmentId: filterEquipmentId,
+      costCenterId: filterCostCenterId,
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+    });
+  }
 
   function resetFilters(): void {
     setFilterAssignedTo("");
@@ -262,6 +298,15 @@ function TaskListPage() {
     setFilterCostCenterId("");
     setFilterStartDate("");
     setFilterEndDate("");
+    setAppliedFilters({
+      assignedTo: "",
+      reportedBy: "",
+      tagId: "",
+      equipmentId: "",
+      costCenterId: "",
+      startDate: "",
+      endDate: "",
+    });
   }
 
   return (
@@ -322,77 +367,409 @@ function TaskListPage() {
       {showFilters && (
         <div className="task-filter-panel">
           <div className="task-filter-grid">
-            <div className="measure-form-group">
-              <label>Assigné à</label>
-              <select
-                value={filterAssignedTo}
-                onChange={(e) => setFilterAssignedTo(e.target.value)}
-              >
-                <option value="">Tous</option>
-                <optgroup label="Équipes">
-                  {teamOptions.map((team) => (
-                    <option key={`team-${team.id}`} value={`team-${team.id}`}>
-                      {team.name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Collègues">
-                  {userOptions.map((user) => (
-                    <option key={`user-${user.id}`} value={`user-${user.id}`}>
-                      {user.firstName} {user.lastName}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+            <div className="task-filter-field">
+              <label>
+                <Users size={15} /> Assigné à
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenDropdown((current) =>
+                      current === "assignedTo" ? null : "assignedTo",
+                    )
+                  }
+                >
+                  {(() => {
+                    if (!filterAssignedTo) {
+                      return <span>Tous</span>;
+                    }
+
+                    const [type, idValue] = filterAssignedTo.split("-");
+                    const id = Number(idValue);
+
+                    if (type === "team") {
+                      const team = teamOptions.find((t) => t.id === id);
+                      return (
+                        <>
+                          <span
+                            className="task-filter-team-avatar"
+                            style={{ background: avatarColor(id) }}
+                          >
+                            {team ? teamInitials(team.name) : ""}
+                          </span>
+                          {team?.name}
+                        </>
+                      );
+                    }
+
+                    const user = userOptions.find((u) => u.id === id);
+                    return user ? (
+                      <>
+                        <span
+                          className="task-filter-avatar"
+                          style={{ background: avatarColor(user.id) }}
+                        >
+                          {initials(user.firstName, user.lastName)}
+                        </span>
+                        {user.firstName} {user.lastName}
+                      </>
+                    ) : (
+                      <span>Tous</span>
+                    );
+                  })()}
+                </button>
+
+                {openDropdown === "assignedTo" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterAssignedTo ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterAssignedTo("");
+                        setOpenDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterAssignedTo && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {teamOptions.length > 0 && (
+                      <p className="task-filter-dropdown-heading">Équipes</p>
+                    )}
+
+                    {teamOptions.map((team) => {
+                      const value = `team-${team.id}`;
+                      const isSelected = filterAssignedTo === value;
+
+                      return (
+                        <button
+                          type="button"
+                          key={value}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterAssignedTo(value);
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          <span
+                            className="task-filter-team-avatar"
+                            style={{ background: avatarColor(team.id) }}
+                          >
+                            {teamInitials(team.name)}
+                          </span>
+                          {team.name}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+
+                    {userOptions.length > 0 && (
+                      <p className="task-filter-dropdown-heading">
+                        Collègues
+                      </p>
+                    )}
+
+                    {userOptions.map((user) => {
+                      const value = `user-${user.id}`;
+                      const isSelected = filterAssignedTo === value;
+
+                      return (
+                        <button
+                          type="button"
+                          key={value}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterAssignedTo(value);
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          <span
+                            className="task-filter-avatar"
+                            style={{ background: avatarColor(user.id) }}
+                          >
+                            {initials(user.firstName, user.lastName)}
+                          </span>
+                          {user.firstName} {user.lastName}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="measure-form-group">
-              <label>Signalé par</label>
-              <select
-                value={filterReportedBy}
-                onChange={(e) => setFilterReportedBy(e.target.value)}
-              >
-                <option value="">Tous</option>
-                {userOptions.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
-                  </option>
-                ))}
-              </select>
+            <div className="task-filter-field">
+              <label>
+                <Users size={15} /> Signalé par
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenDropdown((current) =>
+                      current === "reportedBy" ? null : "reportedBy",
+                    )
+                  }
+                >
+                  {(() => {
+                    const user = userOptions.find(
+                      (u) => u.id === Number(filterReportedBy),
+                    );
+
+                    return user ? (
+                      <>
+                        <span
+                          className="task-filter-avatar"
+                          style={{ background: avatarColor(user.id) }}
+                        >
+                          {initials(user.firstName, user.lastName)}
+                        </span>
+                        {user.firstName} {user.lastName}
+                      </>
+                    ) : (
+                      <span>Tous</span>
+                    );
+                  })()}
+                </button>
+
+                {openDropdown === "reportedBy" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterReportedBy ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterReportedBy("");
+                        setOpenDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterReportedBy && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {userOptions.map((user) => {
+                      const isSelected =
+                        filterReportedBy === String(user.id);
+
+                      return (
+                        <button
+                          type="button"
+                          key={user.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterReportedBy(String(user.id));
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          <span
+                            className="task-filter-avatar"
+                            style={{ background: avatarColor(user.id) }}
+                          >
+                            {initials(user.firstName, user.lastName)}
+                          </span>
+                          {user.firstName} {user.lastName}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="measure-form-group">
-              <label>Tags</label>
-              <select
-                value={filterTagId}
-                onChange={(e) => setFilterTagId(e.target.value)}
-              >
-                <option value="">Tous</option>
-                {tagOptions.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.label}
-                  </option>
-                ))}
-              </select>
+            <div className="task-filter-field">
+              <label>
+                <Tag size={15} /> Tags
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenDropdown((current) =>
+                      current === "tags" ? null : "tags",
+                    )
+                  }
+                >
+                  {(() => {
+                    const tag = tagOptions.find(
+                      (t) => t.id === Number(filterTagId),
+                    );
+
+                    return tag ? (
+                      <span
+                        className="task-filter-tag-chip"
+                        style={{
+                          color: tag.color,
+                          borderColor: tag.color,
+                          background: `${tag.color}1a`,
+                        }}
+                      >
+                        {tag.label}
+                      </span>
+                    ) : (
+                      <span>Tous</span>
+                    );
+                  })()}
+                </button>
+
+                {openDropdown === "tags" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterTagId ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterTagId("");
+                        setOpenDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterTagId && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {tagOptions.map((tag) => {
+                      const isSelected = filterTagId === String(tag.id);
+
+                      return (
+                        <button
+                          type="button"
+                          key={tag.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterTagId(String(tag.id));
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          <span
+                            className="task-filter-tag-chip"
+                            style={{
+                              color: tag.color,
+                              borderColor: tag.color,
+                              background: `${tag.color}1a`,
+                            }}
+                          >
+                            {tag.label}
+                          </span>
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="measure-form-group">
-              <label>Équipement</label>
-              <select
-                value={filterEquipmentId}
-                onChange={(e) => setFilterEquipmentId(e.target.value)}
-              >
-                <option value="">Tous</option>
-                {equipmentOptions.map((equipment) => (
-                  <option key={equipment.id} value={equipment.id}>
-                    {equipment.name}
-                  </option>
-                ))}
-              </select>
+            <div className="task-filter-field">
+              <label>
+                <Wrench size={15} /> Équipement
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenDropdown((current) =>
+                      current === "equipment" ? null : "equipment",
+                    )
+                  }
+                >
+                  {(() => {
+                    const equipment = equipmentOptions.find(
+                      (e) => e.id === Number(filterEquipmentId),
+                    );
+
+                    if (!equipment) {
+                      return <span>Tous</span>;
+                    }
+
+                    const image = getFileUrl(equipment.image);
+
+                    return (
+                      <>
+                        <span className="task-filter-equip-thumb">
+                          {image ? (
+                            <img src={image} alt={equipment.name} />
+                          ) : (
+                            <Wrench size={13} />
+                          )}
+                        </span>
+                        {equipment.name}
+                      </>
+                    );
+                  })()}
+                </button>
+
+                {openDropdown === "equipment" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterEquipmentId ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterEquipmentId("");
+                        setOpenDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterEquipmentId && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {equipmentOptions.map((equipment) => {
+                      const isSelected =
+                        filterEquipmentId === String(equipment.id);
+                      const image = getFileUrl(equipment.image);
+
+                      return (
+                        <button
+                          type="button"
+                          key={equipment.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterEquipmentId(String(equipment.id));
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          <span className="task-filter-equip-thumb">
+                            {image ? (
+                              <img src={image} alt={equipment.name} />
+                            ) : (
+                              <Wrench size={13} />
+                            )}
+                          </span>
+                          {equipment.name}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="measure-form-group">
-              <label>Centre de coût</label>
+            <div className="task-filter-field">
+              <label>
+                <MapPin size={15} /> Centre de coût
+              </label>
               <select
                 value={filterCostCenterId}
                 onChange={(e) => setFilterCostCenterId(e.target.value)}
@@ -406,8 +783,10 @@ function TaskListPage() {
               </select>
             </div>
 
-            <div className="measure-form-group">
-              <label>Période</label>
+            <div className="task-filter-field">
+              <label>
+                <CalendarDays size={15} /> Période
+              </label>
               <div className="task-filter-period">
                 <input
                   type="date"
@@ -424,16 +803,23 @@ function TaskListPage() {
             </div>
           </div>
 
-          {activeFilterCount > 0 && (
+          <div className="task-filter-actions">
+            <button
+              type="button"
+              className="task-filter-apply"
+              onClick={applyFilters}
+            >
+              Appliquer les filtres
+            </button>
+
             <button
               type="button"
               className="task-filter-reset"
               onClick={resetFilters}
             >
-              <X size={14} />
               Réinitialiser les filtres
             </button>
-          )}
+          </div>
         </div>
       )}
 
