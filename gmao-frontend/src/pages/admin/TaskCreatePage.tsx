@@ -3,6 +3,7 @@
   CheckCircle2,
   Plus,
   Search,
+  Tag as TagIcon,
   Trash2,
   UsersRound,
   X,
@@ -22,6 +23,7 @@ import {
 import { getAuthenticatedUserId } from "../../services/authService";
 import { getEquipment } from "../../services/equipmentService";
 import { getTeams } from "../../services/teamService";
+import { getUsersDetailed } from "../../services/userService";
 
 import type {
   AssigneeInput,
@@ -30,6 +32,7 @@ import type {
 
 import type { Equipment } from "../../types/equipment";
 import type { Team } from "../../types/team";
+import type { UserDetail } from "../../types/user";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 
@@ -92,15 +95,18 @@ function TaskCreatePage() {
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
   const [userOptions, setUserOptions] = useState<OptionItem[]>([]);
+  const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [teamOptions, setTeamOptions] = useState<Team[]>([]);
   const [assignSearch, setAssignSearch] = useState("");
+  const [assignMode, setAssignMode] = useState<"manual" | "tags">("manual");
+  const [assignTagIds, setAssignTagIds] = useState<number[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const [equipmentList, tagList, userList, teamList] =
+      const [equipmentList, tagList, userList, teamList, userDetailList] =
         await Promise.all([
           getEquipment().catch((fetchError) => {
             console.error(fetchError);
@@ -112,12 +118,17 @@ function TaskCreatePage() {
             console.error(fetchError);
             return [] as Team[];
           }),
+          getUsersDetailed().catch((fetchError) => {
+            console.error(fetchError);
+            return [] as UserDetail[];
+          }),
         ]);
 
       setEquipmentOptions(equipmentList);
       setTagOptions(tagList);
       setUserOptions(userList);
       setTeamOptions(teamList);
+      setUserDetails(userDetailList);
 
       const currentUserId = getAuthenticatedUserId();
       const currentUserOption = userList.find(
@@ -138,6 +149,14 @@ function TaskCreatePage() {
 
   function toggleTag(id: number): void {
     setTagIds((current) =>
+      current.includes(id)
+        ? current.filter((tagId) => tagId !== id)
+        : [...current, id],
+    );
+  }
+
+  function toggleAssignTag(id: number): void {
+    setAssignTagIds((current) =>
       current.includes(id)
         ? current.filter((tagId) => tagId !== id)
         : [...current, id],
@@ -275,6 +294,39 @@ function TaskCreatePage() {
       team.name.toLowerCase().includes(query),
     );
   }, [teamOptions, assignSearch]);
+
+  useEffect(() => {
+    if (assignMode !== "tags") {
+      return;
+    }
+
+    if (assignTagIds.length === 0) {
+      setAssignedTo([]);
+      return;
+    }
+
+    const matchedUsers = userDetails
+      .filter((user) =>
+        user.tags.some((tag) => assignTagIds.includes(tag.id)),
+      )
+      .map((user) => ({
+        key: `user-${user.id}`,
+        userId: user.id,
+        label: `${user.firstName} ${user.lastName}`,
+      }));
+
+    const matchedTeams = teamOptions
+      .filter((team) =>
+        team.tags.some((tag) => assignTagIds.includes(tag.id)),
+      )
+      .map((team) => ({
+        key: `team-${team.id}`,
+        teamId: team.id,
+        label: team.name,
+      }));
+
+    setAssignedTo([...matchedTeams, ...matchedUsers]);
+  }, [assignMode, assignTagIds, userDetails, teamOptions]);
 
   return (
     <section className="supplier-modal-page">
@@ -476,7 +528,27 @@ function TaskCreatePage() {
                 <span>Assigné à</span>
               </div>
 
-              <div className="assign-picker">
+              <div className="assign-mode-toggle">
+                <button
+                  type="button"
+                  className={assignMode === "manual" ? "active" : ""}
+                  onClick={() => setAssignMode("manual")}
+                >
+                  <UsersRound size={20} />
+                  Sélection manuelle
+                </button>
+                <button
+                  type="button"
+                  className={assignMode === "tags" ? "active" : ""}
+                  onClick={() => setAssignMode("tags")}
+                >
+                  <TagIcon size={20} />
+                  Sélection par tag(s)
+                </button>
+              </div>
+
+              {assignMode === "manual" ? (
+                <div className="assign-picker">
                 <div className="assign-picker-search">
                   <Search size={16} />
                   <input
@@ -574,6 +646,40 @@ function TaskCreatePage() {
                   })}
                 </div>
               </div>
+              ) : (
+                <div className="assign-tag-picker">
+                  {tagOptions.length === 0 && (
+                    <p className="task-empty-hint">Aucun tag disponible.</p>
+                  )}
+
+                  {tagOptions.map((tag) => (
+                    <button
+                      type="button"
+                      key={tag.id}
+                      className={`team-tag-toggle ${
+                        assignTagIds.includes(tag.id) ? "active" : ""
+                      }`}
+                      style={{
+                        borderColor: tag.color,
+                        color: assignTagIds.includes(tag.id)
+                          ? "#ffffff"
+                          : tag.color,
+                        background: assignTagIds.includes(tag.id)
+                          ? tag.color
+                          : "transparent",
+                      }}
+                      onClick={() => toggleAssignTag(tag.id)}
+                    >
+                      {tag.label}
+                    </button>
+                  ))}
+
+                  <p className="assign-tag-hint">
+                    Tous les collègues et équipes portant au moins un des tags
+                    sélectionnés seront automatiquement assignés.
+                  </p>
+                </div>
+              )}
 
               <div className="task-chip-list">
                 {assignedTo.length === 0 && (
