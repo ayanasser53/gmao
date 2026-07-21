@@ -8,14 +8,24 @@ import {
   MapPin,
   Plus,
   Search,
+  SlidersHorizontal,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getTasks, getTaskSummary, updateTaskStatus } from "../../services/taskService";
+import { getEquipment } from "../../services/equipmentService";
+import { getCostCenters } from "../../services/costCenterService";
+import { getTasks, getTaskSummary, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
+import { getTeams } from "../../services/teamService";
+import { getUsersDetailed } from "../../services/userService";
+import type { Equipment } from "../../types/equipment";
+import type { CostCenter } from "../../types/costCenter";
 import type { TaskListItem, TaskStatus, TaskSummary } from "../../types/task";
+import type { Team } from "../../types/team";
+import type { UserDetail } from "../../types/user";
 
 import "./task-styles.css";
 
@@ -64,16 +74,42 @@ function TaskListPage() {
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
 
+  const [showFilters, setShowFilters] = useState(false);
+  const [userOptions, setUserOptions] = useState<UserDetail[]>([]);
+  const [teamOptions, setTeamOptions] = useState<Team[]>([]);
+  const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
+  const [costCenterOptions, setCostCenterOptions] = useState<CostCenter[]>([]);
+
+  const [filterAssignedTo, setFilterAssignedTo] = useState("");
+  const [filterReportedBy, setFilterReportedBy] = useState("");
+  const [filterTagId, setFilterTagId] = useState("");
+  const [filterEquipmentId, setFilterEquipmentId] = useState("");
+  const [filterCostCenterId, setFilterCostCenterId] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
   useEffect(() => {
     async function load(): Promise<void> {
       try {
-        const [taskList, taskSummary] = await Promise.all([
-          getTasks(),
-          getTaskSummary(),
-        ]);
+        const [taskList, taskSummary, users, teams, tags, equipmentList, costCenters] =
+          await Promise.all([
+            getTasks(),
+            getTaskSummary(),
+            getUsersDetailed().catch(() => [] as UserDetail[]),
+            getTeams().catch(() => [] as Team[]),
+            fetchTagOptions().catch(() => [] as TagOption[]),
+            getEquipment().catch(() => [] as Equipment[]),
+            getCostCenters().catch(() => [] as CostCenter[]),
+          ]);
 
         setTasks(taskList);
         setSummary(taskSummary);
+        setUserOptions(users);
+        setTeamOptions(teams);
+        setTagOptions(tags);
+        setEquipmentOptions(equipmentList);
+        setCostCenterOptions(costCenters);
       } catch (requestError) {
         console.error(requestError);
         setError("Impossible de charger les tâches.");
@@ -119,23 +155,114 @@ function TaskListPage() {
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const scopedTasks = tasks.filter((task) => task.status === activeTab);
 
-    if (!query) {
-      return scopedTasks;
-    }
+    return tasks.filter((task) => {
+      if (task.status !== activeTab) {
+        return false;
+      }
 
-    return scopedTasks.filter((task) =>
-      [
-        task.description,
-        task.equipment?.name,
-        task.equipment?.itemCode,
-        task.costCenterName,
-      ]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(query)),
-    );
-  }, [tasks, search, activeTab]);
+      if (query) {
+        const matchesQuery = [
+          task.description,
+          task.equipment?.name,
+          task.equipment?.itemCode,
+          task.costCenterName,
+        ]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(query));
+
+        if (!matchesQuery) {
+          return false;
+        }
+      }
+
+      if (filterAssignedTo) {
+        const [type, idValue] = filterAssignedTo.split("-");
+        const id = Number(idValue);
+
+        const matches = task.assignedTo.some((assignee) =>
+          type === "user"
+            ? assignee.type === "USER" && assignee.userId === id
+            : assignee.type === "TEAM" && assignee.teamId === id,
+        );
+
+        if (!matches) {
+          return false;
+        }
+      }
+
+      if (filterReportedBy) {
+        const id = Number(filterReportedBy);
+        const matches = task.assignees.some(
+          (assignee) => assignee.type === "USER" && assignee.userId === id,
+        );
+
+        if (!matches) {
+          return false;
+        }
+      }
+
+      if (filterTagId) {
+        const id = Number(filterTagId);
+        if (!task.tags.some((tag) => tag.id === id)) {
+          return false;
+        }
+      }
+
+      if (filterEquipmentId) {
+        if (task.equipment?.id !== Number(filterEquipmentId)) {
+          return false;
+        }
+      }
+
+      if (filterCostCenterId) {
+        if (task.costCenterId !== Number(filterCostCenterId)) {
+          return false;
+        }
+      }
+
+      if (filterStartDate && task.startDate < filterStartDate) {
+        return false;
+      }
+
+      if (filterEndDate && task.startDate > filterEndDate) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    tasks,
+    search,
+    activeTab,
+    filterAssignedTo,
+    filterReportedBy,
+    filterTagId,
+    filterEquipmentId,
+    filterCostCenterId,
+    filterStartDate,
+    filterEndDate,
+  ]);
+
+  const activeFilterCount = [
+    filterAssignedTo,
+    filterReportedBy,
+    filterTagId,
+    filterEquipmentId,
+    filterCostCenterId,
+    filterStartDate,
+    filterEndDate,
+  ].filter(Boolean).length;
+
+  function resetFilters(): void {
+    setFilterAssignedTo("");
+    setFilterReportedBy("");
+    setFilterTagId("");
+    setFilterEquipmentId("");
+    setFilterCostCenterId("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+  }
 
   return (
     <section className="admin-page">
@@ -170,6 +297,16 @@ function TaskListPage() {
           />
         </div>
 
+        <button
+          type="button"
+          className={`task-filter-toggle ${showFilters ? "active" : ""}`}
+          onClick={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal size={16} />
+          Filtres
+          {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+        </button>
+
         {summary && (
           <span className="task-summary-chip">
             <ListChecks size={16} />
@@ -181,6 +318,124 @@ function TaskListPage() {
           </span>
         )}
       </div>
+
+      {showFilters && (
+        <div className="task-filter-panel">
+          <div className="task-filter-grid">
+            <div className="measure-form-group">
+              <label>Assigné à</label>
+              <select
+                value={filterAssignedTo}
+                onChange={(e) => setFilterAssignedTo(e.target.value)}
+              >
+                <option value="">Tous</option>
+                <optgroup label="Équipes">
+                  {teamOptions.map((team) => (
+                    <option key={`team-${team.id}`} value={`team-${team.id}`}>
+                      {team.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Collègues">
+                  {userOptions.map((user) => (
+                    <option key={`user-${user.id}`} value={`user-${user.id}`}>
+                      {user.firstName} {user.lastName}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="measure-form-group">
+              <label>Signalé par</label>
+              <select
+                value={filterReportedBy}
+                onChange={(e) => setFilterReportedBy(e.target.value)}
+              >
+                <option value="">Tous</option>
+                {userOptions.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="measure-form-group">
+              <label>Tags</label>
+              <select
+                value={filterTagId}
+                onChange={(e) => setFilterTagId(e.target.value)}
+              >
+                <option value="">Tous</option>
+                {tagOptions.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="measure-form-group">
+              <label>Équipement</label>
+              <select
+                value={filterEquipmentId}
+                onChange={(e) => setFilterEquipmentId(e.target.value)}
+              >
+                <option value="">Tous</option>
+                {equipmentOptions.map((equipment) => (
+                  <option key={equipment.id} value={equipment.id}>
+                    {equipment.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="measure-form-group">
+              <label>Centre de coût</label>
+              <select
+                value={filterCostCenterId}
+                onChange={(e) => setFilterCostCenterId(e.target.value)}
+              >
+                <option value="">Tous</option>
+                {costCenterOptions.map((costCenter) => (
+                  <option key={costCenter.id} value={costCenter.id}>
+                    {costCenter.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="measure-form-group">
+              <label>Période</label>
+              <div className="task-filter-period">
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                />
+                <span>→</span>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              className="task-filter-reset"
+              onClick={resetFilters}
+            >
+              <X size={14} />
+              Réinitialiser les filtres
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="task-status-cards">
         <button

@@ -29,6 +29,98 @@
   color: #173454;
 }
 
+/* ---------- Filtres ---------- */
+
+.task-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 44px;
+  padding: 0 16px;
+
+  color: #41566d;
+  background: #ffffff;
+
+  border: 1px solid #cddceb;
+  border-radius: 8px;
+
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.task-filter-toggle.active {
+  color: #087fbd;
+  background: #eaf6fc;
+  border-color: #087fbd;
+}
+
+.task-filter-toggle span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  color: #ffffff;
+  background: #087fbd;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.task-filter-panel {
+  padding: 20px;
+  margin: -6px 0 22px;
+  background: #ffffff;
+  border: 1px solid #cddceb;
+  border-radius: 8px;
+}
+
+.task-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.task-filter-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-filter-period input {
+  flex: 1;
+}
+
+.task-filter-period span {
+  color: #9aa8b6;
+}
+
+.task-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-top: 16px;
+  color: #b42318;
+  background: transparent;
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.task-filter-reset:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .task-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Onglets actif / historique ---------- */
 
 .task-status-cards {
