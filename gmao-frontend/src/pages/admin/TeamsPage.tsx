@@ -33,6 +33,13 @@ function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0) ?? "";
+  const second = parts.length > 1 ? parts[1].charAt(0) : parts[0]?.charAt(1) ?? "";
+  return `${first}${second}`.toUpperCase();
+}
+
 function TeamsPage() {
   const navigate = useNavigate();
 
@@ -311,13 +318,21 @@ function TeamsPage() {
                   onClick={() => navigate(`/admin/teams/${team.id}/edit`)}
                 >
                   <td>
-                    <div className="task-cell-main">
-                      <span className="task-cell-title">{team.name}</span>
-                      {team.description && (
-                        <span className="task-cell-meta">
-                          {team.description}
-                        </span>
-                      )}
+                    <div className="team-member-cell">
+                      <span
+                        className="team-avatar"
+                        style={{ background: avatarColor(team.id) }}
+                      >
+                        {teamInitials(team.name)}
+                      </span>
+                      <div>
+                        <strong>{team.name}</strong>
+                        {team.description && (
+                          <span className="team-role-label">
+                            {team.description}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td>

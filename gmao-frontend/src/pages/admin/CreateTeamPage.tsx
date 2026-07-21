@@ -15,6 +15,23 @@ import type { UserDetail } from "../../types/user";
 import "./task-styles.css";
 import "./team-styles.css";
 
+const AVATAR_COLORS = [
+  "#087fbd",
+  "#6b46c1",
+  "#198754",
+  "#a3660f",
+  "#b42318",
+  "#0f766e",
+];
+
+function avatarColor(id: number): string {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function initials(firstName: string, lastName: string): string {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
 function CreateTeamPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -28,6 +45,7 @@ function CreateTeamPage() {
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
   useEffect(() => {
     void Promise.all([getUsersDetailed(), getTags()])
@@ -202,20 +220,45 @@ function CreateTeamPage() {
                 ))}
               </div>
 
-              <select
-                className="task-add-select"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addMember(Number(e.target.value));
-                }}
-              >
-                <option value="">+ Sélectionner un collègue</option>
-                {availableMembers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
-                  </option>
-                ))}
-              </select>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() => setShowMemberDropdown((current) => !current)}
+                >
+                  + Sélectionner un collègue
+                </button>
+
+                {showMemberDropdown && (
+                  <div className="task-filter-dropdown-panel">
+                    {availableMembers.length === 0 && (
+                      <p className="task-empty-hint">
+                        Tous les collègues sont déjà ajoutés.
+                      </p>
+                    )}
+
+                    {availableMembers.map((user) => (
+                      <button
+                        type="button"
+                        key={user.id}
+                        className="task-filter-dropdown-row"
+                        onClick={() => {
+                          addMember(user.id);
+                          setShowMemberDropdown(false);
+                        }}
+                      >
+                        <span
+                          className="task-filter-avatar"
+                          style={{ background: avatarColor(user.id) }}
+                        >
+                          {initials(user.firstName, user.lastName)}
+                        </span>
+                        {user.firstName} {user.lastName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="task-form-section">
