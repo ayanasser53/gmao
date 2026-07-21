@@ -48,6 +48,8 @@ public record UpdateTaskRequest(
 
         Set<AssigneeRequest> assignees,
 
+        Set<AssigneeRequest> assignedTo,
+
         Set<Long> tagIds,
 
         Set<TaskSparePartRequest> spareParts,

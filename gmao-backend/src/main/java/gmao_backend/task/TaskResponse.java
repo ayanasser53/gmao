@@ -43,6 +43,8 @@ public record TaskResponse(
 
         Set<TaskAssigneeResponse> assignees,
 
+        Set<TaskAssigneeResponse> assignedTo,
+
         Set<TaskTagResponse> tags,
 
         Set<TaskSparePartResponse> spareParts,

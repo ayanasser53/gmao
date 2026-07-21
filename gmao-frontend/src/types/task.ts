@@ -54,6 +54,7 @@ export interface TaskListItem {
   costCenterId: number | null;
   costCenterName: string | null;
   assignees: TaskAssignee[];
+  assignedTo: TaskAssignee[];
   tags: TaskTag[];
   status: TaskStatus;
 }
@@ -76,6 +77,7 @@ export interface Task {
   costCenterName: string | null;
   status: TaskStatus;
   assignees: TaskAssignee[];
+  assignedTo: TaskAssignee[];
   tags: TaskTag[];
   spareParts: TaskSparePartLine[];
   documents: TaskDocument[];
@@ -118,6 +120,7 @@ export interface CreateTaskInput {
   plannedStoppedHours: number;
   plannedStoppedMinutes: number;
   assignees: AssigneeInput[];
+  assignedTo: AssigneeInput[];
   tagIds: number[];
   spareParts: SparePartLineInput[];
   links: LinkInput[];

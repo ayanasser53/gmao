@@ -11,7 +11,9 @@ import {
   type TagOption,
 } from "../../services/taskService";
 
+import { getAuthenticatedUserId } from "../../services/authService";
 import { getEquipment } from "../../services/equipmentService";
+import { getTeams } from "../../services/teamService";
 
 import type {
   AssigneeInput,
@@ -19,6 +21,7 @@ import type {
 } from "../../types/task";
 
 import type { Equipment } from "../../types/equipment";
+import type { Team } from "../../types/team";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 
@@ -48,6 +51,9 @@ function TaskCreatePage() {
   const stoppedMinutes = 0;
 
   const [assignees, setAssignees] = useState<{ key: string; userId?: number; label: string }[]>([]);
+  const [assignedTo, setAssignedTo] = useState<
+    { key: string; userId?: number; teamId?: number; label: string }[]
+  >([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
 
   const [links, setLinks] = useState<LinkInput[]>([]);
@@ -58,13 +64,14 @@ function TaskCreatePage() {
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
   const [userOptions, setUserOptions] = useState<OptionItem[]>([]);
+  const [teamOptions, setTeamOptions] = useState<Team[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const [equipmentList, tagList, userList] =
+      const [equipmentList, tagList, userList, teamList] =
         await Promise.all([
           getEquipment().catch((fetchError) => {
             console.error(fetchError);
@@ -72,11 +79,31 @@ function TaskCreatePage() {
           }),
           fetchTagOptions(),
           fetchOptionList("/api/users", (u) => `${u.firstName} ${u.lastName}`),
+          getTeams().catch((fetchError) => {
+            console.error(fetchError);
+            return [] as Team[];
+          }),
         ]);
 
       setEquipmentOptions(equipmentList);
       setTagOptions(tagList);
       setUserOptions(userList);
+      setTeamOptions(teamList);
+
+      const currentUserId = getAuthenticatedUserId();
+      const currentUserOption = userList.find(
+        (option) => option.id === currentUserId,
+      );
+
+      if (currentUserOption) {
+        setAssignees([
+          {
+            key: `user-${currentUserOption.id}`,
+            userId: currentUserOption.id,
+            label: currentUserOption.label,
+          },
+        ]);
+      }
     })();
   }, []);
 
@@ -101,6 +128,36 @@ function TaskCreatePage() {
     ]);
   }
 
+  function addAssignedUser(userId: number): void {
+    const option = userOptions.find((option) => option.id === userId);
+
+    if (!option || assignedTo.some((a) => a.userId === userId)) {
+      return;
+    }
+
+    setAssignedTo((current) => [
+      ...current,
+      { key: `user-${userId}`, userId, label: option.label },
+    ]);
+  }
+
+  function addAssignedTeam(teamId: number): void {
+    const team = teamOptions.find((team) => team.id === teamId);
+
+    if (!team || assignedTo.some((a) => a.teamId === teamId)) {
+      return;
+    }
+
+    setAssignedTo((current) => [
+      ...current,
+      { key: `team-${teamId}`, teamId, label: team.name },
+    ]);
+  }
+
+  function removeAssignedTo(key: string): void {
+    setAssignedTo((current) => current.filter((item) => item.key !== key));
+  }
+
   async function handleSubmit(
     event: React.FormEvent,
     createAnother: boolean,
@@ -119,6 +176,11 @@ function TaskCreatePage() {
       userId: a.userId,
     }));
 
+    const assignedToInputs: AssigneeInput[] = assignedTo.map((a) => ({
+      userId: a.userId,
+      teamId: a.teamId,
+    }));
+
     try {
       await createTask(
         {
@@ -135,6 +197,7 @@ function TaskCreatePage() {
           plannedStoppedHours: stoppedHours,
           plannedStoppedMinutes: stoppedMinutes,
           assignees: assigneeInputs,
+          assignedTo: assignedToInputs,
           tagIds,
           spareParts: [],
           links,
@@ -354,6 +417,66 @@ function TaskCreatePage() {
               </select>
             </div>
 
+            {/* Assigned to */}
+            <div className="task-form-section">
+              <div className="supplier-drawer-section-title">
+                <span>Assigné à</span>
+              </div>
+
+              <div className="task-chip-list">
+                {assignedTo.length === 0 && (
+                  <p className="task-empty-hint">
+                    Personne assignée pour l'instant.
+                  </p>
+                )}
+
+                {assignedTo.map((assignee) => (
+                  <span className="task-chip" key={assignee.key}>
+                    {assignee.label}
+                    <button
+                      type="button"
+                      onClick={() => removeAssignedTo(assignee.key)}
+                      aria-label={`Retirer ${assignee.label}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <div className="supplier-form-grid">
+                <select
+                  className="task-add-select"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) addAssignedUser(Number(e.target.value));
+                  }}
+                >
+                  <option value="">+ Sélectionner un collègue</option>
+                  {userOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="task-add-select"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) addAssignedTeam(Number(e.target.value));
+                  }}
+                >
+                  <option value="">+ Sélectionner une équipe</option>
+                  {teamOptions.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Tags */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
@@ -433,7 +556,14 @@ function TaskCreatePage() {
           </div>
 
           <div className="measure-drawer-footer">
-            
+            <button
+              type="button"
+              className="measure-cancel-button"
+              disabled={submitting}
+              onClick={(e) => handleSubmit(e, true)}
+            >
+              Créer et créer une autre
+            </button>
 
             <button
               type="button"

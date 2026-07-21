@@ -115,6 +115,10 @@ public class TaskService {
                 resolveAssignees(task, request.assignees())
         );
 
+        task.setAssignedTo(
+                resolveAssignedTo(task, request.assignedTo())
+        );
+
         task.setSpareParts(
                 resolveSpareParts(task, request.spareParts())
         );
@@ -174,6 +178,12 @@ public class TaskService {
 
         task.getAssignees().addAll(
                 resolveAssignees(task, request.assignees())
+        );
+
+        task.getAssignedTo().clear();
+
+        task.getAssignedTo().addAll(
+                resolveAssignedTo(task, request.assignedTo())
         );
 
         task.getSpareParts().clear();
@@ -308,6 +318,59 @@ public class TaskService {
         }
 
         return assignees;
+    }
+
+    private Set<TaskAssignedTo> resolveAssignedTo(
+            Task task,
+            Set<AssigneeRequest> assigneeRequests
+    ) {
+        if (assigneeRequests == null || assigneeRequests.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        Set<TaskAssignedTo> assignedTo = new HashSet<>();
+
+        for (AssigneeRequest assigneeRequest : assigneeRequests) {
+            boolean hasUser = assigneeRequest.userId() != null;
+            boolean hasTeam = assigneeRequest.teamId() != null;
+
+            if (hasUser == hasTeam) {
+                throw new IllegalArgumentException(
+                        "Chaque assignation doit référencer soit un utilisateur, soit une équipe."
+                );
+            }
+
+            User user = null;
+            Team team = null;
+
+            if (hasUser) {
+                user = userRepository
+                        .findById(assigneeRequest.userId())
+                        .orElseThrow(
+                                () -> new ResourceNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
+            } else {
+                team = teamRepository
+                        .findById(assigneeRequest.teamId())
+                        .orElseThrow(
+                                () -> new ResourceNotFoundException(
+                                        "Équipe introuvable."
+                                )
+                        );
+            }
+
+            assignedTo.add(
+                    TaskAssignedTo.builder()
+                            .task(task)
+                            .user(user)
+                            .team(team)
+                            .build()
+            );
+        }
+
+        return assignedTo;
     }
 
     private Set<TaskSparePart> resolveSpareParts(

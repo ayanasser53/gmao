@@ -59,6 +59,8 @@ public class TaskMapper {
 
                 mapAssignees(task.getAssignees()),
 
+                mapAssignedTo(task.getAssignedTo()),
+
                 mapTags(task.getTags()),
 
                 mapSpareParts(task.getSpareParts()),
@@ -105,6 +107,8 @@ public class TaskMapper {
                         : null,
 
                 mapAssignees(task.getAssignees()),
+
+                mapAssignedTo(task.getAssignedTo()),
 
                 mapTags(task.getTags()),
 
@@ -178,6 +182,39 @@ public class TaskMapper {
         }
 
         return assignees.stream()
+                .map(assignee -> {
+                    if (assignee.getUser() != null) {
+                        return new TaskAssigneeResponse(
+                                assignee.getId(),
+                                "USER",
+                                assignee.getUser().getId(),
+                                assignee.getUser().getFirstName() + " " +
+                                        assignee.getUser().getLastName(),
+                                assignee.getUser().getPhoto(),
+                                null,
+                                null
+                        );
+                    }
+
+                    return new TaskAssigneeResponse(
+                            assignee.getId(),
+                            "TEAM",
+                            null,
+                            null,
+                            null,
+                            assignee.getTeam().getId(),
+                            assignee.getTeam().getName()
+                    );
+                })
+                .collect(Collectors.toSet());
+    }
+
+    private Set<TaskAssigneeResponse> mapAssignedTo(Set<TaskAssignedTo> assignedTo) {
+        if (assignedTo == null) {
+            return Collections.emptySet();
+        }
+
+        return assignedTo.stream()
                 .map(assignee -> {
                     if (assignee.getUser() != null) {
                         return new TaskAssigneeResponse(

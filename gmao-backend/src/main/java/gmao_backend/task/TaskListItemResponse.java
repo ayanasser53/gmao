@@ -30,6 +30,8 @@ public record TaskListItemResponse(
 
         Set<TaskAssigneeResponse> assignees,
 
+        Set<TaskAssigneeResponse> assignedTo,
+
         Set<TaskTagResponse> tags,
 
         TaskStatus status

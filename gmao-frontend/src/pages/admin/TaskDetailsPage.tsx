@@ -136,9 +136,6 @@ function TaskDetailsPage() {
   const taskId = Number(id);
   const [task, setTask] = useState<Task | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -267,6 +264,30 @@ function TaskDetailsPage() {
             </div>
 
             <div className="task-detail-item">
+              <Users size={21} />
+              <div>
+                <span>Assigné à</span>
+                {task.assignedTo.length > 0 ? (
+                  <div className="task-avatar-list">
+                    {task.assignedTo.map((assignee) => (
+                      <span
+                        key={`${assignee.type}-${
+                          assignee.userId || assignee.teamId
+                        }`}
+                      >
+                        {assignee.type === "USER"
+                          ? assignee.userFullName
+                          : assignee.teamName}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <strong>Personne assignée pour l'instant.</strong>
+                )}
+              </div>
+            </div>
+
+            <div className="task-detail-item">
               <Tag size={21} />
               <div>
                 <span>Labels</span>
@@ -388,19 +409,11 @@ function TaskDetailsPage() {
                   const activityStatus = ACTIVITY_STATUS_META[activity.status];
                   const mainIntervenant = activity.intervenants?.[0];
                   const total = activityTotal(activity);
-                  const isOpen = selectedActivityId === activity.id;
 
                   return (
                     <article
                       key={activity.id}
-                      className={`activity-history-card activity-clickable-card ${
-                        isOpen ? "is-open" : ""
-                      }`}
-                      onClick={() =>
-                        setSelectedActivityId((current) =>
-                          current === activity.id ? null : activity.id,
-                        )
-                      }
+                      className="activity-history-card"
                     >
                       <div className="activity-history-header">
                         <span className="activity-avatar">
@@ -421,23 +434,9 @@ function TaskDetailsPage() {
                         >
                           {activityStatus.label}
                         </span>
-                        <button
-                          type="button"
-                          className="activity-detail-link"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedActivityId((current) =>
-                              current === activity.id ? null : activity.id,
-                            );
-                          }}
-                        >
-                          {isOpen ? "Masquer le détail" : "Voir le détail"}
-                        </button>
                       </div>
 
-                      {isOpen && (
-                        <>
-                          <div className="activity-history-grid">
+                      <div className="activity-history-grid">
                             <div className="task-detail-item">
                               <FileText size={19} />
                               <div>
@@ -494,8 +493,8 @@ function TaskDetailsPage() {
                               {activity.measureReadings.map((reading) => (
                                 <span key={reading.id}>
                                   <Gauge size={15} />
-                                  {reading.measureName} · {reading.value}{" "}
-                                  {reading.unitSymbol} ·{" "}
+                                  <em>Compteur :</em> {reading.measureName} ·{" "}
+                                  {reading.value} {reading.unitSymbol} ·{" "}
                                   {formatShortDate(reading.readingDate)}{" "}
                                   {formatTime(reading.readingHour)}
                                 </span>
@@ -508,7 +507,8 @@ function TaskDetailsPage() {
                               {activity.spareParts.map((item) => (
                                 <span key={item.sparePartId}>
                                   <Package size={15} />
-                                  {item.name} · {item.quantity} ·{" "}
+                                  <em>Pièce détachée :</em> {item.name} ·{" "}
+                                  {item.quantity} ·{" "}
                                   {money(
                                     (item.unitPrice || 0) * item.quantity,
                                     item.currency,
@@ -523,7 +523,8 @@ function TaskDetailsPage() {
                               {activity.additionalCosts.map((item) => (
                                 <span key={item.id}>
                                   <Plus size={15} />
-                                  {item.label} · {money(item.amount, item.currency)}
+                                  <em>Coût additionnel :</em> {item.label} ·{" "}
+                                  {money(item.amount, item.currency)}
                                 </span>
                               ))}
                             </div>
@@ -532,8 +533,6 @@ function TaskDetailsPage() {
                           <div className="activity-total">
                             TOTAL <strong>{money(total)}</strong>
                           </div>
-                        </>
-                      )}
                     </article>
                   );
                 })}

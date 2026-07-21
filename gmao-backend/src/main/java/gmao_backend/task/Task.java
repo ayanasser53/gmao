@@ -91,6 +91,18 @@ public class Task {
     private Set<TaskAssignee> assignees = new LinkedHashSet<>();
 
     /*
+     * Assigned to (who performs the task — users or teams)
+     */
+
+    @OneToMany(
+            mappedBy = "task",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private Set<TaskAssignedTo> assignedTo = new LinkedHashSet<>();
+
+    /*
      * Documents
      */
 

@@ -44,6 +44,11 @@ export function isAuthenticated(): boolean {
   return Boolean(getToken());
 }
 
+export function getAuthenticatedUserId(): number | null {
+  const value = localStorage.getItem("userId");
+  return value ? Number(value) : null;
+}
+
 export function getAuthenticatedEmail(): string {
   return localStorage.getItem("email") ?? "";
 }
