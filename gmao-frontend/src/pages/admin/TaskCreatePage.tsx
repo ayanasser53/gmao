@@ -1,6 +1,14 @@
-﻿import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
+﻿import {
+  ArrowLeft,
+  CheckCircle2,
+  Plus,
+  Search,
+  Trash2,
+  UsersRound,
+  X,
+} from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -30,6 +38,26 @@ import "./task-styles.css";
 interface OptionItem {
   id: number;
   label: string;
+}
+
+const AVATAR_COLORS = [
+  "#087fbd",
+  "#6b46c1",
+  "#198754",
+  "#a3660f",
+  "#b42318",
+  "#0f766e",
+];
+
+function avatarColor(id: number): string {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function initials(label: string): string {
+  const parts = label.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0) ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+  return `${first}${last}`.toUpperCase();
 }
 
 function TaskCreatePage() {
@@ -65,6 +93,7 @@ function TaskCreatePage() {
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
   const [userOptions, setUserOptions] = useState<OptionItem[]>([]);
   const [teamOptions, setTeamOptions] = useState<Team[]>([]);
+  const [assignSearch, setAssignSearch] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -222,6 +251,30 @@ function TaskCreatePage() {
       setSubmitting(false);
     }
   }
+
+  const filteredUserOptions = useMemo(() => {
+    const query = assignSearch.trim().toLowerCase();
+
+    if (!query) {
+      return userOptions;
+    }
+
+    return userOptions.filter((option) =>
+      option.label.toLowerCase().includes(query),
+    );
+  }, [userOptions, assignSearch]);
+
+  const filteredTeamOptions = useMemo(() => {
+    const query = assignSearch.trim().toLowerCase();
+
+    if (!query) {
+      return teamOptions;
+    }
+
+    return teamOptions.filter((team) =>
+      team.name.toLowerCase().includes(query),
+    );
+  }, [teamOptions, assignSearch]);
 
   return (
     <section className="supplier-modal-page">
@@ -423,6 +476,105 @@ function TaskCreatePage() {
                 <span>Assigné à</span>
               </div>
 
+              <div className="assign-picker">
+                <div className="assign-picker-search">
+                  <Search size={16} />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un collègue ou une équipe..."
+                    value={assignSearch}
+                    onChange={(e) => setAssignSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="assign-picker-list">
+                  <p className="assign-picker-heading">Équipes</p>
+
+                  {filteredTeamOptions.length === 0 && (
+                    <p className="task-empty-hint">
+                      {teamOptions.length === 0
+                        ? "Aucune équipe créée."
+                        : "Aucune équipe ne correspond à la recherche."}
+                    </p>
+                  )}
+
+                  {filteredTeamOptions.map((team) => {
+                    const isSelected = assignedTo.some(
+                      (a) => a.teamId === team.id,
+                    );
+
+                    return (
+                      <button
+                        type="button"
+                        key={`team-${team.id}`}
+                        className={`assign-picker-row ${
+                          isSelected ? "selected" : ""
+                        }`}
+                        onClick={() =>
+                          isSelected
+                            ? removeAssignedTo(`team-${team.id}`)
+                            : addAssignedTeam(team.id)
+                        }
+                      >
+                        <span className="assign-picker-team-icon">
+                          <UsersRound size={16} />
+                        </span>
+                        {team.name}
+                        {isSelected && (
+                          <CheckCircle2
+                            size={18}
+                            className="assign-picker-check"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  <p className="assign-picker-heading">Collègues</p>
+
+                  {filteredUserOptions.length === 0 && (
+                    <p className="task-empty-hint">
+                      Aucun collègue ne correspond à la recherche.
+                    </p>
+                  )}
+
+                  {filteredUserOptions.map((option) => {
+                    const isSelected = assignedTo.some(
+                      (a) => a.userId === option.id,
+                    );
+
+                    return (
+                      <button
+                        type="button"
+                        key={`user-${option.id}`}
+                        className={`assign-picker-row ${
+                          isSelected ? "selected" : ""
+                        }`}
+                        onClick={() =>
+                          isSelected
+                            ? removeAssignedTo(`user-${option.id}`)
+                            : addAssignedUser(option.id)
+                        }
+                      >
+                        <span
+                          className="assign-picker-avatar"
+                          style={{ background: avatarColor(option.id) }}
+                        >
+                          {initials(option.label)}
+                        </span>
+                        {option.label}
+                        {isSelected && (
+                          <CheckCircle2
+                            size={18}
+                            className="assign-picker-check"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="task-chip-list">
                 {assignedTo.length === 0 && (
                   <p className="task-empty-hint">
@@ -442,38 +594,6 @@ function TaskCreatePage() {
                     </button>
                   </span>
                 ))}
-              </div>
-
-              <div className="supplier-form-grid">
-                <select
-                  className="task-add-select"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) addAssignedUser(Number(e.target.value));
-                  }}
-                >
-                  <option value="">+ Sélectionner un collègue</option>
-                  {userOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="task-add-select"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) addAssignedTeam(Number(e.target.value));
-                  }}
-                >
-                  <option value="">+ Sélectionner une équipe</option>
-                  {teamOptions.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
@@ -582,5 +702,3 @@ function TaskCreatePage() {
 }
 
 export default TaskCreatePage;
-
-
