@@ -58,7 +58,16 @@ export async function getTaskById(id: number): Promise<Task> {
   const response = await fetch(`${BACKEND_URL}/api/tasks/${id}`, {
     headers: authHeaders(),
   });
-  return handle<Task>(response);
+  const task = await handle<Task>(response);
+
+  return {
+    ...task,
+    assignees: task.assignees ?? [],
+    assignedTo: task.assignedTo ?? [],
+    tags: task.tags ?? [],
+    spareParts: task.spareParts ?? [],
+    documents: task.documents ?? [],
+  };
 }
 
 function buildFormData(

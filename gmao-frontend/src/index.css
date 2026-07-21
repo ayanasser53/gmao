@@ -3596,6 +3596,20 @@ a {
   outline-offset: -2px;
 }
 
+.activity-task-link {
+  padding: 0;
+  color: #087fbd;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-task-link:hover {
+  text-decoration: underline;
+}
+
 .supplier-name-cell,
 .supplier-contact-cell,
 .supplier-visibility-badge {

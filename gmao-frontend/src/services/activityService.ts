@@ -5,29 +5,39 @@ import type {
   ActivityStatus,
 } from "../types/activity";
 
+function normalizeActivity(activity: Activity): Activity {
+  return {
+    ...activity,
+    spareParts: activity.spareParts ?? [],
+    intervenants: activity.intervenants ?? [],
+    additionalCosts: activity.additionalCosts ?? [],
+    measureReadings: activity.measureReadings ?? [],
+  };
+}
+
 export async function getActivities(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities");
-  return response.data;
+  return response.data.map(normalizeActivity);
 }
 
 export async function getInProgressActivities(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities/in-progress");
-  return response.data;
+  return response.data.map(normalizeActivity);
 }
 
 export async function getLateActivities(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities/late");
-  return response.data;
+  return response.data.map(normalizeActivity);
 }
 
 export async function getActivityHistory(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities/history");
-  return response.data;
+  return response.data.map(normalizeActivity);
 }
 
 export async function getActivitiesByTask(taskId: number): Promise<Activity[]> {
   const response = await api.get<Activity[]>(`/tasks/${taskId}/activities`);
-  return response.data;
+  return response.data.map(normalizeActivity);
 }
 
 export async function createActivity(

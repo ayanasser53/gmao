@@ -86,6 +86,15 @@ function ActivitiesPage() {
     exportTablePdf(getExportOptions());
   }
 
+  function openTaskDetails(activity: Activity) {
+    if (!Number.isFinite(activity.taskId)) {
+      setError("Impossible d'ouvrir la tâche liée à cette activité.");
+      return;
+    }
+
+    navigate(`/admin/tasks/${activity.taskId}`);
+  }
+
   return (
     <section className="suppliers-workspace">
       <div className="suppliers-page-heading">
@@ -168,10 +177,27 @@ function ActivitiesPage() {
                 <tr
                   key={activity.id}
                   className="supplier-clickable-row"
-                  onClick={() => navigate(`/admin/tasks/${activity.taskId}`)}
+                  tabIndex={0}
+                  onClick={() => openTaskDetails(activity)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      openTaskDetails(activity);
+                    }
+                  }}
                 >
                   <td>{activity.equipmentName || "-"}</td>
-                  <td>{activity.taskDescription}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="activity-task-link"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openTaskDetails(activity);
+                      }}
+                    >
+                      {activity.taskDescription}
+                    </button>
+                  </td>
                   <td>{activity.description}</td>
                   <td>{activity.performedDate}</td>
                   <td>{activity.performedEndTime}</td>
