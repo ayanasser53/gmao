@@ -1,6 +1,9 @@
 import {
+  CalendarClock,
   CalendarDays,
   ClipboardList,
+  Clock,
+  History,
   ListChecks,
   MapPin,
   Plus,
@@ -43,6 +46,7 @@ function formatDuration(hours: number, minutes: number): string {
 }
 
 const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
+  PLANNED: { label: "Planifiée", className: "task-status-planned" },
   DONE: { label: "Terminée", className: "task-status-done" },
   LATE: { label: "En retard", className: "task-status-late" },
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
@@ -54,7 +58,7 @@ function TaskListPage() {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [summary, setSummary] = useState<TaskSummary | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"active" | "history">("active");
+  const [activeTab, setActiveTab] = useState<TaskStatus>("PLANNED");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
@@ -104,14 +108,18 @@ function TaskListPage() {
     }
   }
 
-  const activeTasksCount = tasks.filter((task) => task.status !== "DONE").length;
-  const historyTasksCount = tasks.filter((task) => task.status === "DONE").length;
+  const statusCounts = useMemo(() => {
+    return {
+      PLANNED: tasks.filter((task) => task.status === "PLANNED").length,
+      IN_PROGRESS: tasks.filter((task) => task.status === "IN_PROGRESS").length,
+      LATE: tasks.filter((task) => task.status === "LATE").length,
+      DONE: tasks.filter((task) => task.status === "DONE").length,
+    };
+  }, [tasks]);
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const scopedTasks = tasks.filter((task) =>
-      activeTab === "history" ? task.status === "DONE" : task.status !== "DONE",
-    );
+    const scopedTasks = tasks.filter((task) => task.status === activeTab);
 
     if (!query) {
       return scopedTasks;
@@ -174,20 +182,42 @@ function TaskListPage() {
         )}
       </div>
 
-      <div className="task-history-tabs">
+      <div className="task-status-cards">
         <button
           type="button"
-          className={activeTab === "active" ? "active" : ""}
-          onClick={() => setActiveTab("active")}
+          className={`tab-planned ${activeTab === "PLANNED" ? "active" : ""}`}
+          onClick={() => setActiveTab("PLANNED")}
         >
-          Tâches actives <span>{activeTasksCount}</span>
+          <CalendarClock size={18} />
+          Planifiée
+          <span>{statusCounts.PLANNED}</span>
         </button>
         <button
           type="button"
-          className={activeTab === "history" ? "active" : ""}
-          onClick={() => setActiveTab("history")}
+          className={`tab-progress ${activeTab === "IN_PROGRESS" ? "active" : ""}`}
+          onClick={() => setActiveTab("IN_PROGRESS")}
         >
-          Historique <span>{historyTasksCount}</span>
+          <Clock size={18} />
+          En cours
+          <span>{statusCounts.IN_PROGRESS}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-late ${activeTab === "LATE" ? "active" : ""}`}
+          onClick={() => setActiveTab("LATE")}
+        >
+          <Clock size={18} />
+          En retard
+          <span>{statusCounts.LATE}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-done ${activeTab === "DONE" ? "active" : ""}`}
+          onClick={() => setActiveTab("DONE")}
+        >
+          <History size={18} />
+          Terminée
+          <span>{statusCounts.DONE}</span>
         </button>
       </div>
 
@@ -205,7 +235,7 @@ function TaskListPage() {
                 <th>Tâche</th>
                 <th>Équipement</th>
                 <th>Centre de coût</th>
-                <th>Assignés</th>
+                <th>Signalé par</th>
                 <th>Statut</th>
               </tr>
             </thead>
@@ -214,9 +244,7 @@ function TaskListPage() {
               {filteredTasks.length === 0 && (
                 <tr>
                   <td colSpan={5} className="resource-table-empty">
-                    {activeTab === "history"
-                      ? "Aucune tâche terminée dans l'historique."
-                      : "Aucune tâche active ne correspond à votre recherche."}
+                    {`Aucune tâche avec le statut "${STATUS_META[activeTab].label}".`}
                   </td>
                 </tr>
               )}
@@ -227,7 +255,9 @@ function TaskListPage() {
                   task.equipment?.image ?? null,
                 );
                 const selectedStatus =
-                  task.status === "LATE" ? "IN_PROGRESS" : task.status;
+                  task.status === "LATE" || task.status === "PLANNED"
+                    ? "IN_PROGRESS"
+                    : task.status;
 
                 return (
                   <tr
@@ -299,7 +329,7 @@ function TaskListPage() {
                             .join(", ")}
                         </span>
                       ) : (
-                        <span className="task-unassigned">Non assignée</span>
+                        <span className="task-unassigned">Non renseigné</span>
                       )}
                     </td>
 

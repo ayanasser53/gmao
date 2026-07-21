@@ -2,7 +2,6 @@ package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
-import com.gmao.gmao_backend.equipment.FileStorageService;
 
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
@@ -46,7 +45,7 @@ public class TaskService {
 
     private final TaskMapper mapper;
 
-    private final FileStorageService storage;
+    private final TaskDocumentStorageService storage;
 
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findAll() {
@@ -161,9 +160,9 @@ public class TaskService {
 
         task.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
 
-        if (request.status() == TaskStatus.LATE) {
+        if (request.status() == TaskStatus.LATE || request.status() == TaskStatus.PLANNED) {
             throw new IllegalArgumentException(
-                    "Le statut « En retard » est calculé automatiquement et ne peut pas être défini manuellement."
+                    "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
             );
         }
 
@@ -196,9 +195,9 @@ public class TaskService {
 
     @Transactional
     public TaskResponse updateStatus(Long id, UpdateTaskStatusRequest request) {
-        if (request.status() == TaskStatus.LATE) {
+        if (request.status() == TaskStatus.LATE || request.status() == TaskStatus.PLANNED) {
             throw new IllegalArgumentException(
-                    "Le statut « En retard » est calculé automatiquement et ne peut pas être défini manuellement."
+                    "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
             );
         }
 

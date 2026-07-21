@@ -4,7 +4,10 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   FileText,
+  Gauge,
+  Link2,
   MapPin,
   Package,
   Plus,
@@ -92,6 +95,7 @@ function money(value: number | null | undefined, currency?: string | null) {
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> =
   {
+    PLANNED: { label: "Planifiée", className: "task-status-planned" },
     DONE: { label: "Terminée", className: "task-status-done" },
     LATE: { label: "En retard", className: "task-status-late" },
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
@@ -241,7 +245,7 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <Users size={21} />
               <div>
-                <span>Assignés</span>
+                <span>Signalé par</span>
                 {task.assignees.length > 0 ? (
                   <div className="task-avatar-list">
                     {task.assignees.map((assignee) => (
@@ -257,7 +261,7 @@ function TaskDetailsPage() {
                     ))}
                   </div>
                 ) : (
-                  <strong>Aucun assigné.</strong>
+                  <strong>Personne renseignée pour l'instant.</strong>
                 )}
               </div>
             </div>
@@ -291,37 +295,76 @@ function TaskDetailsPage() {
 
           <article className="details-card">
             <div className="details-section-header">
-              <h2>Pièces détachées à prévoir</h2>
+              <h2>Ressources</h2>
             </div>
 
-            {task.spareParts.length === 0 ? (
-              <p className="task-empty-hint">Aucune pièce détachée liée.</p>
-            ) : (
-              <div className="task-linked-list">
-                {task.spareParts.map((line) => {
-                  const sparePartImage = getFileUrl(line.imageUrl);
+            <div className="details-subsection">
+              <h3>Pièces détachées à prévoir</h3>
 
-                  return (
-                    <div key={line.sparePartId} className="task-linked-row">
+              {task.spareParts.length === 0 ? (
+                <p className="task-empty-hint">Aucune pièce détachée liée.</p>
+              ) : (
+                <div className="task-linked-list">
+                  {task.spareParts.map((line) => {
+                    const sparePartImage = getFileUrl(line.imageUrl);
+
+                    return (
+                      <div key={line.sparePartId} className="task-linked-row">
+                        <span className="task-equipment-thumb">
+                          {sparePartImage ? (
+                            <img src={sparePartImage} alt={line.name} />
+                          ) : (
+                            <Package size={17} />
+                          )}
+                        </span>
+                        <div>
+                          <strong>{line.name}</strong>
+                          <span>
+                            Code : {line.code || "Non défini"} · Quantité à
+                            prévoir : {line.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="details-subsection">
+              <h3>Documents</h3>
+
+              {task.documents.length === 0 ? (
+                <p className="task-empty-hint">Aucun document joint.</p>
+              ) : (
+                <div className="task-linked-list">
+                  {task.documents.map((document) => (
+                    <a
+                      key={document.id}
+                      className="task-linked-row"
+                      href={getFileUrl(document.filePath) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       <span className="task-equipment-thumb">
-                        {sparePartImage ? (
-                          <img src={sparePartImage} alt={line.name} />
+                        {document.isLink ? (
+                          <Link2 size={17} />
                         ) : (
-                          <Package size={17} />
+                          <FileText size={17} />
                         )}
                       </span>
                       <div>
-                        <strong>{line.name}</strong>
+                        <strong>{document.fileName}</strong>
                         <span>
-                          Code : {line.code || "Non défini"} · Quantité à
-                          prévoir : {line.quantity}
+                          {document.isLink ? "Lien externe" : "Fichier joint"}
                         </span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      {!document.isLink && <Download size={17} />}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           </article>
 
           <article className="details-card task-activity-card">
@@ -330,7 +373,7 @@ function TaskDetailsPage() {
               <button
                 type="button"
                 className="resource-primary-button"
-                onClick={() => navigate("/admin/activities/create")}
+                onClick={() => navigate(`/admin/activities/create?taskId=${task.id}`)}
               >
                 <Plus size={17} />
                 Ajouter une activité
@@ -428,6 +471,38 @@ function TaskDetailsPage() {
                             </div>
                           </div>
 
+                          {activity.intervenants?.length > 0 && (
+                            <div className="task-detail-item task-detail-wide">
+                              <Users size={19} />
+                              <div>
+                                <span>Intervenants</span>
+                                <div className="task-avatar-list">
+                                  {activity.intervenants.map((person) => (
+                                    <span key={person.userId}>
+                                      {`${person.firstName || ""} ${
+                                        person.lastName || ""
+                                      }`.trim() || person.email || "Utilisateur"}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {activity.measureReadings?.length > 0 && (
+                            <div className="activity-linked-lines">
+                              {activity.measureReadings.map((reading) => (
+                                <span key={reading.id}>
+                                  <Gauge size={15} />
+                                  {reading.measureName} · {reading.value}{" "}
+                                  {reading.unitSymbol} ·{" "}
+                                  {formatShortDate(reading.readingDate)}{" "}
+                                  {formatTime(reading.readingHour)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
                           {activity.spareParts?.length > 0 && (
                             <div className="activity-linked-lines">
                               {activity.spareParts.map((item) => (
@@ -498,9 +573,17 @@ function TaskDetailsPage() {
                 <strong>{task.equipment?.itemCode || "Non défini"}</strong>
               </div>
             </div>
-          </article>
 
-          <article className="details-card">
+            <div className="task-detail-item">
+              <MapPin size={21} />
+              <div>
+                <span>Centre de coût</span>
+                <strong>{task.costCenterName || "Non défini"}</strong>
+              </div>
+            </div>
+
+            <div className="details-divider" />
+
             <div className="task-detail-item">
               <Clock size={21} />
               <div>
@@ -509,32 +592,6 @@ function TaskDetailsPage() {
                   {formatDuration(
                     Math.floor(spentMinutes / 60),
                     spentMinutes % 60,
-                  )}
-                </strong>
-              </div>
-            </div>
-
-            <div className="task-detail-item">
-              <CalendarDays size={21} />
-              <div>
-                <span>Temps de maintenance planifié</span>
-                <strong>
-                  {formatDuration(
-                    task.plannedMaintenanceHours,
-                    task.plannedMaintenanceMinutes,
-                  )}
-                </strong>
-              </div>
-            </div>
-
-            <div className="task-detail-item">
-              <CalendarDays size={21} />
-              <div>
-                <span>Temps d'arrêt planifié</span>
-                <strong>
-                  {formatDuration(
-                    task.plannedStoppedHours,
-                    task.plannedStoppedMinutes,
                   )}
                 </strong>
               </div>

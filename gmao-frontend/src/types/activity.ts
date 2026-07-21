@@ -17,6 +17,7 @@ export interface Activity {
   spareParts: ActivitySparePart[];
   intervenants: ActivityIntervenant[];
   additionalCosts: ActivityAdditionalCost[];
+  measureReadings: ActivityMeasureReading[];
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +45,16 @@ export interface ActivityAdditionalCost {
   currency: string | null;
 }
 
+export interface ActivityMeasureReading {
+  id: number;
+  measureId: number;
+  measureName: string;
+  unitSymbol: string;
+  value: number;
+  readingDate: string;
+  readingHour: string;
+}
+
 export interface ActivityRequest {
   taskId: number;
   description: string;
@@ -61,5 +72,11 @@ export interface ActivityRequest {
     label: string;
     amount: number;
     currency: string;
+  }[];
+  measureReadings?: {
+    measureId: number;
+    value: number;
+    readingDate: string;
+    readingHour: string;
   }[];
 }

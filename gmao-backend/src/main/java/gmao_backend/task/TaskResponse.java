@@ -35,6 +35,10 @@ public record TaskResponse(
 
         int plannedStoppedMinutes,
 
+        Long costCenterId,
+
+        String costCenterName,
+
         TaskStatus status,
 
         Set<TaskAssigneeResponse> assignees,

@@ -13,15 +13,17 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   createActivity,
   createActivityAndFinishTask,
 } from "../../services/activityService";
+import { getMeasures } from "../../services/measureService";
 import { getSpareParts } from "../../services/sparePartService";
 import { getTasks } from "../../services/taskService";
 import { getUsers } from "../../services/userService";
+import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { TaskListItem } from "../../types/task";
 import type { UserSummary } from "../../types/user";
@@ -47,11 +49,14 @@ function userLabel(user: UserSummary) {
 
 function ActivityFormPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const presetTaskId = searchParams.get("taskId");
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
-  const [taskId, setTaskId] = useState("");
+  const [measures, setMeasures] = useState<Measure[]>([]);
+  const [taskId, setTaskId] = useState(presetTaskId ?? "");
   const [description, setDescription] = useState("");
   const [performedDate, setPerformedDate] = useState(today());
   const [performedEndTime, setPerformedEndTime] = useState(currentTime());
@@ -63,6 +68,11 @@ function ActivityFormPage() {
   const [showAdditionalCostLine, setShowAdditionalCostLine] = useState(false);
   const [additionalCostAmount, setAdditionalCostAmount] = useState("");
   const [additionalCostLabel, setAdditionalCostLabel] = useState("");
+  const [showMeasureLine, setShowMeasureLine] = useState(false);
+  const [measureId, setMeasureId] = useState("");
+  const [measureValue, setMeasureValue] = useState("");
+  const [measureDate, setMeasureDate] = useState(today());
+  const [measureHour, setMeasureHour] = useState(currentTime());
   const [intervenantId, setIntervenantId] = useState("");
   const [intervenantIds, setIntervenantIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -71,15 +81,17 @@ function ActivityFormPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [tasksData, sparePartsData, usersData] = await Promise.all([
+        const [tasksData, sparePartsData, usersData, measuresData] = await Promise.all([
           getTasks(),
           getSpareParts(),
           getUsers(),
+          getMeasures(),
         ]);
 
         setTasks(tasksData);
         setSpareParts(sparePartsData);
         setUsers(usersData.filter((user) => user.active));
+        setMeasures(measuresData);
       } catch {
         setError("Impossible de charger les donnees.");
       }
@@ -92,6 +104,14 @@ function ActivityFormPage() {
     return tasks.find((task) => task.id === Number(taskId));
   }, [tasks, taskId]);
 
+  const selectedMeasure = useMemo(() => {
+    return measures.find((measure) => measure.id === Number(measureId));
+  }, [measures, measureId]);
+
+  const selectedSparePart = useMemo(() => {
+    return spareParts.find((sparePart) => sparePart.id === Number(sparePartId));
+  }, [spareParts, sparePartId]);
+
   const selectedIntervenants = useMemo(() => {
     return users.filter((user) => intervenantIds.includes(user.id));
   }, [users, intervenantIds]);
@@ -101,7 +121,7 @@ function ActivityFormPage() {
   }, [users, intervenantIds]);
 
   function closeForm() {
-    navigate("/admin/activities");
+    navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
   }
 
   function addMinutes(minutes: number) {
@@ -154,6 +174,16 @@ function ActivityFormPage() {
       return;
     }
 
+    const measureValueParsed = parseDecimal(measureValue);
+
+    if (
+      showMeasureLine &&
+      (!measureId || !Number.isFinite(measureValueParsed))
+    ) {
+      setError("Selectionnez une mesure et saisissez une valeur.");
+      return;
+    }
+
     const selectedSpareParts =
       showSparePartLine && sparePartId
         ? [
@@ -175,6 +205,18 @@ function ActivityFormPage() {
           ]
         : [];
 
+    const selectedMeasureReadings =
+      showMeasureLine && measureId
+        ? [
+            {
+              measureId: Number(measureId),
+              value: measureValueParsed,
+              readingDate: measureDate,
+              readingHour: measureHour,
+            },
+          ]
+        : [];
+
     const payload = {
       taskId: Number(taskId),
       description: description.trim(),
@@ -186,6 +228,7 @@ function ActivityFormPage() {
       spareParts: selectedSpareParts,
       intervenantIds,
       additionalCosts: selectedAdditionalCosts,
+      measureReadings: selectedMeasureReadings,
     };
 
     try {
@@ -198,7 +241,7 @@ function ActivityFormPage() {
         await createActivity(payload);
       }
 
-      navigate("/admin/activities");
+      navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
     } catch (submitError) {
       console.error(submitError);
       setError("Impossible d'ajouter l'activite.");
@@ -254,25 +297,27 @@ function ActivityFormPage() {
                 Activite
               </div>
 
-              <div className="measure-form-group">
-                <label>
-                  Tache <span>*</span>
-                </label>
-                <select
-                  value={taskId}
-                  onChange={(event) => setTaskId(event.target.value)}
-                  required
-                >
-                  <option value="">Selectionner une tache</option>
-                  {tasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!presetTaskId && (
+                <div className="measure-form-group">
+                  <label>
+                    Tache <span>*</span>
+                  </label>
+                  <select
+                    value={taskId}
+                    onChange={(event) => setTaskId(event.target.value)}
+                    required
+                  >
+                    <option value="">Selectionner une tache</option>
+                    {tasks.map((task) => (
+                      <option key={task.id} value={task.id}>
+                        {task.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {selectedTask && (
+              {!presetTaskId && selectedTask && (
                 <div className="form-info-box activity-task-info">
                   Equipement : {selectedTask.equipment?.name || "Non defini"}
                 </div>
@@ -372,8 +417,7 @@ function ActivityFormPage() {
               <div className="activity-extra-actions">
                 <button
                   type="button"
-                  disabled
-                  title="Compteur non disponible pour le moment"
+                  onClick={() => setShowMeasureLine((current) => !current)}
                 >
                   <Gauge size={18} />
                   Compteur
@@ -395,6 +439,78 @@ function ActivityFormPage() {
                   Cout additionnel
                 </button>
               </div>
+
+              {showMeasureLine && (
+                <div className="activity-extra-line">
+                  <div className="measure-form-group">
+                    <label>
+                      Mesure <span>*</span>
+                    </label>
+                    <select
+                      value={measureId}
+                      onChange={(event) => setMeasureId(event.target.value)}
+                    >
+                      <option value="">Selectionner une mesure</option>
+                      {measures.map((measure) => (
+                        <option key={measure.id} value={measure.id}>
+                          {measure.name} ({measure.unitSymbol})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="measure-form-group">
+                    <label>
+                      Valeur <span>*</span>
+                    </label>
+                    <div className="activity-money-input">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={measureValue}
+                        onChange={(event) => setMeasureValue(event.target.value)}
+                        placeholder="Ex : 12,50"
+                      />
+                      {selectedMeasure && <span>{selectedMeasure.unitSymbol}</span>}
+                    </div>
+                  </div>
+
+                  <div className="measure-form-group">
+                    <label>
+                      Date du releve <span>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={measureDate}
+                      onChange={(event) => setMeasureDate(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="measure-form-group">
+                    <label>
+                      Heure <span>*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={measureHour}
+                      onChange={(event) => setMeasureHour(event.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="activity-remove-line"
+                    onClick={() => {
+                      setShowMeasureLine(false);
+                      setMeasureId("");
+                      setMeasureValue("");
+                    }}
+                    aria-label="Retirer le releve de compteur"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              )}
 
               {showSparePartLine && (
                 <div className="activity-extra-line">
@@ -426,6 +542,15 @@ function ActivityFormPage() {
                       }
                     />
                   </div>
+
+                  {selectedSparePart && (
+                    <div className="form-info-box activity-task-info">
+                      Cout : {selectedSparePart.unitPrice} {selectedSparePart.currency || "EUR"} x{" "}
+                      {sparePartQuantity} ={" "}
+                      {(selectedSparePart.unitPrice * sparePartQuantity).toFixed(2)}{" "}
+                      {selectedSparePart.currency || "EUR"}
+                    </div>
+                  )}
 
                   <button
                     type="button"

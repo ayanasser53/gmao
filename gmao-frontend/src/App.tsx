@@ -43,7 +43,10 @@ import ActivityFormPage from "./pages/admin/ActivityFormPage";
 import MaintenancePlansPage from "./pages/admin/MaintenancePlansPage";
 import MaintenancePlanDetailsPage from "./pages/admin/MaintenancePlanDetailsPage";
 import MaintenancePlanFormPage from "./pages/admin/MaintenancePlanFormPage";
+
 import TeamsPage from "./pages/admin/TeamsPage";
+import InviteColleaguePage from "./pages/admin/InviteColleaguePage";
+import CreateTeamPage from "./pages/admin/CreateTeamPage";
 
 function App() {
   return (
@@ -211,6 +214,26 @@ function App() {
           <Route
             path="teams"
             element={<TeamsPage />}
+          />
+
+          <Route
+            path="teams/invite"
+            element={<InviteColleaguePage />}
+          />
+
+          <Route
+            path="teams/colleagues/:id/edit"
+            element={<InviteColleaguePage />}
+          />
+
+          <Route
+            path="teams/new"
+            element={<CreateTeamPage />}
+          />
+
+          <Route
+            path="teams/:id/edit"
+            element={<CreateTeamPage />}
           />
 
           <Route

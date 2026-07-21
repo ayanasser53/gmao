@@ -1,4 +1,4 @@
-export type TaskStatus = "IN_PROGRESS" | "DONE" | "LATE";
+export type TaskStatus = "PLANNED" | "IN_PROGRESS" | "DONE" | "LATE";
 
 export interface TaskEquipmentSummary {
   id: number;
@@ -72,6 +72,8 @@ export interface Task {
   plannedMaintenanceMinutes: number;
   plannedStoppedHours: number;
   plannedStoppedMinutes: number;
+  costCenterId: number | null;
+  costCenterName: string | null;
   status: TaskStatus;
   assignees: TaskAssignee[];
   tags: TaskTag[];

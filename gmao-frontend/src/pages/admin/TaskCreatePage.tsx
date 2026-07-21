@@ -11,21 +11,14 @@ import {
   type TagOption,
 } from "../../services/taskService";
 
-import { getSpareParts } from "../../services/sparePartService";
-
 import { getEquipment } from "../../services/equipmentService";
 
 import type {
   AssigneeInput,
   LinkInput,
-  SparePartLineInput,
 } from "../../types/task";
 
-import type { SparePart } from "../../types/sparePart";
-
 import type { Equipment } from "../../types/equipment";
-
-import SparePartSelect from "../../components/admin/SparePartSelect";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 
@@ -49,14 +42,13 @@ function TaskCreatePage() {
   const [endDate, setEndDate] = useState("");
   const [endHour, setEndHour] = useState("10:00");
 
-  const [maintenanceHours, setMaintenanceHours] = useState(0);
-  const [maintenanceMinutes, setMaintenanceMinutes] = useState(0);
-  const [stoppedHours, setStoppedHours] = useState(0);
-  const [stoppedMinutes, setStoppedMinutes] = useState(0);
+  const maintenanceHours = 0;
+  const maintenanceMinutes = 0;
+  const stoppedHours = 0;
+  const stoppedMinutes = 0;
 
   const [assignees, setAssignees] = useState<{ key: string; userId?: number; label: string }[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
-  const [spareLines, setSpareLines] = useState<{ sparePartId: number; sparePart: SparePart; quantity: number }[]>([]);
 
   const [links, setLinks] = useState<LinkInput[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -66,14 +58,13 @@ function TaskCreatePage() {
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
   const [userOptions, setUserOptions] = useState<OptionItem[]>([]);
-  const [sparePartOptions, setSparePartOptions] = useState<SparePart[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const [equipmentList, tagList, userList, sparePartList] =
+      const [equipmentList, tagList, userList] =
         await Promise.all([
           getEquipment().catch((fetchError) => {
             console.error(fetchError);
@@ -81,16 +72,11 @@ function TaskCreatePage() {
           }),
           fetchTagOptions(),
           fetchOptionList("/api/users", (u) => `${u.firstName} ${u.lastName}`),
-          getSpareParts().catch((fetchError) => {
-            console.error(fetchError);
-            return [] as SparePart[];
-          }),
         ]);
 
       setEquipmentOptions(equipmentList);
       setTagOptions(tagList);
       setUserOptions(userList);
-      setSparePartOptions(sparePartList);
     })();
   }, []);
 
@@ -115,18 +101,6 @@ function TaskCreatePage() {
     ]);
   }
 
-  function addSparePart(sparePart: SparePart): void {
-    if (spareLines.some((line) => line.sparePartId === sparePart.id)) {
-      return;
-    }
-
-    setSpareLines((current) => [
-      ...current,
-      { sparePartId: sparePart.id, sparePart, quantity: 1 },
-    ]);
-  }
-
-
   async function handleSubmit(
     event: React.FormEvent,
     createAnother: boolean,
@@ -143,11 +117,6 @@ function TaskCreatePage() {
 
     const assigneeInputs: AssigneeInput[] = assignees.map((a) => ({
       userId: a.userId,
-    }));
-
-    const sparePartInputs: SparePartLineInput[] = spareLines.map((line) => ({
-      sparePartId: line.sparePartId,
-      quantity: line.quantity,
     }));
 
     try {
@@ -167,7 +136,7 @@ function TaskCreatePage() {
           plannedStoppedMinutes: stoppedMinutes,
           assignees: assigneeInputs,
           tagIds,
-          spareParts: sparePartInputs,
+          spareParts: [],
           links,
           notifyAssignees: notify,
         },
@@ -177,7 +146,6 @@ function TaskCreatePage() {
       if (createAnother) {
         setDescription("");
         setAssignees([]);
-        setSpareLines([]);
         setLinks([]);
         setFiles([]);
         setTagIds([]);
@@ -284,7 +252,14 @@ function TaskCreatePage() {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const newStartDate = e.target.value;
+                      setStartDate(newStartDate);
+
+                      if (!endDate || endDate < newStartDate) {
+                        setEndDate(newStartDate);
+                      }
+                    }}
                   />
                 </div>
 
@@ -296,7 +271,14 @@ function TaskCreatePage() {
                     <input
                       type="time"
                       value={startHour}
-                      onChange={(e) => setStartHour(e.target.value)}
+                      onChange={(e) => {
+                        const newStartHour = e.target.value;
+                        setStartHour(newStartHour);
+
+                        if (startDate && startDate === endDate && endHour < newStartHour) {
+                          setEndHour(newStartHour);
+                        }
+                      }}
                     />
                   </div>
                 )}
@@ -325,69 +307,17 @@ function TaskCreatePage() {
                   </div>
                 )}
               </div>
-
-              <div className="supplier-form-grid">
-                <div className="measure-form-group">
-                  <label>Temps de maintenance - heures</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={maintenanceHours}
-                    onChange={(e) =>
-                      setMaintenanceHours(Number(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="measure-form-group">
-                  <label>Minutes</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={maintenanceMinutes}
-                    onChange={(e) =>
-                      setMaintenanceMinutes(Number(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="measure-form-group">
-                  <label>Temps d'arrêt - heures</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={stoppedHours}
-                    onChange={(e) =>
-                      setStoppedHours(Number(e.target.value) || 0)
-                    }
-                  />
-                </div>
-
-                <div className="measure-form-group">
-                  <label>Minutes</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={stoppedMinutes}
-                    onChange={(e) =>
-                      setStoppedMinutes(Number(e.target.value) || 0)
-                    }
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Assignees */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>Assignés</span>
+                <span>Signalé par</span>
               </div>
 
               <div className="task-chip-list">
                 {assignees.length === 0 && (
-                  <p className="task-empty-hint">Aucun assigné.</p>
+                  <p className="task-empty-hint">Personne renseignée pour l'instant.</p>
                 )}
 
                 {assignees.map((assignee) => (
@@ -459,69 +389,6 @@ function TaskCreatePage() {
               </div>
             </div>
 
-            {/* Spare parts */}
-            <div className="task-form-section">
-              <div className="supplier-drawer-section-title">
-                <span>Pièces de rechange à fournir</span>
-              </div>
-
-              <div className="task-chip-list">
-                {spareLines.length === 0 && (
-                  <p className="task-empty-hint">Aucune pièce liée.</p>
-                )}
-
-                {spareLines.map((line) => (
-                  <span className="task-spare-line" key={line.sparePartId}>
-                    <span className="task-spare-line-info">
-                      <strong>{line.sparePart.name}</strong>
-                      {line.sparePart.code && (
-                        <em>Code : {line.sparePart.code}</em>
-                      )}
-                    </span>
-
-                    <input
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(e) =>
-                        setSpareLines((current) =>
-                          current.map((l) =>
-                            l.sparePartId === line.sparePartId
-                              ? {
-                                  ...l,
-                                  quantity: Number(e.target.value) || 1,
-                                }
-                              : l,
-                          ),
-                        )
-                      }
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSpareLines((current) =>
-                          current.filter(
-                            (l) => l.sparePartId !== line.sparePartId,
-                          ),
-                        )
-                      }
-                      aria-label={`Retirer ${line.sparePart.name}`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-
-              <SparePartSelect
-                spareParts={sparePartOptions}
-                excludedIds={spareLines.map((line) => line.sparePartId)}
-                onSelect={addSparePart}
-                placeholder="+ Ajouter une pièce de rechange"
-              />
-            </div>
-
             {/* Documents */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
@@ -566,14 +433,7 @@ function TaskCreatePage() {
           </div>
 
           <div className="measure-drawer-footer">
-            <button
-              type="button"
-              className="measure-cancel-button"
-              disabled={submitting}
-              onClick={(e) => handleSubmit(e, true)}
-            >
-              Créer et créer une autre
-            </button>
+            
 
             <button
               type="button"

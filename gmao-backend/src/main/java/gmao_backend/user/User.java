@@ -1,10 +1,15 @@
 package com.gmao.gmao_backend.user;
 
+import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.team.Team;
+
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -43,6 +48,24 @@ public class User {
     private BigDecimal hourlyRate;
 
     private Boolean active = true;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "team_members",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "team_id")
+    )
+    @Builder.Default
+    private Set<Team> teams = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_tags",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    @Builder.Default
+    private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;

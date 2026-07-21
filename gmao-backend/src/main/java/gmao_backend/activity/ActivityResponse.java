@@ -19,6 +19,7 @@ public record ActivityResponse(
         List<ActivitySparePartResponse> spareParts,
         List<ActivityIntervenantResponse> intervenants,
         List<ActivityAdditionalCostResponse> additionalCosts,
+        List<ActivityMeasureReadingResponse> measureReadings,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

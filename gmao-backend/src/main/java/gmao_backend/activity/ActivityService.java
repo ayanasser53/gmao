@@ -1,5 +1,7 @@
 package com.gmao.gmao_backend.activity;
 
+import com.gmao.gmao_backend.measure.Measure;
+import com.gmao.gmao_backend.measure.MeasureRepository;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.task.Task;
@@ -25,6 +27,8 @@ public class ActivityService {
     private final ActivitySparePartRepository activitySparePartRepository;
     private final ActivityIntervenantRepository activityIntervenantRepository;
     private final ActivityAdditionalCostRepository activityAdditionalCostRepository;
+    private final ActivityMeasureReadingRepository activityMeasureReadingRepository;
+    private final MeasureRepository measureRepository;
 
     public List<ActivityResponse> findAll() {
         return activityRepository.findAllByOrderByPerformedDateDescPerformedEndTimeDesc()
@@ -91,7 +95,8 @@ public class ActivityService {
                 request.status(),
                 request.spareParts(),
                 request.intervenantIds(),
-                request.additionalCosts()
+                request.additionalCosts(),
+                request.measureReadings()
         );
 
         return create(normalizedRequest);
@@ -124,6 +129,7 @@ public class ActivityService {
         activitySparePartRepository.deleteByActivityId(savedActivity.getId());
         activityIntervenantRepository.deleteByActivityId(savedActivity.getId());
         activityAdditionalCostRepository.deleteByActivityId(savedActivity.getId());
+        activityMeasureReadingRepository.deleteByActivityId(savedActivity.getId());
 
         saveActivityDetails(savedActivity, request);
 
@@ -145,6 +151,7 @@ public class ActivityService {
         saveSpareParts(activity, request.spareParts());
         saveIntervenants(activity, request.intervenantIds());
         saveAdditionalCosts(activity, request.additionalCosts());
+        saveMeasureReadings(activity, request.measureReadings());
     }
 
     private void saveSpareParts(Activity activity, List<ActivitySparePartRequest> spareParts) {
@@ -217,6 +224,32 @@ public class ActivityService {
         }
     }
 
+    private void saveMeasureReadings(Activity activity, List<ActivityMeasureReadingRequest> readings) {
+        if (readings == null) {
+            return;
+        }
+
+        for (ActivityMeasureReadingRequest item : readings) {
+            if (item.measureId() == null || item.value() == null
+                    || item.readingDate() == null || item.readingHour() == null) {
+                continue;
+            }
+
+            Measure measure = measureRepository.findById(item.measureId())
+                    .orElseThrow(() -> new IllegalArgumentException("Mesure introuvable."));
+
+            ActivityMeasureReading reading = ActivityMeasureReading.builder()
+                    .activity(activity)
+                    .measure(measure)
+                    .value(item.value())
+                    .readingDate(item.readingDate())
+                    .readingHour(item.readingHour())
+                    .build();
+
+            activityMeasureReadingRepository.save(reading);
+        }
+    }
+
     private Task findTask(Long taskId) {
         return taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Tâche introuvable."));
@@ -244,6 +277,7 @@ public class ActivityService {
                 getSparePartResponses(activity.getId()),
                 getIntervenantResponses(activity.getId()),
                 getAdditionalCostResponses(activity.getId()),
+                getMeasureReadingResponses(activity.getId()),
                 activity.getCreatedAt(),
                 activity.getUpdatedAt()
         );
@@ -283,6 +317,21 @@ public class ActivityService {
                         item.getLabel(),
                         item.getAmount(),
                         item.getCurrency()
+                ))
+                .toList();
+    }
+
+    private List<ActivityMeasureReadingResponse> getMeasureReadingResponses(Long activityId) {
+        return activityMeasureReadingRepository.findByActivityId(activityId)
+                .stream()
+                .map(item -> new ActivityMeasureReadingResponse(
+                        item.getId(),
+                        item.getMeasure().getId(),
+                        item.getMeasure().getName(),
+                        item.getMeasure().getUnit().getSymbol(),
+                        item.getValue(),
+                        item.getReadingDate(),
+                        item.getReadingHour()
                 ))
                 .toList();
     }

@@ -17,13 +17,15 @@ import java.util.stream.Collectors;
 public class TaskMapper {
 
     public TaskResponse toResponse(Task task) {
+        Equipment equipment = task.getEquipment();
+
         return new TaskResponse(
 
                 task.getId(),
 
                 task.isEquipmentOnly(),
 
-                toEquipmentResponse(task.getEquipment()),
+                toEquipmentResponse(equipment),
 
                 task.getDescription(),
 
@@ -44,6 +46,14 @@ public class TaskMapper {
                 task.getPlannedStoppedHours(),
 
                 task.getPlannedStoppedMinutes(),
+
+                equipment != null && equipment.getCostCenter() != null
+                        ? equipment.getCostCenter().getId()
+                        : null,
+
+                equipment != null && equipment.getCostCenter() != null
+                        ? equipment.getCostCenter().getName()
+                        : null,
 
                 resolveDisplayStatus(task),
 
@@ -103,14 +113,24 @@ public class TaskMapper {
     }
 
     /**
-     * The "late" status is never stored — it is derived on every read from
-     * the task's end date/time compared to now, so the UI never needs to
-     * set it manually. A task already marked DONE is never considered
-     * late.
+     * The "late" and "planned" statuses are never stored — they are
+     * derived on every read from the task's start/end date-time compared
+     * to now, so the UI never needs to set them manually. A task already
+     * marked DONE is never considered late or planned.
      */
     private TaskStatus resolveDisplayStatus(Task task) {
         if (task.getStatus() == TaskStatus.DONE) {
             return TaskStatus.DONE;
+        }
+
+        LocalTime startTime = task.isAllDay() || task.getStartHour() == null
+                ? LocalTime.of(0, 0)
+                : task.getStartHour();
+
+        LocalDateTime startDateTime = task.getStartDate().atTime(startTime);
+
+        if (startDateTime.isAfter(LocalDateTime.now())) {
+            return TaskStatus.PLANNED;
         }
 
         LocalTime endTime = task.isAllDay() || task.getEndHour() == null
@@ -237,6 +257,7 @@ public class TaskMapper {
                         activity.getSpentHours(),
                         activity.getSpentMinutes(),
                         activity.getStatus(),
+                        Collections.emptyList(),
                         Collections.emptyList(),
                         Collections.emptyList(),
                         Collections.emptyList(),

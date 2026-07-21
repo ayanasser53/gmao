@@ -17,6 +17,7 @@ public record ActivityRequest(
         ActivityStatus status,
         List<ActivitySparePartRequest> spareParts,
         List<Long> intervenantIds,
-        List<ActivityAdditionalCostRequest> additionalCosts
+        List<ActivityAdditionalCostRequest> additionalCosts,
+        List<ActivityMeasureReadingRequest> measureReadings
 ) {
 }
