@@ -76,7 +76,7 @@ const scheduleOptions: {
   frequencyValue: number;
   frequencyUnit: MaintenanceFrequencyUnit;
 }[] = [
-  { value: "FIXED_DATE", label: "Date fixe", frequencyValue: 1, frequencyUnit: "DAYS" },
+  { value: "FIXED_DATE", label: "Quotidien", frequencyValue: 1, frequencyUnit: "DAYS" },
   { value: "WEEKLY", label: "Hebdomadaire", frequencyValue: 1, frequencyUnit: "WEEKS" },
   { value: "MONTHLY", label: "Mensuel", frequencyValue: 1, frequencyUnit: "MONTHS" },
   { value: "QUARTERLY", label: "Trimestriel", frequencyValue: 3, frequencyUnit: "MONTHS" },
@@ -102,19 +102,34 @@ function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
   };
 }
 
-function addDays(dateValue: string | null, days: number) {
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function addInterval(
+  dateValue: string | null,
+  value: number,
+  unit: MaintenanceFrequencyUnit,
+) {
   if (!dateValue) return null;
 
   const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
-function getFrequencyInDays(value: number, unit: MaintenanceFrequencyUnit) {
-  if (unit === "WEEKS") return value * 7;
-  if (unit === "MONTHS") return value * 30;
-  if (unit === "YEARS") return value * 365;
-  return value;
+  if (unit === "DAYS") {
+    date.setDate(date.getDate() + value);
+  } else if (unit === "WEEKS") {
+    date.setDate(date.getDate() + value * 7);
+  } else if (unit === "MONTHS") {
+    date.setMonth(date.getMonth() + value);
+  } else {
+    date.setFullYear(date.getFullYear() + value);
+  }
+
+  return toDateInputValue(date);
 }
 
 function getUnitLabel(unit: MaintenanceFrequencyUnit) {
@@ -178,7 +193,11 @@ export default function MaintenancePlanFormPage() {
       triggerType: "FIXED_DATE",
       frequencyValue: option.frequencyValue,
       frequencyUnit: option.frequencyUnit,
-      nextDueDate: current.startDate,
+      nextDueDate: addInterval(
+        current.startDate || today(),
+        option.frequencyValue,
+        option.frequencyUnit,
+      ),
     }));
   }
 
@@ -186,7 +205,7 @@ export default function MaintenancePlanFormPage() {
     setForm((current) => ({
       ...current,
       startDate: value,
-      nextDueDate: value,
+      nextDueDate: addInterval(value, current.frequencyValue, current.frequencyUnit),
     }));
   }
 
@@ -224,12 +243,17 @@ export default function MaintenancePlanFormPage() {
 
   const previewDates = useMemo(() => {
     const dates: string[] = [];
-    const days = getFrequencyInDays(form.frequencyValue, form.frequencyUnit);
-    let current = form.startDate || today();
+    let current = addInterval(
+      form.startDate || today(),
+      form.frequencyValue,
+      form.frequencyUnit,
+    );
 
     for (let index = 0; index < 10; index += 1) {
+      if (!current) break;
+
       dates.push(current);
-      current = addDays(current, days) || current;
+      current = addInterval(current, form.frequencyValue, form.frequencyUnit);
     }
 
     return dates;
