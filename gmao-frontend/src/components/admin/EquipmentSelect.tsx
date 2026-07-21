@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Wrench } from "lucide-react";
 
 import type { Equipment } from "../../types/equipment";
 
 import "./SparePartSelect.css";
+
+const BACKEND_URL = "http://localhost:8090";
+
+function getFileUrl(path: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 interface EquipmentSelectProps {
   equipmentList: Equipment[];
@@ -89,26 +104,40 @@ function EquipmentSelect({
             </p>
           )}
 
-          {filteredEquipment.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className="spare-part-select-option"
-              onClick={() => handleSelect(item)}
-            >
-              <span className="spare-part-select-name">{item.name}</span>
+          {filteredEquipment.map((item) => {
+            const image = getFileUrl(item.image);
 
-              <span className="spare-part-select-meta">
-                <span>
-                  Code&nbsp;: <strong>{item.itemCode || "—"}</strong>
+            return (
+              <button
+                type="button"
+                key={item.id}
+                className="spare-part-select-option"
+                onClick={() => handleSelect(item)}
+              >
+                <span className="spare-part-select-thumb">
+                  {image ? (
+                    <img src={image} alt={item.name} />
+                  ) : (
+                    <Wrench size={15} />
+                  )}
                 </span>
-                <span>
-                  Centre de coût&nbsp;:{" "}
-                  <strong>{item.costCenterName || "—"}</strong>
+
+                <span className="spare-part-select-body">
+                  <span className="spare-part-select-name">{item.name}</span>
+
+                  <span className="spare-part-select-meta">
+                    <span>
+                      Code&nbsp;: <strong>{item.itemCode || "—"}</strong>
+                    </span>
+                    <span>
+                      Centre de coût&nbsp;:{" "}
+                      <strong>{item.costCenterName || "—"}</strong>
+                    </span>
+                  </span>
                 </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

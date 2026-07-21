@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Package } from "lucide-react";
 
 import type { SparePart } from "../../types/sparePart";
 
 import "./SparePartSelect.css";
+
+const BACKEND_URL = "http://localhost:8090";
+
+function getFileUrl(path: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 interface SparePartSelectProps {
   spareParts: SparePart[];
@@ -93,31 +108,46 @@ function SparePartSelect({
             </p>
           )}
 
-          {filteredParts.map((part) => (
-            <button
-              type="button"
-              key={part.id}
-              className="spare-part-select-option"
-              onClick={() => handleSelect(part)}
-            >
-              <span className="spare-part-select-name">{part.name}</span>
+          {filteredParts.map((part) => {
+            const image = getFileUrl(part.image);
 
-              <span className="spare-part-select-meta">
-                <span>
-                  Code&nbsp;: <strong>{part.code || "—"}</strong>
+            return (
+              <button
+                type="button"
+                key={part.id}
+                className="spare-part-select-option"
+                onClick={() => handleSelect(part)}
+              >
+                <span className="spare-part-select-thumb">
+                  {image ? (
+                    <img src={image} alt={part.name} />
+                  ) : (
+                    <Package size={15} />
+                  )}
                 </span>
-                <span>
-                  Emplacement&nbsp;: <strong>{part.location || "—"}</strong>
+
+                <span className="spare-part-select-body">
+                  <span className="spare-part-select-name">{part.name}</span>
+
+                  <span className="spare-part-select-meta">
+                    <span>
+                      Code&nbsp;: <strong>{part.code || "—"}</strong>
+                    </span>
+                    <span>
+                      Emplacement&nbsp;:{" "}
+                      <strong>{part.location || "—"}</strong>
+                    </span>
+                    <span>
+                      Stock&nbsp;: <strong>{part.quantity}</strong>
+                    </span>
+                    <span>
+                      Prix unitaire&nbsp;: <strong>{formatPrice(part)}</strong>
+                    </span>
+                  </span>
                 </span>
-                <span>
-                  Stock&nbsp;: <strong>{part.quantity}</strong>
-                </span>
-                <span>
-                  Prix unitaire&nbsp;: <strong>{formatPrice(part)}</strong>
-                </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

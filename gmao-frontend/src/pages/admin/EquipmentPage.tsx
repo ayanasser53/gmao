@@ -32,6 +32,9 @@ import { getTags } from "../../services/tagService";
 import { getCostCenters } from "../../services/costCenterService";
 import { getSpareParts } from "../../services/sparePartService";
 
+import EquipmentSelect from "../../components/admin/EquipmentSelect";
+import SparePartSelect from "../../components/admin/SparePartSelect";
+
 import type {
   Equipment,
   EquipmentPayload,
@@ -884,37 +887,16 @@ return (
                     ))}
                 </div>
 
-                <select
+                <EquipmentSelect
+                  equipmentList={equipment.filter(
+                    (item) =>
+                      item.id !== editingId &&
+                      !form.linkedEquipmentIds.includes(item.id),
+                  )}
                   value=""
-                  onChange={(event) =>
-                    addLinkedEquipment(
-                      Number(
-                        event.target.value,
-                      ),
-                    )
-                  }
-                >
-                  <option value="">
-                    Ajouter un équipement
-                  </option>
-
-                  {equipment
-                    .filter(
-                      (item) =>
-                        item.id !== editingId &&
-                        !form.linkedEquipmentIds.includes(
-                          item.id,
-                        ),
-                    )
-                    .map((item) => (
-                      <option
-                        key={item.id}
-                        value={item.id}
-                      >
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
+                  onSelect={(item) => addLinkedEquipment(item.id)}
+                  placeholder="Ajouter un équipement"
+                />
               </div>
             </div>
 
@@ -956,39 +938,12 @@ return (
                     ))}
                 </div>
 
-                <select
-                  value=""
-                  onChange={(event) =>
-                    addLinkedSparePart(
-                      Number(
-                        event.target.value,
-                      ),
-                    )
-                  }
-                >
-                  <option value="">
-                    Ajouter une pièce
-                  </option>
-
-                  {spareParts
-                    .filter(
-                      (part) =>
-                        !form.linkedSparePartIds.includes(
-                          part.id,
-                        ),
-                    )
-                    .map((part) => (
-                      <option
-                        key={part.id}
-                        value={part.id}
-                      >
-                        {part.code
-                          ? `${part.code} — `
-                          : ""}
-                        {part.name}
-                      </option>
-                    ))}
-                </select>
+                <SparePartSelect
+                  spareParts={spareParts}
+                  excludedIds={form.linkedSparePartIds}
+                  onSelect={(part) => addLinkedSparePart(part.id)}
+                  placeholder="Ajouter une pièce"
+                />
               </div>
             </div>
           </div>

@@ -20,6 +20,9 @@ import {
 
 import { getCostCenters } from "../../services/costCenterService";
 import { getEquipment } from "../../services/equipmentService";
+
+import EquipmentSelect from "../../components/admin/EquipmentSelect";
+import SparePartSelect from "../../components/admin/SparePartSelect";
 import {
   createSparePart,
   getSparePartById,
@@ -529,18 +532,14 @@ function SparePartFormPage() {
                 <div className="measure-form-group">
                   <label htmlFor="spare-part-linked-equipment">Équipements liés</label>
                   <div className="multi-select-box">
-                    <select
-                      id="spare-part-linked-equipment"
+                    <EquipmentSelect
+                      equipmentList={equipment.filter(
+                        (item) => !form.linkedEquipmentIds.includes(item.id),
+                      )}
                       value=""
-                      onChange={(event) => addLinkedEquipment(event.target.value)}
-                    >
-                      <option value="">Sélectionner un équipement</option>
-                      {equipment.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      onSelect={(item) => addLinkedEquipment(String(item.id))}
+                      placeholder="Sélectionner un équipement"
+                    />
                     <div className="multi-select-values">
                       {selectedEquipment.map((item) => (
                         <span key={item.id} className="multi-select-chip">
@@ -561,18 +560,12 @@ function SparePartFormPage() {
                 <div className="measure-form-group">
                   <label htmlFor="spare-part-linked-spare-parts">Pièces détachées liées</label>
                   <div className="multi-select-box">
-                    <select
-                      id="spare-part-linked-spare-parts"
-                      value=""
-                      onChange={(event) => addLinkedSparePart(event.target.value)}
-                    >
-                      <option value="">Sélectionner une pièce détachée</option>
-                      {availableSpareParts.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SparePartSelect
+                      spareParts={availableSpareParts}
+                      excludedIds={[]}
+                      onSelect={(item) => addLinkedSparePart(String(item.id))}
+                      placeholder="Sélectionner une pièce détachée"
+                    />
                     <div className="multi-select-values">
                       {selectedSpareParts.map((item) => (
                         <span key={item.id} className="multi-select-chip">
