@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
   Clock,
+  Download,
   History,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import {
   getMaintenancePlans,
   updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
 
@@ -198,6 +200,41 @@ export default function MaintenancePlansPage() {
     });
   }, [activeTab, plans, search]);
 
+  function getExportOptions() {
+    const statusLabel = getStatusLabel(activeTab).toLowerCase();
+
+    return {
+      title: `Plans de maintenance - Statut ${statusLabel}`,
+      fileName: `plans-maintenance-statut-${statusLabel.replace(/\s+/g, "-")}`,
+      headers: [
+        "Plan de maintenance",
+        "Equipement",
+        "Declencheur",
+        "Prochaine echeance",
+        "Statut",
+      ],
+      rows: filteredPlans.map((plan) => {
+        const status = getDisplayStatus(plan);
+
+        return [
+          plan.description,
+          plan.equipmentName || "-",
+          plan.triggerLabel || "-",
+          formatDate(plan.nextDueDate),
+          getStatusLabel(status),
+        ];
+      }),
+    };
+  }
+
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
+
   return (
     <section className="admin-page maintenance-page">
       <div className="suppliers-page-heading">
@@ -209,6 +246,26 @@ export default function MaintenancePlansPage() {
         </div>
 
         <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={filteredPlans.length === 0}
+          >
+            <Download size={16} />
+            PDF
+          </button>
+
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={filteredPlans.length === 0}
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
           <button
             type="button"
             className="resource-secondary-button"

@@ -188,21 +188,47 @@ export default function PurchaseOrderCreatePage() {
   }
 
   return (
-    <section className="admin-page purchase-create-page">
-      <form onSubmit={handleSubmit}>
-        <div className="purchase-form-topbar">
+    <div className="purchase-side-panel purchase-create-side-panel">
+      <button
+        type="button"
+        className="purchase-panel-backdrop"
+        onClick={() => navigate("/admin/purchase-orders")}
+        aria-label="Fermer"
+      />
+
+      <aside>
+        <header>
           <button
             type="button"
-            className="details-back-button"
             onClick={() => navigate("/admin/purchase-orders")}
             aria-label="Retour"
           >
-            <ArrowLeft size={22} />
+            <ArrowLeft size={21} />
           </button>
+          <h2>Ajouter un bon de commande</h2>
+        </header>
 
-          <h1>Créer un bon de commande</h1>
+      <section className="form-header purchase-create-header">
+        <h1>
+          <ShoppingCart size={34} />
+          <span>Ajouter un bon de commande</span>
+          Créer un bon de commande
+        </h1>
+
+        <div className="wizard-steps purchase-create-steps">
+          <button type="button" className="active">
+            1 Fournisseur
+          </button>
+          <button type="button" className="active">
+            2 Informations
+          </button>
+          <button type="button" className={lines.length > 0 ? "active" : ""}>
+            3 Lignes de commande
+          </button>
         </div>
+      </section>
 
+      <form className="purchase-create-side-form" onSubmit={handleSubmit}>
         <div className="purchase-form-layout">
           <div className="purchase-form-main">
             <section className="purchase-form-card">
@@ -466,6 +492,7 @@ export default function PurchaseOrderCreatePage() {
           </button>
         </div>
       </form>
-    </section>
+      </aside>
+    </div>
   );
 }

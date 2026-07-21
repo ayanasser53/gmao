@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   History,
   ListChecks,
   MapPin,
@@ -27,6 +28,7 @@ import type { CostCenter } from "../../types/costCenter";
 import type { TaskListItem, TaskStatus, TaskSummary } from "../../types/task";
 import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
 
@@ -278,6 +280,45 @@ function TaskListPage() {
     Boolean,
   ).length;
 
+  function getExportOptions() {
+    const statusLabel = STATUS_META[activeTab].label.toLowerCase();
+
+    return {
+      title: `Taches - Statut ${statusLabel}`,
+      fileName: `taches-statut-${statusLabel.replace(/\s+/g, "-")}`,
+      headers: [
+        "Tache",
+        "Equipement",
+        "Centre de cout",
+        "Signale par",
+        "Date",
+        "Statut",
+      ],
+      rows: filteredTasks.map((task) => [
+        task.description,
+        task.equipment?.name || "-",
+        task.costCenterName || "Non defini",
+        task.assignees
+          .map((assignee) =>
+            assignee.type === "USER"
+              ? assignee.userFullName
+              : assignee.teamName,
+          )
+          .join(", ") || "Non renseigne",
+        formatDate(task.startDate),
+        STATUS_META[task.status].label,
+      ]),
+    };
+  }
+
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
+
   function applyFilters(): void {
     setAppliedFilters({
       assignedTo: filterAssignedTo,
@@ -320,6 +361,26 @@ function TaskListPage() {
         </div>
 
         <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={filteredTasks.length === 0}
+          >
+            <Download size={16} />
+            PDF
+          </button>
+
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={filteredTasks.length === 0}
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
           <button
             type="button"
             className="resource-primary-button"

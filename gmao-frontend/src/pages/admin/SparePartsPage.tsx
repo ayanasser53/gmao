@@ -7,6 +7,7 @@ import {
 import {
   Boxes,
   CirclePlus,
+  Download,
   MapPin,
   PackagePlus,
   Pencil,
@@ -22,6 +23,7 @@ import {
 } from "../../services/sparePartService";
 
 import type { SparePart } from "../../types/sparePart";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 
 const BACKEND_URL = "http://localhost:8090";
@@ -134,6 +136,29 @@ function getStockDotClass(part: SparePart): string {
   return `spare-stock-dot spare-stock-dot-${status}`;
 }
 
+  function getExportOptions() {
+    return {
+      title: "Pieces detachees",
+      fileName: "pieces-detachees",
+      headers: ["Piece detachee", "Code", "Stock", "Emplacement", "Prix"],
+      rows: filteredSpareParts.map((part) => [
+        part.name,
+        part.code || "-",
+        part.quantity,
+        part.location || "-",
+        `${part.unitPrice} ${part.currency}`,
+      ]),
+    };
+  }
+
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
+
   return (
     <section className="suppliers-workspace">
       <div className="suppliers-page-heading">
@@ -144,14 +169,36 @@ function getStockDotClass(part: SparePart): string {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="supplier-primary-button"
-          onClick={() => navigate("/admin/spare-parts/create")}
-        >
-          <CirclePlus size={19} />
-          Ajouter une pièce détachée
-        </button>
+        <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={filteredSpareParts.length === 0}
+          >
+            <Download size={16} />
+            PDF
+          </button>
+
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={filteredSpareParts.length === 0}
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
+          <button
+            type="button"
+            className="supplier-primary-button"
+            onClick={() => navigate("/admin/spare-parts/create")}
+          >
+            <CirclePlus size={19} />
+            Ajouter une pièce détachée
+          </button>
+        </div>
       </div>
 
       {error && (

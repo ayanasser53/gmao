@@ -1,4 +1,5 @@
 import {
+  Download,
   ListChecks,
   Plus,
   Search,
@@ -10,6 +11,7 @@ import {
   getActivities,
 } from "../../services/activityService";
 import type { Activity } from "../../types/activity";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 function formatSpentTime(activity: Activity) {
   return `${activity.spentHours}h ${activity.spentMinutes}min`;
@@ -53,6 +55,37 @@ function ActivitiesPage() {
     });
   }, [activities, search]);
 
+  function getExportOptions() {
+    return {
+      title: "Liste des activites",
+      fileName: "activites",
+      headers: [
+        "Equipement",
+        "Tache",
+        "Activite",
+        "Date",
+        "Heure fin",
+        "Temps passe",
+      ],
+      rows: filteredActivities.map((activity) => [
+        activity.equipmentName || "-",
+        activity.taskDescription,
+        activity.description,
+        activity.performedDate,
+        activity.performedEndTime,
+        formatSpentTime(activity),
+      ]),
+    };
+  }
+
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
+
   return (
     <section className="suppliers-workspace">
       <div className="suppliers-page-heading">
@@ -63,13 +96,35 @@ function ActivitiesPage() {
           </div>
         </div>
 
-        <Link
-          to="/admin/activities/create"
-          className="supplier-primary-button"
-        >
-          <Plus size={18} />
-          Ajouter une activite
-        </Link>
+        <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={filteredActivities.length === 0}
+          >
+            <Download size={16} />
+            PDF
+          </button>
+
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={filteredActivities.length === 0}
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
+          <Link
+            to="/admin/activities/create"
+            className="supplier-primary-button"
+          >
+            <Plus size={18} />
+            Ajouter une activite
+          </Link>
+        </div>
       </div>
 
       {error && (

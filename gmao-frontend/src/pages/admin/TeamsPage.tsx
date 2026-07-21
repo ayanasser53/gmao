@@ -1,4 +1,4 @@
-import { Pencil, Plus, Search, Trash2, UsersRound } from "lucide-react";
+import { Download, Pencil, Plus, Search, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,6 +6,7 @@ import { deleteTeam, getTeams } from "../../services/teamService";
 import { deleteUser, getUsersDetailed } from "../../services/userService";
 import type { Team } from "../../types/team";
 import type { UserDetail, UserRole } from "../../types/user";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./team-styles.css";
 
@@ -125,6 +126,45 @@ function TeamsPage() {
     }
   }
 
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
+
+  function getExportOptions() {
+    if (activeTab === "colleagues") {
+      return {
+        title: "Liste des collegues",
+        fileName: "equipes-collegues",
+        headers: ["Membre", "Email", "Role", "Equipes", "Tags"],
+        rows: filteredUsers.map((user) => [
+          `${user.firstName} ${user.lastName}`,
+          user.email,
+          ROLE_LABELS[user.role],
+          user.teams.map((team) => team.name).join(", ") || "-",
+          user.tags.map((tag) => tag.name).join(", ") || "-",
+        ]),
+      };
+    }
+
+    return {
+      title: "Liste des equipes",
+      fileName: "equipes",
+      headers: ["Equipe", "Description", "Membres", "Tags"],
+      rows: filteredTeams.map((team) => [
+        team.name,
+        team.description ?? "-",
+        team.members
+          .map((member) => `${member.firstName} ${member.lastName}`)
+          .join(", ") || "-",
+        team.tags.map((tag) => tag.name).join(", ") || "-",
+      ]),
+    };
+  }
+
   return (
     <section className="admin-page">
       <div className="suppliers-page-heading">
@@ -136,6 +176,32 @@ function TeamsPage() {
         </div>
 
         <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={
+              activeTab === "colleagues"
+                ? filteredUsers.length === 0
+                : filteredTeams.length === 0
+            }
+          >
+            <Download size={16} />
+            PDF
+          </button>
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={
+              activeTab === "colleagues"
+                ? filteredUsers.length === 0
+                : filteredTeams.length === 0
+            }
+          >
+            <Download size={16} />
+            CSV
+          </button>
           <button
             type="button"
             className="resource-primary-button"

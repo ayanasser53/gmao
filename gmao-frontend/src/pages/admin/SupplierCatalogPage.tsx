@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ArrowLeft,
@@ -8,11 +8,14 @@ import {
   Cable,
   Copy,
   Factory,
+  Info,
   Mail,
   Package,
   Search,
   ShieldCheck,
   Shirt,
+  Trash2,
+  Upload,
 } from "lucide-react";
 
 type CatalogItem = {
@@ -28,14 +31,22 @@ type CatalogItem = {
 type CatalogSupplier = {
   id: number;
   name: string;
-  logo: "RS" | "Rexel" | "Siemens";
+  logo: string;
   siren: string;
   phone: string;
   description: string;
   official: boolean;
 };
 
-const suppliers: CatalogSupplier[] = [
+type StoredCatalog = {
+  items: CatalogItem[];
+  suppliers: CatalogSupplier[];
+  removedItemIds: number[];
+};
+
+const catalogStorageKey = "gmao-supplier-catalog-imports";
+
+const officialSuppliers: CatalogSupplier[] = [
   {
     id: 1,
     name: "RS Components SAS",
@@ -43,7 +54,7 @@ const suppliers: CatalogSupplier[] = [
     siren: "334 534 039 00030",
     phone: "+33684780535",
     description:
-      "RS Components est distributeur de matériel et composants électriques, électroniques et électromécaniques. Nous proposons une gamme de 600 000 produits venant de marques leaders.",
+      "RS Components est distributeur de materiel et composants electriques, electroniques et electromecaniques. Nous proposons une gamme de 600 000 produits venant de marques leaders.",
     official: true,
   },
   {
@@ -53,7 +64,7 @@ const suppliers: CatalogSupplier[] = [
     siren: "309 304 616 00045",
     phone: "+33141858000",
     description:
-      "Rexel France accompagne les professionnels dans leurs besoins en matériel électrique, automatisme, énergie et maintenance industrielle.",
+      "Rexel France accompagne les professionnels dans leurs besoins en materiel electrique, automatisme, energie et maintenance industrielle.",
     official: true,
   },
   {
@@ -63,16 +74,16 @@ const suppliers: CatalogSupplier[] = [
     siren: "562 016 774 00030",
     phone: "+33185570000",
     description:
-      "Siemens Industry fournit des solutions industrielles, automatismes, composants et équipements pour la production et la maintenance.",
+      "Siemens Industry fournit des solutions industrielles, automatismes, composants et equipements pour la production et la maintenance.",
     official: true,
   },
 ];
 
-const catalogItems: CatalogItem[] = [
+const officialCatalogItems: CatalogItem[] = [
   {
     id: 1,
     equipment: "Alphashield S1BH Small",
-    category: "Vêtements de protection",
+    category: "Vetements de protection",
     brand: "Alpha Solway",
     manufacturerReference: "Alphashield S1BH S",
     gtin: "",
@@ -107,13 +118,122 @@ const catalogItems: CatalogItem[] = [
   },
 ];
 
-function getSupplier(id: number): CatalogSupplier {
-  return suppliers.find((supplier) => supplier.id === id) ?? suppliers[0];
+function normalizeHeader(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function parseCsvLine(line: string, separator: string) {
+  const values: string[] = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (char === '"' && quoted && nextChar === '"') {
+      value += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+
+    if (char === separator && !quoted) {
+      values.push(value.trim());
+      value = "";
+      continue;
+    }
+
+    value += char;
+  }
+
+  values.push(value.trim());
+  return values;
+}
+
+function parseCsv(content: string) {
+  const lines = content
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .filter((line) => line.trim());
+
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const separator = lines[0].includes(";") ? ";" : ",";
+  const headers = parseCsvLine(lines[0], separator).map(normalizeHeader);
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line, separator);
+
+    return headers.reduce<Record<string, string>>((row, header, index) => {
+      row[header] = values[index] ?? "";
+      return row;
+    }, {});
+  });
+}
+
+function pickField(row: Record<string, unknown>, aliases: string[]) {
+  for (const alias of aliases) {
+    const value = row[normalizeHeader(alias)];
+
+    if (value !== undefined && value !== null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+
+  return "";
+}
+
+function readStoredCatalog(): StoredCatalog {
+  try {
+    const storedValue = localStorage.getItem(catalogStorageKey);
+
+    if (!storedValue) {
+      return { items: [], suppliers: [] };
+    }
+
+    const parsedValue = JSON.parse(storedValue) as Partial<StoredCatalog>;
+
+    return {
+      items: Array.isArray(parsedValue.items) ? parsedValue.items : [],
+      suppliers: Array.isArray(parsedValue.suppliers) ? parsedValue.suppliers : [],
+      removedItemIds: Array.isArray(parsedValue.removedItemIds)
+        ? parsedValue.removedItemIds
+        : [],
+    };
+  } catch {
+    return { items: [], suppliers: [], removedItemIds: [] };
+  }
+}
+
+function getLogoClass(logo: string) {
+  return logo.toLowerCase().replace(/[^a-z0-9]/g, "") || "import";
+}
+
+function getImportedLogo(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "FC";
 }
 
 function SupplierLogo({ supplier }: { supplier: CatalogSupplier }) {
   return (
-    <div className={`catalog-logo catalog-logo-${supplier.logo.toLowerCase()}`}>
+    <div className={`catalog-logo catalog-logo-${getLogoClass(supplier.logo)}`}>
       {supplier.logo}
     </div>
   );
@@ -122,7 +242,7 @@ function SupplierLogo({ supplier }: { supplier: CatalogSupplier }) {
 function CatalogItemIcon({ category }: { category: string }) {
   const lowerCategory = category.toLowerCase();
 
-  if (lowerCategory.includes("vêtement")) {
+  if (lowerCategory.includes("vetement")) {
     return <Shirt size={38} />;
   }
 
@@ -139,30 +259,239 @@ function CatalogItemIcon({ category }: { category: string }) {
 
 function SupplierCatalogPage() {
   const [search, setSearch] = useState("");
-  const [selectedOption, setSelectedOption] = useState("official");
+  const [selectedOption, setSelectedOption] = useState("all");
   const [selectedSupplier, setSelectedSupplier] = useState<CatalogSupplier | null>(null);
+  const [storedCatalog, setStoredCatalog] = useState<StoredCatalog>(() =>
+    readStoredCatalog(),
+  );
+  const [importMessage, setImportMessage] = useState("");
+  const [importError, setImportError] = useState("");
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  const suppliers = useMemo(
+    () => [...officialSuppliers, ...storedCatalog.suppliers],
+    [storedCatalog.suppliers],
+  );
+
+  const catalogItems = useMemo(
+    () =>
+      [...officialCatalogItems, ...storedCatalog.items].filter(
+        (item) => !storedCatalog.removedItemIds.includes(item.id),
+      ),
+    [storedCatalog.items, storedCatalog.removedItemIds],
+  );
+
+  const supplierById = useMemo(() => {
+    return new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+  }, [suppliers]);
+
+  const supplierReferenceCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+
+    catalogItems.forEach((item) => {
+      counts.set(item.supplierId, (counts.get(item.supplierId) ?? 0) + 1);
+    });
+
+    return counts;
+  }, [catalogItems]);
+
+  useEffect(() => {
+    localStorage.setItem(catalogStorageKey, JSON.stringify(storedCatalog));
+  }, [storedCatalog]);
+
+  const getSupplier = useCallback(
+    (id: number) => supplierById.get(id) ?? officialSuppliers[0],
+    [supplierById],
+  );
 
   const filteredItems = useMemo(() => {
     const value = search.trim().toLowerCase();
 
     return catalogItems.filter((item) => {
       const supplier = getSupplier(item.supplierId);
-      const matchesSearch = !value || [
+      const fields = [
         item.equipment,
         item.category,
         item.brand,
         item.manufacturerReference,
         item.gtin,
         supplier.name,
-      ].some((field) => field.toLowerCase().includes(value));
+      ];
+      const matchesSearch =
+        !value || fields.some((field) => field.toLowerCase().includes(value));
 
       if (selectedOption === "official") {
         return matchesSearch && supplier.official;
       }
 
+      if (selectedOption === "imported") {
+        return matchesSearch && !supplier.official;
+      }
+
+      if (selectedOption.startsWith("supplier-")) {
+        return matchesSearch && item.supplierId === Number(selectedOption.slice(9));
+      }
+
       return matchesSearch;
     });
-  }, [search, selectedOption]);
+  }, [catalogItems, getSupplier, search, selectedOption]);
+
+  const selectedReferenceLabel = useMemo(() => {
+    if (selectedOption === "official") {
+      return "References officielles";
+    }
+
+    if (selectedOption === "imported") {
+      return "References importees";
+    }
+
+    if (selectedOption.startsWith("supplier-")) {
+      const supplier = getSupplier(Number(selectedOption.slice(9)));
+      return supplier.name;
+    }
+
+    return "Toutes les references";
+  }, [getSupplier, selectedOption]);
+
+  async function handleImportCatalog(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setImportError("");
+    setImportMessage("");
+
+    try {
+      const content = await file.text();
+      const parsedValue = file.name.toLowerCase().endsWith(".json")
+        ? JSON.parse(content)
+        : parseCsv(content);
+      const rows = Array.isArray(parsedValue)
+        ? parsedValue
+        : Array.isArray(parsedValue.items)
+          ? parsedValue.items
+          : [];
+
+      if (rows.length === 0) {
+        throw new Error("empty");
+      }
+
+      const supplierMap = new Map<string, CatalogSupplier>();
+      const nextSuppliers = [...storedCatalog.suppliers];
+      const nextItems: CatalogItem[] = [];
+      let nextSupplierId = Math.max(...suppliers.map((supplier) => supplier.id), 0) + 1;
+      let nextItemId = Math.max(...catalogItems.map((item) => item.id), 0) + 1;
+
+      suppliers.forEach((supplier) => {
+        supplierMap.set(supplier.name.trim().toLowerCase(), supplier);
+      });
+
+      rows.forEach((rawRow: unknown) => {
+        const row = rawRow as Record<string, unknown>;
+        const equipment = pickField(row, [
+          "equipement",
+          "equipment",
+          "nom",
+          "name",
+          "article",
+        ]);
+
+        if (!equipment) {
+          return;
+        }
+
+        const supplierName =
+          pickField(row, ["fournisseur", "supplier", "supplierName"]) ||
+          "Fournisseur importe";
+        const supplierKey = supplierName.toLowerCase();
+        let supplier = supplierMap.get(supplierKey);
+
+        if (!supplier) {
+          supplier = {
+            id: nextSupplierId,
+            name: supplierName,
+            logo: getImportedLogo(supplierName),
+            siren: pickField(row, ["siren", "siret"]),
+            phone: pickField(row, ["telephone", "phone"]),
+            description: pickField(row, ["description"]),
+            official: false,
+          };
+          nextSupplierId += 1;
+          nextSuppliers.push(supplier);
+          supplierMap.set(supplierKey, supplier);
+        }
+
+        nextItems.push({
+          id: nextItemId,
+          equipment,
+          category: pickField(row, ["categorie", "category"]),
+          brand: pickField(row, ["marque", "brand"]),
+          manufacturerReference: pickField(row, [
+            "referenceFabricant",
+            "reference fabricant",
+            "manufacturerReference",
+            "manufacturer reference",
+            "ref fabricant",
+          ]),
+          gtin: pickField(row, ["gtin", "ean", "codeGtinEan", "code gtin ean"]),
+          supplierId: supplier.id,
+        });
+        nextItemId += 1;
+      });
+
+      if (nextItems.length === 0) {
+        throw new Error("empty");
+      }
+
+      setStoredCatalog((currentCatalog) => ({
+        suppliers: nextSuppliers,
+        items: [...currentCatalog.items, ...nextItems],
+        removedItemIds: currentCatalog.removedItemIds,
+      }));
+      setSelectedOption("all");
+      setImportMessage(
+        `${nextItems.length.toLocaleString("fr-FR")} reference(s) importee(s).`,
+      );
+    } catch {
+      setImportError(
+        "Import impossible. Utilisez un fichier CSV ou JSON avec une colonne equipement.",
+      );
+    } finally {
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function copyReference(item: CatalogItem) {
+    const reference = item.manufacturerReference || item.gtin || item.equipment;
+
+    try {
+      await navigator.clipboard.writeText(reference);
+      setImportMessage("Reference copiee.");
+      setImportError("");
+    } catch {
+      setImportError("Impossible de copier la reference.");
+    }
+  }
+
+  function deleteCatalogItem(item: CatalogItem) {
+    const confirmed = window.confirm(`Supprimer la reference "${item.equipment}" ?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setStoredCatalog((currentCatalog) => ({
+      suppliers: currentCatalog.suppliers,
+      items: currentCatalog.items.filter((currentItem) => currentItem.id !== item.id),
+      removedItemIds: currentCatalog.removedItemIds.includes(item.id)
+        ? currentCatalog.removedItemIds
+        : [...currentCatalog.removedItemIds, item.id],
+    }));
+    setImportMessage("Reference supprimee.");
+    setImportError("");
+  }
 
   if (selectedSupplier) {
     return (
@@ -192,13 +521,13 @@ function SupplierCatalogPage() {
 
             <div className="catalog-detail-info">
               <p>
-                <strong>SIREN ou SIRET:</strong> {selectedSupplier.siren}
+                <strong>SIREN ou SIRET:</strong> {selectedSupplier.siren || "-"}
               </p>
               <p>
-                <strong>Téléphone:</strong> {selectedSupplier.phone}
+                <strong>Telephone:</strong> {selectedSupplier.phone || "-"}
               </p>
               <p className="catalog-detail-description">
-                « {selectedSupplier.description} »
+                {selectedSupplier.description || "Aucune description renseignee."}
               </p>
             </div>
           </div>
@@ -236,15 +565,46 @@ function SupplierCatalogPage() {
           value={selectedOption}
           onChange={(event) => setSelectedOption(event.target.value)}
         >
-          <option value="official">Références officielles</option>
-          <option value="all">Toutes les références</option>
+          <option value="all">Toutes les references</option>
+          <option value="official">References officielles</option>
+          <option value="imported">References importees</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier.id} value={`supplier-${supplier.id}`}>
+              {supplier.name} ({supplierReferenceCounts.get(supplier.id) ?? 0})
+            </option>
+          ))}
         </select>
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".csv,.json,text/csv,application/json"
+          className="catalog-import-input"
+          onChange={(event) => {
+            void handleImportCatalog(event.target.files?.[0] ?? null);
+          }}
+        />
+
+        <button
+          type="button"
+          className="catalog-import-button"
+          onClick={() => importInputRef.current?.click()}
+        >
+          <Upload size={18} />
+          Importer le catalogue
+        </button>
       </div>
+
+      {(importMessage || importError) && (
+        <div className={`catalog-import-feedback ${importError ? "error" : ""}`}>
+          {importError || importMessage}
+        </div>
+      )}
 
       <div className="catalog-reference-card">
         <div className="catalog-reference-header">
           <ShieldCheck size={22} />
-          <span>Références officielles</span>
+          <span>{selectedReferenceLabel}</span>
           <strong>{filteredItems.length.toLocaleString("fr-FR")}</strong>
         </div>
 
@@ -255,11 +615,11 @@ function SupplierCatalogPage() {
                 <th></th>
                 <th>
                   <Factory size={20} />
-                  Équipement
+                  Equipement
                 </th>
-                <th>Catégorie</th>
+                <th>Categorie</th>
                 <th>Marque</th>
-                <th>Référence fabricant</th>
+                <th>Reference fabricant</th>
                 <th>Code GTIN/EAN</th>
                 <th>
                   <Building2 size={18} />
@@ -289,7 +649,7 @@ function SupplierCatalogPage() {
                         {item.equipment}
                       </button>
                     </td>
-                    <td>{item.category}</td>
+                    <td>{item.category || "-"}</td>
                     <td>{item.brand || "-"}</td>
                     <td>{item.manufacturerReference || "-"}</td>
                     <td>{item.gtin || "-"}</td>
@@ -305,11 +665,29 @@ function SupplierCatalogPage() {
                     </td>
                     <td>
                       <div className="catalog-actions">
-                        <button type="button" aria-label="Contacter le fournisseur">
-                          <Mail size={19} />
+                        <button
+                          type="button"
+                          aria-label="Voir les informations"
+                          onClick={() => setSelectedSupplier(supplier)}
+                        >
+                          <Info size={19} />
                         </button>
-                        <button type="button" aria-label="Copier la référence">
+                        <button
+                          type="button"
+                          aria-label="Copier la reference"
+                          onClick={() => {
+                            void copyReference(item);
+                          }}
+                        >
                           <Copy size={19} />
+                        </button>
+                        <button
+                          type="button"
+                          className="catalog-delete-action"
+                          aria-label="Supprimer la reference"
+                          onClick={() => deleteCatalogItem(item)}
+                        >
+                          <Trash2 size={19} />
                         </button>
                       </div>
                     </td>
