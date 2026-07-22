@@ -4,15 +4,21 @@ import com.gmao.gmao_backend.measure.Measure;
 import com.gmao.gmao_backend.measure.MeasureRepository;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
+import com.gmao.gmao_backend.sparepart.SparePartStockMovementRepository;
 import com.gmao.gmao_backend.task.Task;
 import com.gmao.gmao_backend.task.TaskRepository;
 import com.gmao.gmao_backend.task.TaskStatus;
 import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -29,6 +35,7 @@ public class ActivityService {
     private final ActivityAdditionalCostRepository activityAdditionalCostRepository;
     private final ActivityMeasureReadingRepository activityMeasureReadingRepository;
     private final MeasureRepository measureRepository;
+    private final SparePartStockMovementRepository stockMovementRepository;
 
     public List<ActivityResponse> findAll() {
         return activityRepository.findAllByOrderByPerformedDateDescPerformedEndTimeDesc()
@@ -126,6 +133,8 @@ public class ActivityService {
 
         Activity savedActivity = activityRepository.save(activity);
 
+        restoreSpareParts(savedActivity.getId());
+
         activitySparePartRepository.deleteByActivityId(savedActivity.getId());
         activityIntervenantRepository.deleteByActivityId(savedActivity.getId());
         activityAdditionalCostRepository.deleteByActivityId(savedActivity.getId());
@@ -136,6 +145,39 @@ public class ActivityService {
         return toResponse(savedActivity);
     }
 
+    /**
+     * Before replacing an activity's spare part lines on update, put the
+     * previously consumed quantities back in stock (with a matching
+     * correction movement), so editing an activity never double-counts
+     * stock consumption.
+     */
+    private void restoreSpareParts(Long activityId) {
+        List<ActivitySparePart> existingLines = activitySparePartRepository.findByActivityId(activityId);
+
+        for (ActivitySparePart line : existingLines) {
+            SparePart sparePart = line.getSparePart();
+
+            BigDecimal currentStock = sparePart.getQuantity() == null
+                    ? BigDecimal.ZERO
+                    : sparePart.getQuantity();
+            sparePart.setQuantity(currentStock.add(BigDecimal.valueOf(line.getQuantity())));
+            sparePartRepository.save(sparePart);
+
+            SparePartStockMovement movement = SparePartStockMovement.builder()
+                    .sparePart(sparePart)
+                    .source("Activité")
+                    .reference("Correction activité #" + activityId)
+                    .movementType("CORRECTION")
+                    .quantity(BigDecimal.valueOf(line.getQuantity()))
+                    .unitCost(sparePart.getUnitPrice())
+                    .userName(currentUserName())
+                    .movementDate(LocalDateTime.now())
+                    .build();
+
+            stockMovementRepository.save(movement);
+        }
+    }
+
     public ActivityResponse updateStatus(Long id, ActivityStatus status) {
         Activity activity = findActivity(id);
         activity.setStatus(status);
@@ -144,6 +186,7 @@ public class ActivityService {
     }
 
     public void delete(Long id) {
+        restoreSpareParts(id);
         activityRepository.delete(findActivity(id));
     }
 
@@ -177,7 +220,38 @@ public class ActivityService {
                     .build();
 
             activitySparePartRepository.save(activitySparePart);
+
+            BigDecimal currentStock = sparePart.getQuantity() == null
+                    ? BigDecimal.ZERO
+                    : sparePart.getQuantity();
+            sparePart.setQuantity(currentStock.subtract(BigDecimal.valueOf(quantity)));
+            sparePartRepository.save(sparePart);
+
+            SparePartStockMovement movement = SparePartStockMovement.builder()
+                    .sparePart(sparePart)
+                    .source("Activité")
+                    .reference("Activité #" + activity.getId())
+                    .movementType("CONSOMMATION")
+                    .quantity(BigDecimal.valueOf(quantity).negate())
+                    .unitCost(sparePart.getUnitPrice())
+                    .userName(currentUserName())
+                    .movementDate(LocalDateTime.now())
+                    .build();
+
+            stockMovementRepository.save(movement);
         }
+    }
+
+    private String currentUserName() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            return null;
+        }
+
+        return userRepository.findByEmail(authentication.getName())
+                .map(user -> (user.getFirstName() + " " + user.getLastName()).trim())
+                .orElse(null);
     }
 
     private void saveIntervenants(Activity activity, List<Long> intervenantIds) {

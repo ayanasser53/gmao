@@ -126,6 +126,17 @@ function ActivityFormPage() {
       return;
     }
 
+    if (
+      showSparePartLine &&
+      selectedSparePart &&
+      sparePartQuantity > selectedSparePart.quantity
+    ) {
+      setError(
+        `La quantite saisie (${sparePartQuantity}) depasse le stock disponible (${selectedSparePart.quantity}).`,
+      );
+      return;
+    }
+
     const additionalCostAmountValue = parseDecimal(additionalCostAmount);
 
     if (
@@ -514,6 +525,13 @@ function ActivityFormPage() {
                       {selectedSparePart.currency || "EUR"}
                     </div>
                   )}
+
+                  {selectedSparePart &&
+                    sparePartQuantity > selectedSparePart.quantity && (
+                      <p className="activity-stock-warning">
+                        Quantité supérieure au stock disponible ({selectedSparePart.quantity}).
+                      </p>
+                    )}
 
                   <button
                     type="button"
