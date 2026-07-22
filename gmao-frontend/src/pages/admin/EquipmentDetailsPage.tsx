@@ -71,6 +71,8 @@ function EquipmentDetailsPage() {
       ? { label: "Retour aux activités", path: "/admin/activities" }
       : source === "tasks"
       ? { label: "Retour aux tâches", path: "/admin/tasks" }
+      : source === "spare-parts"
+      ? { label: "Retour aux pièces détachées", path: "/admin/spare-parts" }
       : { label: "Retour aux équipements", path: "/admin/equipment" };
 
   const [equipment, setEquipment] =

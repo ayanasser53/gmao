@@ -337,7 +337,7 @@ function SparePartDetailsPage() {
                         </div>
                       </div>
 
-                      <Link className="spare-detail-linked-action" to={`/admin/equipment/${equipment.id}`}>
+                      <Link className="spare-detail-linked-action" to={`/admin/equipment/${equipment.id}?from=spare-parts`}>
                         Voir le détail
                         <ChevronRight size={18} />
                       </Link>
