@@ -2,13 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
+  CheckCircle2,
   Clock,
   Download,
   History,
+  MapPin,
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
+  Tag as TagIcon,
   Trash2,
+  Users,
   Wrench,
 } from "lucide-react";
 import type {
@@ -20,11 +25,32 @@ import {
   getMaintenancePlans,
   updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
+import { getCostCenters } from "../../services/costCenterService";
+import { getEquipment } from "../../services/equipmentService";
+import { getTags } from "../../services/tagService";
+import { getUsers } from "../../services/userService";
+import type { CostCenter } from "../../types/costCenter";
+import type { Equipment } from "../../types/equipment";
+import type { Tag } from "../../types/tag";
+import type { UserSummary } from "../../types/user";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
 
 type DisplayStatus = "planned" | "in_progress" | "late" | "done";
+type MaintenanceFilterDropdown =
+  | "trigger"
+  | "equipment"
+  | "status"
+  | "assignee"
+  | "label"
+  | "costCenter"
+  | null;
+
+interface MaintenancePlanWithAssignees extends MaintenancePlan {
+  assignees?: { userId?: number | null; id?: number | null }[];
+  assignedTo?: { userId?: number | null; id?: number | null }[];
+}
 
 const STATUS_TABS = [
   {
@@ -52,6 +78,13 @@ const STATUS_TABS = [
     icon: History,
   },
 ] as const;
+
+const TRIGGER_FILTER_OPTIONS = [
+  { value: "FIXED_DATE", label: "Quotidien" },
+  { value: "TASK_CLOSURE", label: "Clôture de tâche" },
+  { value: "EXTERNAL_API", label: "API externe" },
+  { value: "COUNTER", label: "Compteur" },
+];
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -108,11 +141,41 @@ function getStoredStatus(status: DisplayStatus): MaintenancePlanStatus {
   return "IN_PROGRESS";
 }
 
+function getUserName(user: UserSummary): string {
+  return (
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    user.email ||
+    `Utilisateur ${user.id}`
+  );
+}
+
+function planHasAssignee(plan: MaintenancePlan, userId: string) {
+  const fullPlan = plan as MaintenancePlanWithAssignees;
+
+  return [...(fullPlan.assignees ?? []), ...(fullPlan.assignedTo ?? [])].some(
+    (assignee) =>
+      String(assignee.userId ?? assignee.id ?? "") === userId,
+  );
+}
+
 export default function MaintenancePlansPage() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [users, setUsers] = useState<UserSummary[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterTriggerType, setFilterTriggerType] = useState("");
+  const [filterEquipmentId, setFilterEquipmentId] = useState("");
+  const [filterPlanStatus, setFilterPlanStatus] = useState("");
+  const [filterAssigneeId, setFilterAssigneeId] = useState("");
+  const [filterTagId, setFilterTagId] = useState("");
+  const [filterCostCenter, setFilterCostCenter] = useState("");
+  const [openDropdown, setOpenDropdown] =
+    useState<MaintenanceFilterDropdown>(null);
   const [activeTab, setActiveTab] = useState<DisplayStatus>("planned");
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
@@ -123,8 +186,25 @@ export default function MaintenancePlansPage() {
   async function loadPlans() {
     try {
       setError("");
-      const data = await getMaintenancePlans();
+      const [
+        data,
+        equipmentData,
+        usersData,
+        tagsData,
+        costCentersData,
+      ] = await Promise.all([
+        getMaintenancePlans(),
+        getEquipment(),
+        getUsers(),
+        getTags(),
+        getCostCenters(),
+      ]);
+
       setPlans(data);
+      setEquipment(equipmentData);
+      setUsers(usersData);
+      setTags(tagsData);
+      setCostCenters(costCentersData);
     } catch {
       setError("Impossible de charger les plans de maintenance.");
     }
@@ -179,7 +259,52 @@ export default function MaintenancePlansPage() {
 
   const filteredPlans = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const scopedPlans = plans.filter((plan) => getDisplayStatus(plan) === activeTab);
+    const equipmentById = new Map(equipment.map((item) => [item.id, item]));
+    const scopedPlans = plans.filter((plan) => {
+      const displayStatus = getDisplayStatus(plan);
+      const linkedEquipment = equipmentById.get(plan.equipmentId);
+
+      if (displayStatus !== activeTab) {
+        return false;
+      }
+
+      if (filterTriggerType && plan.triggerType !== filterTriggerType) {
+        return false;
+      }
+
+      if (filterEquipmentId && String(plan.equipmentId) !== filterEquipmentId) {
+        return false;
+      }
+
+      if (filterPlanStatus && displayStatus !== filterPlanStatus) {
+        return false;
+      }
+
+      if (filterAssigneeId && !planHasAssignee(plan, filterAssigneeId)) {
+        return false;
+      }
+
+      if (
+        filterTagId &&
+        !(linkedEquipment?.tags ?? []).some(
+          (tag) => String(tag.id) === filterTagId,
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        filterCostCenter &&
+        (String(linkedEquipment?.costCenterId ?? "") !== filterCostCenter) &&
+        plan.costCenter !==
+          costCenters.find((costCenter) => String(costCenter.id) === filterCostCenter)
+            ?.name
+      ) {
+        return false;
+      }
+
+      return true;
+    });
 
     if (!query) {
       return scopedPlans;
@@ -198,7 +323,19 @@ export default function MaintenancePlansPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     });
-  }, [activeTab, plans, search]);
+  }, [
+    activeTab,
+    plans,
+    equipment,
+    search,
+    filterTriggerType,
+    filterEquipmentId,
+    filterPlanStatus,
+    filterAssigneeId,
+    filterTagId,
+    filterCostCenter,
+    costCenters,
+  ]);
 
   function getExportOptions() {
     const statusLabel = getStatusLabel(activeTab).toLowerCase();
@@ -233,6 +370,83 @@ export default function MaintenancePlansPage() {
 
   function exportPdf() {
     exportTablePdf(getExportOptions());
+  }
+
+  function renderMaintenanceFilterDropdown(
+    dropdown: Exclude<MaintenanceFilterDropdown, null>,
+    value: string,
+    setValue: (nextValue: string) => void,
+    placeholder: string,
+    options: { value: string; label: string; tone?: string }[],
+  ) {
+    const selectedOption = options.find((option) => option.value === value);
+
+    return (
+      <div className="task-filter-dropdown maintenance-filter-dropdown">
+        <button
+          type="button"
+          className="task-filter-dropdown-trigger"
+          onClick={() =>
+            setOpenDropdown((current) => (current === dropdown ? null : dropdown))
+          }
+        >
+          {selectedOption ? (
+            <span
+              className={`maintenance-filter-option-pill ${
+                selectedOption.tone ? `tone-${selectedOption.tone}` : ""
+              }`}
+            >
+              {selectedOption.label}
+            </span>
+          ) : (
+            <span>{placeholder}</span>
+          )}
+        </button>
+
+        {openDropdown === dropdown && (
+          <div className="task-filter-dropdown-panel maintenance-filter-dropdown-panel">
+            <button
+              type="button"
+              className={`task-filter-dropdown-row ${!value ? "selected" : ""}`}
+              onClick={() => {
+                setValue("");
+                setOpenDropdown(null);
+              }}
+            >
+              <span className="maintenance-filter-option-pill tone-neutral">
+                Tous
+              </span>
+              {!value && <CheckCircle2 size={16} />}
+            </button>
+
+            {options.map((option) => {
+              const isSelected = value === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`task-filter-dropdown-row ${isSelected ? "selected" : ""}`}
+                  onClick={() => {
+                    setValue(option.value);
+                    setOpenDropdown(null);
+                  }}
+                >
+                  <span
+                    className={`maintenance-filter-option-pill ${
+                      option.tone ? `tone-${option.tone}` : ""
+                    }`}
+                  >
+                    {option.label}
+                  </span>
+                  {isSelected && <CheckCircle2 size={16} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -297,8 +511,169 @@ export default function MaintenancePlansPage() {
             placeholder="Rechercher un plan, un équipement, un déclencheur..."
           />
         </div>
+        <button
+          type="button"
+          className={`task-filter-toggle ${showFilters ? "active" : ""}`}
+          onClick={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal size={16} />
+          Filtrer
+        </button>
       </div>
+      {showFilters && (
+        <div className="task-filter-panel maintenance-filter-panel">
+          <div className="task-filter-grid">
+            <div className="task-filter-field">
+              <label>
+                <History size={15} /> Déclencheur
+              </label>
+              {renderMaintenanceFilterDropdown(
+                "trigger",
+                filterTriggerType,
+                setFilterTriggerType,
+                "Sélectionnez votre option",
+                TRIGGER_FILTER_OPTIONS.map((option) => ({
+                  ...option,
+                  tone:
+                    option.value === "FIXED_DATE"
+                      ? "planned"
+                      : option.value === "TASK_CLOSURE"
+                        ? "done"
+                        : option.value === "EXTERNAL_API"
+                          ? "late"
+                          : "progress",
+                })),
+              )}
+            </div>
 
+            <div className="task-filter-field">
+              <label><Wrench size={15} /> Équipements</label>
+              {renderMaintenanceFilterDropdown(
+                "equipment",
+                filterEquipmentId,
+                setFilterEquipmentId,
+                "Équipements",
+                equipment.map((item) => ({
+                  value: String(item.id),
+                  label: item.name,
+                  tone: "equipment",
+                })),
+              )}
+            </div>
+
+            <div className="task-filter-field">
+              <label><CalendarClock size={15} /> État du plan de maintenance</label>
+              {renderMaintenanceFilterDropdown(
+                "status",
+                filterPlanStatus,
+                setFilterPlanStatus,
+                "Sélectionnez votre option",
+                STATUS_TABS.map((tab) => ({
+                  value: tab.status,
+                  label: tab.label,
+                  tone: tab.status,
+                })),
+              )}
+            </div>
+
+            <div className="task-filter-field">
+              <label><Users size={15} /> Assignés</label>
+              {renderMaintenanceFilterDropdown(
+                "assignee",
+                filterAssigneeId,
+                setFilterAssigneeId,
+                "Assignés",
+                users.map((user) => ({
+                  value: String(user.id),
+                  label: getUserName(user),
+                  tone: "user",
+                })),
+              )}
+            </div>
+
+            <div className="task-filter-field">
+              <label><TagIcon size={15} /> Labels</label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() => setOpenDropdown((current) => current === "label" ? null : "label")}
+                >
+                  {(() => {
+                    const tag = tags.find((item) => String(item.id) === filterTagId);
+                    return tag ? (
+                      <span className="task-filter-tag-chip" style={{ color: tag.color, borderColor: tag.color, background: `${tag.color}1a` }}>
+                        {tag.name}
+                      </span>
+                    ) : <span>Labels</span>;
+                  })()}
+                </button>
+                {openDropdown === "label" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${!filterTagId ? "selected" : ""}`}
+                      onClick={() => { setFilterTagId(""); setOpenDropdown(null); }}
+                    >
+                      Tous
+                      {!filterTagId && <CheckCircle2 size={16} />}
+                    </button>
+                    {tags.map((tag) => {
+                      const isSelected = filterTagId === String(tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className={`task-filter-dropdown-row ${isSelected ? "selected" : ""}`}
+                          onClick={() => { setFilterTagId(String(tag.id)); setOpenDropdown(null); }}
+                        >
+                          <span className="task-filter-tag-chip" style={{ color: tag.color, borderColor: tag.color, background: `${tag.color}1a` }}>{tag.name}</span>
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="task-filter-field">
+              <label><MapPin size={15} /> Centre de coûts</label>
+              {renderMaintenanceFilterDropdown(
+                "costCenter",
+                filterCostCenter,
+                setFilterCostCenter,
+                "Centre de coûts",
+                costCenters.map((costCenter) => ({
+                  value: String(costCenter.id),
+                  label: costCenter.name,
+                  tone: "cost",
+                })),
+              )}
+            </div>
+          </div>
+
+          <div className="task-filter-actions">
+            <button type="button" className="task-filter-apply" onClick={() => setShowFilters(false)}>
+              Appliquer les filtres
+            </button>
+            <button
+              type="button"
+              className="task-filter-reset"
+              onClick={() => {
+                setFilterTriggerType("");
+                setFilterEquipmentId("");
+                setFilterPlanStatus("");
+                setFilterAssigneeId("");
+                setFilterTagId("");
+                setFilterCostCenter("");
+              }}
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        </div>
+      )}
       <div className="task-status-cards">
         {STATUS_TABS.map((tab) => {
           const Icon = tab.icon;

@@ -60,6 +60,7 @@ export default function PurchaseOrderCreatePage() {
   const [draftLine, setDraftLine] = useState<PurchaseOrderLine>(() =>
     emptyLine("SPARE_PART"),
   );
+  const [isAddingLine, setIsAddingLine] = useState(false);
   const [lines, setLines] = useState<PurchaseOrderLine[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -150,6 +151,7 @@ export default function PurchaseOrderCreatePage() {
       },
     ]);
     setDraftLine(emptyLine(lineMode));
+    setIsAddingLine(false);
     setError("");
   }
 
@@ -313,105 +315,138 @@ export default function PurchaseOrderCreatePage() {
                 <button
                   type="button"
                   className="resource-primary-button"
-                  onClick={addLine}
+                  onClick={() => setIsAddingLine(true)}
+                  disabled={isAddingLine}
                 >
                   <Plus size={17} />
                   Ajouter une ligne
                 </button>
               </header>
 
-              <div className="purchase-line-mode">
-                <button
-                  type="button"
-                  className={lineMode === "SPARE_PART" ? "active" : ""}
-                  onClick={() => switchMode("SPARE_PART")}
-                >
-                  <PackagePlus size={22} />
-                  Sélection d'une pièce détachée
-                </button>
+              {isAddingLine ? (
+                <>
+                  <div className="purchase-line-mode">
+                    <button
+                      type="button"
+                      className={lineMode === "SPARE_PART" ? "active" : ""}
+                      onClick={() => switchMode("SPARE_PART")}
+                    >
+                      <PackagePlus size={22} />
+                      Sélection d'une pièce détachée
+                    </button>
 
-                <button
-                  type="button"
-                  className={lineMode === "FREE_TEXT" ? "active" : ""}
-                  onClick={() => switchMode("FREE_TEXT")}
-                >
-                  <Type size={22} />
-                  Saisie de texte libre
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      className={lineMode === "FREE_TEXT" ? "active" : ""}
+                      onClick={() => switchMode("FREE_TEXT")}
+                    >
+                      <Type size={22} />
+                      Saisie de texte libre
+                    </button>
+                  </div>
 
-              {lineMode === "SPARE_PART" ? (
-                <label className="measure-form-group">
-                  <span>Pièce détachée *</span>
-                  <select
-                    value={draftLine.sparePartId ?? ""}
-                    onChange={(event) => selectSparePart(event.target.value)}
-                  >
-                    <option value="">Sélectionner une pièce détachée</option>
-                    {spareParts.map((sparePart) => (
-                      <option key={sparePart.id} value={sparePart.id}>
-                        {sparePart.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  {lineMode === "SPARE_PART" ? (
+                    <label className="measure-form-group">
+                      <span>Pièce détachée *</span>
+                      <select
+                        value={draftLine.sparePartId ?? ""}
+                        onChange={(event) => selectSparePart(event.target.value)}
+                      >
+                        <option value="">Sélectionner une pièce détachée</option>
+                        {spareParts.map((sparePart) => (
+                          <option key={sparePart.id} value={sparePart.id}>
+                            {sparePart.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label className="measure-form-group">
+                      <span>Description *</span>
+                      <input
+                        value={draftLine.description}
+                        onChange={(event) =>
+                          setDraftLine((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        placeholder="Ex : prestation de contrôle"
+                      />
+                    </label>
+                  )}
+
+                  <div className="equipment-form-grid">
+                    <label className="measure-form-group">
+                      <span>Quantité</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={draftLine.quantity}
+                        onChange={(event) =>
+                          setDraftLine((current) => ({
+                            ...current,
+                            quantity: Number(event.target.value),
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="measure-form-group">
+                      <span>Prix unitaire</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={draftLine.unitPrice}
+                        onChange={(event) =>
+                          setDraftLine((current) => ({
+                            ...current,
+                            unitPrice: Number(event.target.value),
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  {selectedSparePart && (
+                    <div className="purchase-reference-box">
+                      <Coins size={18} />
+                      <span>
+                        Stock actuel : {selectedSparePart.quantity} · Prix catalogue :{" "}
+                        {formatCurrency(selectedSparePart.unitPrice)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="purchase-line-draft-actions">
+                    <button
+                      type="button"
+                      className="equipment-cancel-button"
+                      onClick={() => {
+                        setDraftLine(emptyLine(lineMode));
+                        setIsAddingLine(false);
+                        setError("");
+                      }}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      className="equipment-primary-button"
+                      onClick={addLine}
+                    >
+                      Ajouter une ligne
+                    </button>
+                  </div>
+                </>
               ) : (
-                <label className="measure-form-group">
-                  <span>Description *</span>
-                  <input
-                    value={draftLine.description}
-                    onChange={(event) =>
-                      setDraftLine((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                    placeholder="Ex : prestation de contrôle"
-                  />
-                </label>
-              )}
-
-              <div className="equipment-form-grid">
-                <label className="measure-form-group">
-                  <span>Quantité</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={draftLine.quantity}
-                    onChange={(event) =>
-                      setDraftLine((current) => ({
-                        ...current,
-                        quantity: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-
-                <label className="measure-form-group">
-                  <span>Prix unitaire</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={draftLine.unitPrice}
-                    onChange={(event) =>
-                      setDraftLine((current) => ({
-                        ...current,
-                        unitPrice: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-
-              {selectedSparePart && (
-                <div className="purchase-reference-box">
-                  <Coins size={18} />
-                  <span>
-                    Stock actuel : {selectedSparePart.quantity} · Prix catalogue :{" "}
-                    {formatCurrency(selectedSparePart.unitPrice)}
-                  </span>
-                </div>
+                lines.length === 0 && (
+                  <div className="purchase-lines-empty">
+                    <FileText size={28} />
+                    <span>Aucune ligne ajoutée pour le moment.</span>
+                  </div>
+                )
               )}
 
               {lines.length > 0 && (

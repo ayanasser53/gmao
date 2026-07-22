@@ -201,7 +201,7 @@ function readStoredCatalog(): StoredCatalog {
     const storedValue = localStorage.getItem(catalogStorageKey);
 
     if (!storedValue) {
-      return { items: [], suppliers: [] };
+      return { items: [], suppliers: [], removedItemIds: [] };
     }
 
     const parsedValue = JSON.parse(storedValue) as Partial<StoredCatalog>;

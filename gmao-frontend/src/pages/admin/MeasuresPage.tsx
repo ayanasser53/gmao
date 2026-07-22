@@ -478,17 +478,19 @@ function MeasuresPage() {
         </div>
       )}
 
-      <div className="measure-search-bar">
-        <Search size={18} />
+      <div className="resource-toolbar measures-search-toolbar">
+        <div className="resource-search measure-search-bar">
+          <Search size={18} />
 
-        <input
-          type="search"
-          placeholder="Rechercher une mesure"
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
-        />
+          <input
+            type="search"
+            placeholder="Rechercher une mesure"
+            value={search}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
+          />
+        </div>
       </div>
 
       {loading ? (

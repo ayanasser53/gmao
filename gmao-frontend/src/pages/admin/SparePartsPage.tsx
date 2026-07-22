@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import {
   useEffect,
   useMemo,
@@ -5,14 +6,20 @@ import {
 } from "react";
 
 import {
+  AlertTriangle,
   Boxes,
+  CheckCircle2,
   CirclePlus,
+  CircleDollarSign,
   Download,
+  Hash,
+  ListChecks,
   MapPin,
   PackagePlus,
   Pencil,
   Search,
   SlidersHorizontal,
+  Tag as TagIcon,
   Trash2,
 } from "lucide-react";
 
@@ -22,14 +29,20 @@ import {
   deleteSparePart,
   getSpareParts,
 } from "../../services/sparePartService";
+import { getTags } from "../../services/tagService";
+import { getTaskById, getTasks } from "../../services/taskService";
 
 import type { SparePart } from "../../types/sparePart";
+import type { Tag } from "../../types/tag";
+import type { Task } from "../../types/task";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
 
 
 const BACKEND_URL = "http://localhost:8090";
+
+type SparePartLabelFilterDropdown = "labels" | "excludedLabels" | "taskLabels" | null;
 
 function getImageUrl(imagePath: string | null | undefined): string | null {
   if (!imagePath) {
@@ -55,6 +68,8 @@ function SparePartsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [filterMinQuantity, setFilterMinQuantity] = useState("");
@@ -62,14 +77,31 @@ function SparePartsPage() {
   const [filterMinPrice, setFilterMinPrice] = useState("");
   const [filterMaxPrice, setFilterMaxPrice] = useState("");
   const [filterLowStockOnly, setFilterLowStockOnly] = useState(false);
+  const [filterLabelIds, setFilterLabelIds] = useState<number[]>([]);
+  const [filterExcludedLabelIds, setFilterExcludedLabelIds] = useState<number[]>([]);
+  const [filterTaskLabelIds, setFilterTaskLabelIds] = useState<number[]>([]);
+  const [openLabelFilter, setOpenLabelFilter] =
+    useState<SparePartLabelFilterDropdown>(null);
 
   async function loadSpareParts(): Promise<void> {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getSpareParts();
+      const [data, availableTags, taskList] = await Promise.all([
+        getSpareParts(),
+        getTags(),
+        getTasks(),
+      ]);
+      const detailedTasks = await Promise.all(
+        taskList.map((task) => getTaskById(task.id).catch(() => null)),
+      );
+
       setSpareParts(data);
+      setTags(availableTags);
+      setTasks(
+        detailedTasks.filter((task): task is Task => task !== null),
+      );
     } catch {
       setError("Impossible de charger les pièces détachées.");
     } finally {
@@ -81,10 +113,35 @@ function SparePartsPage() {
     void loadSpareParts();
   }, []);
 
+  const taskLabelIdsBySparePart = useMemo(() => {
+    const labelIdsBySparePart = new Map<number, Set<number>>();
+
+    tasks.forEach((task) => {
+      const taskLabelIds = task.tags.map((tag) => tag.id);
+
+      if (taskLabelIds.length === 0) {
+        return;
+      }
+
+      task.spareParts.forEach((line) => {
+        const existing =
+          labelIdsBySparePart.get(line.sparePartId) ?? new Set<number>();
+
+        taskLabelIds.forEach((tagId) => existing.add(tagId));
+        labelIdsBySparePart.set(line.sparePartId, existing);
+      });
+    });
+
+    return labelIdsBySparePart;
+  }, [tasks]);
+
   const filteredSpareParts = useMemo(() => {
     const value = search.trim().toLowerCase();
 
     return spareParts.filter((part) => {
+      const partLabelIds = (part.tags ?? []).map((tag) => tag.id);
+      const taskLabelIds =
+        taskLabelIdsBySparePart.get(part.id) ?? new Set<number>();
       const matchesSearch =
         !value ||
         [
@@ -123,6 +180,27 @@ function SparePartsPage() {
         return false;
       }
 
+      if (
+        filterLabelIds.length > 0 &&
+        !filterLabelIds.every((tagId) => partLabelIds.includes(tagId))
+      ) {
+        return false;
+      }
+
+      if (
+        filterExcludedLabelIds.length > 0 &&
+        filterExcludedLabelIds.some((tagId) => partLabelIds.includes(tagId))
+      ) {
+        return false;
+      }
+
+      if (
+        filterTaskLabelIds.length > 0 &&
+        !filterTaskLabelIds.every((tagId) => taskLabelIds.has(tagId))
+      ) {
+        return false;
+      }
+
       return true;
     });
   }, [
@@ -133,6 +211,10 @@ function SparePartsPage() {
     filterMinPrice,
     filterMaxPrice,
     filterLowStockOnly,
+    filterLabelIds,
+    filterExcludedLabelIds,
+    filterTaskLabelIds,
+    taskLabelIdsBySparePart,
   ]);
 
   async function handleDelete(part: SparePart): Promise<void> {
@@ -156,6 +238,100 @@ function SparePartsPage() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  function renderLabelFilterDropdown(
+    placeholder: string,
+    tagIds: number[],
+    setter: Dispatch<SetStateAction<number[]>>,
+    dropdownKey: Exclude<SparePartLabelFilterDropdown, null>,
+  ) {
+    const selectedTags = tags.filter((tag) => tagIds.includes(tag.id));
+
+    return (
+      <div className="task-filter-dropdown spare-part-label-dropdown">
+        <button
+          type="button"
+          className="task-filter-dropdown-trigger spare-part-label-trigger"
+          onClick={() =>
+            setOpenLabelFilter((current) =>
+              current === dropdownKey ? null : dropdownKey,
+            )
+          }
+        >
+          {selectedTags.length === 0 ? (
+            <span>{placeholder}</span>
+          ) : (
+            <span className="spare-part-filter-chip-list">
+              {selectedTags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="task-filter-tag-chip"
+                  style={{
+                    color: tag.color || "#087fbd",
+                    borderColor: tag.color || "#087fbd",
+                    background: `${tag.color || "#087fbd"}1a`,
+                  }}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </span>
+          )}
+        </button>
+
+        {openLabelFilter === dropdownKey && (
+          <div className="task-filter-dropdown-panel spare-part-label-panel">
+            <button
+              type="button"
+              className={`task-filter-dropdown-row ${
+                tagIds.length === 0 ? "selected" : ""
+              }`}
+              onClick={() => {
+                setter([]);
+                setOpenLabelFilter(null);
+              }}
+            >
+              Tous
+              {tagIds.length === 0 && <CheckCircle2 size={16} />}
+            </button>
+
+            {tags.map((tag) => {
+              const isSelected = tagIds.includes(tag.id);
+
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  className={`task-filter-dropdown-row ${
+                    isSelected ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setter((current) =>
+                      current.includes(tag.id)
+                        ? current.filter((id) => id !== tag.id)
+                        : [...current, tag.id],
+                    );
+                  }}
+                >
+                  <span
+                    className="task-filter-tag-chip"
+                    style={{
+                      color: tag.color || "#087fbd",
+                      borderColor: tag.color || "#087fbd",
+                      background: `${tag.color || "#087fbd"}1a`,
+                    }}
+                  >
+                    {tag.name}
+                  </span>
+                  {isSelected && <CheckCircle2 size={16} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
   }
 
   function getStockStatus(part: SparePart): "low" | "ok" | "high" {
@@ -270,10 +446,13 @@ function getStockDotClass(part: SparePart): string {
       </div>
 
       {showFilters && (
-        <div className="task-filter-panel">
+        <div className="task-filter-panel spare-parts-filter-panel">
           <div className="task-filter-grid">
             <div className="task-filter-field">
-              <label>Quantité minimum</label>
+              <label>
+                <Hash size={15} />
+                Quantité minimum
+              </label>
               <input
                 type="number"
                 min={0}
@@ -283,7 +462,10 @@ function getStockDotClass(part: SparePart): string {
             </div>
 
             <div className="task-filter-field">
-              <label>Quantité maximum</label>
+              <label>
+                <Hash size={15} />
+                Quantité maximum
+              </label>
               <input
                 type="number"
                 min={0}
@@ -293,7 +475,10 @@ function getStockDotClass(part: SparePart): string {
             </div>
 
             <div className="task-filter-field">
-              <label>Prix unitaire minimum</label>
+              <label>
+                <CircleDollarSign size={15} />
+                Prix unitaire minimum
+              </label>
               <input
                 type="number"
                 min={0}
@@ -304,7 +489,10 @@ function getStockDotClass(part: SparePart): string {
             </div>
 
             <div className="task-filter-field">
-              <label>Prix unitaire maximum</label>
+              <label>
+                <CircleDollarSign size={15} />
+                Prix unitaire maximum
+              </label>
               <input
                 type="number"
                 min={0}
@@ -313,10 +501,52 @@ function getStockDotClass(part: SparePart): string {
                 onChange={(e) => setFilterMaxPrice(e.target.value)}
               />
             </div>
+
+            <div className="task-filter-field">
+              <label>
+                <TagIcon size={15} />
+                Labels
+              </label>
+              {renderLabelFilterDropdown(
+                "Tous",
+                filterLabelIds,
+                setFilterLabelIds,
+                "labels",
+              )}
+            </div>
+
+            <div className="task-filter-field">
+              <label>
+                <TagIcon size={15} />
+                Labels exclus
+              </label>
+              {renderLabelFilterDropdown(
+                "Tous",
+                filterExcludedLabelIds,
+                setFilterExcludedLabelIds,
+                "excludedLabels",
+              )}
+            </div>
+
+            <div className="task-filter-field">
+              <label>
+                <ListChecks size={15} />
+                Labels des tâches
+              </label>
+              {renderLabelFilterDropdown(
+                "Tous",
+                filterTaskLabelIds,
+                setFilterTaskLabelIds,
+                "taskLabels",
+              )}
+            </div>
           </div>
 
           <div className="task-toggle-row">
-            <span>Le stock est inférieur au minimum</span>
+            <span>
+              <AlertTriangle size={16} />
+              Le stock est inférieur au minimum
+            </span>
             <input
               type="checkbox"
               checked={filterLowStockOnly}
@@ -334,6 +564,9 @@ function getStockDotClass(part: SparePart): string {
                 setFilterMinPrice("");
                 setFilterMaxPrice("");
                 setFilterLowStockOnly(false);
+                setFilterLabelIds([]);
+                setFilterExcludedLabelIds([]);
+                setFilterTaskLabelIds([]);
               }}
             >
               Réinitialiser les filtres

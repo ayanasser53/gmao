@@ -321,16 +321,18 @@ function TagsPage() {
 
       {activeTab === "TAGS" ? (
         <>
-          <div className="tags-search">
-            <Search size={18} />
+          <div className="resource-toolbar tags-search-toolbar">
+            <div className="resource-search tags-search">
+              <Search size={18} />
 
-            <input
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Rechercher un tag"
-            />
+              <input
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Rechercher un tag"
+              />
+            </div>
           </div>
 
           <div className="tags-table-wrapper">
