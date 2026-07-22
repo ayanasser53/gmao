@@ -16,7 +16,7 @@ import {
   Tag,
 } from "lucide-react";
 
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { getSparePartById } from "../../services/sparePartService";
 
@@ -63,6 +63,19 @@ function displayNumber(value: number | null): string {
 
 function SparePartDetailsPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get("from");
+  const equipmentId = searchParams.get("equipmentId");
+  const backTarget =
+    from === "equipment" && equipmentId
+      ? {
+          label: "Retour à l'équipement",
+          path: `/admin/equipment/${equipmentId}`,
+        }
+      : {
+          label: "Retour aux pièces détachées",
+          path: "/admin/spare-parts",
+        };
 
   const [sparePart, setSparePart] = useState<SparePart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,9 +144,9 @@ function SparePartDetailsPage() {
           </span>
         </div>
 
-        <Link to="/admin/spare-parts" className="equipment-primary-button">
+        <Link to={backTarget.path} className="equipment-primary-button">
           <ArrowLeft size={17} />
-          Retour aux pièces détachées
+          {backTarget.label}
         </Link>
       </div>
 

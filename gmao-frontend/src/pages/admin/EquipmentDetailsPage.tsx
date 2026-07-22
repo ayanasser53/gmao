@@ -406,7 +406,9 @@ function EquipmentDetailsPage() {
                   type="button"
                   key={part.id}
                   className="linked-compact-row"
-                  onClick={() => navigate(`/admin/spare-parts/${part.id}`)}
+                  onClick={() =>
+                    navigate(`/admin/spare-parts/${part.id}?from=equipment&equipmentId=${equipment.id}`)
+                  }
                 >
                   <div className="linked-compact-icon">
                     {getFileUrl(part.imageUrl, "spare-parts") ? (
