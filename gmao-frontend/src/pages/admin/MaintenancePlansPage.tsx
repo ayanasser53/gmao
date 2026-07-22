@@ -41,7 +41,6 @@ type DisplayStatus = "planned" | "in_progress" | "late" | "done";
 type MaintenanceFilterDropdown =
   | "trigger"
   | "equipment"
-  | "status"
   | "assignee"
   | "label"
   | "costCenter"
@@ -170,7 +169,6 @@ export default function MaintenancePlansPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [filterTriggerType, setFilterTriggerType] = useState("");
   const [filterEquipmentId, setFilterEquipmentId] = useState("");
-  const [filterPlanStatus, setFilterPlanStatus] = useState("");
   const [filterAssigneeId, setFilterAssigneeId] = useState("");
   const [filterTagId, setFilterTagId] = useState("");
   const [filterCostCenter, setFilterCostCenter] = useState("");
@@ -276,10 +274,6 @@ export default function MaintenancePlansPage() {
         return false;
       }
 
-      if (filterPlanStatus && displayStatus !== filterPlanStatus) {
-        return false;
-      }
-
       if (filterAssigneeId && !planHasAssignee(plan, filterAssigneeId)) {
         return false;
       }
@@ -330,7 +324,6 @@ export default function MaintenancePlansPage() {
     search,
     filterTriggerType,
     filterEquipmentId,
-    filterPlanStatus,
     filterAssigneeId,
     filterTagId,
     filterCostCenter,
@@ -562,21 +555,6 @@ export default function MaintenancePlansPage() {
             </div>
 
             <div className="task-filter-field">
-              <label><CalendarClock size={15} /> État du plan de maintenance</label>
-              {renderMaintenanceFilterDropdown(
-                "status",
-                filterPlanStatus,
-                setFilterPlanStatus,
-                "Sélectionnez votre option",
-                STATUS_TABS.map((tab) => ({
-                  value: tab.status,
-                  label: tab.label,
-                  tone: tab.status,
-                })),
-              )}
-            </div>
-
-            <div className="task-filter-field">
               <label><Users size={15} /> Assignés</label>
               {renderMaintenanceFilterDropdown(
                 "assignee",
@@ -663,7 +641,6 @@ export default function MaintenancePlansPage() {
               onClick={() => {
                 setFilterTriggerType("");
                 setFilterEquipmentId("");
-                setFilterPlanStatus("");
                 setFilterAssigneeId("");
                 setFilterTagId("");
                 setFilterCostCenter("");
