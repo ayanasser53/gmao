@@ -10,18 +10,29 @@ import {
   Link2,
   MapPin,
   Package,
+  Pencil,
   Plus,
   Tag,
+  Upload,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import SparePartSelect from "../../components/admin/SparePartSelect";
+
 import { getActivitiesByTask } from "../../services/activityService";
-import { getTaskById } from "../../services/taskService";
-import type { Activity, ActivityStatus } from "../../types/activity";
-import type { Task, TaskStatus } from "../../types/task";
+import { getSpareParts } from "../../services/sparePartService";
+import { getTaskById, updateTask, fetchTagOptions, type TagOption } from "../../services/taskService";
+import { getTeams } from "../../services/teamService";
+import { getUsersDetailed } from "../../services/userService";
+import type { Activity } from "../../types/activity";
+import type { SparePart } from "../../types/sparePart";
+import type { Task, TaskStatus, UpdateTaskInput } from "../../types/task";
+import type { Team } from "../../types/team";
+import type { UserDetail } from "../../types/user";
 
 import "./task-styles.css";
 
@@ -101,19 +112,30 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }>
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   };
 
-const ACTIVITY_STATUS_META: Record<
-  ActivityStatus,
-  { label: string; className: string }
-> = {
-  DONE: { label: "Terminée", className: "task-status-done" },
-  LATE: { label: "En retard", className: "task-status-late" },
-  IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
-};
+const AVATAR_COLORS = [
+  "#087fbd",
+  "#6b46c1",
+  "#198754",
+  "#a3660f",
+  "#b42318",
+  "#0f766e",
+];
+
+function avatarColor(id: number): string {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
 
 function initials(firstName?: string | null, lastName?: string | null) {
   const first = firstName?.trim().charAt(0) || "";
   const last = lastName?.trim().charAt(0) || "";
   return `${first}${last}`.toUpperCase() || "AD";
+}
+
+function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0) ?? "";
+  const second = parts.length > 1 ? parts[1].charAt(0) : parts[0]?.charAt(1) ?? "";
+  return `${first}${second}`.toUpperCase();
 }
 
 function activityTotal(activity: Activity): number {
@@ -139,6 +161,36 @@ function TaskDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [userOptions, setUserOptions] = useState<UserDetail[]>([]);
+  const [teamOptions, setTeamOptions] = useState<Team[]>([]);
+  const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
+
+  const [editingField, setEditingField] = useState<
+    "date" | "reportedBy" | "assignedTo" | "labels" | "description" | null
+  >(null);
+  const [saving, setSaving] = useState(false);
+  const [showReportedByDropdown, setShowReportedByDropdown] = useState(false);
+  const [showAssignedToDropdown, setShowAssignedToDropdown] = useState(false);
+
+  const [sparePartOptions, setSparePartOptions] = useState<SparePart[]>([]);
+  const [showAddSparePart, setShowAddSparePart] = useState(false);
+  const [newSparePartId, setNewSparePartId] = useState<number | "">("");
+  const [newSparePartQuantity, setNewSparePartQuantity] = useState(1);
+
+  const [showAddDocument, setShowAddDocument] = useState(false);
+  const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
+
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editStartHour, setEditStartHour] = useState("");
+  const [editReportedBy, setEditReportedBy] = useState<
+    { userId?: number; teamId?: number; label: string }[]
+  >([]);
+  const [editAssignedTo, setEditAssignedTo] = useState<
+    { userId?: number; teamId?: number; label: string }[]
+  >([]);
+  const [editTagIds, setEditTagIds] = useState<number[]>([]);
+  const [editDescription, setEditDescription] = useState("");
+
   useEffect(() => {
     async function loadTaskDetails() {
       if (!Number.isFinite(taskId)) {
@@ -148,13 +200,22 @@ function TaskDetailsPage() {
       }
 
       try {
-        const [taskData, activityData] = await Promise.all([
-          getTaskById(taskId),
-          getActivitiesByTask(taskId),
-        ]);
+        const [taskData, activityData, users, teams, tags, spareParts] =
+          await Promise.all([
+            getTaskById(taskId),
+            getActivitiesByTask(taskId),
+            getUsersDetailed().catch(() => [] as UserDetail[]),
+            getTeams().catch(() => [] as Team[]),
+            fetchTagOptions().catch(() => [] as TagOption[]),
+            getSpareParts().catch(() => [] as SparePart[]),
+          ]);
 
         setTask(taskData);
         setActivities(activityData);
+        setUserOptions(users);
+        setTeamOptions(teams);
+        setTagOptions(tags);
+        setSparePartOptions(spareParts);
       } catch (requestError) {
         console.error(requestError);
         setError("Impossible de charger les détails de la tâche.");
@@ -165,6 +226,138 @@ function TaskDetailsPage() {
 
     void loadTaskDetails();
   }, [taskId]);
+
+  function startEditing(field: typeof editingField) {
+    if (!task) {
+      return;
+    }
+
+    setShowReportedByDropdown(false);
+    setShowAssignedToDropdown(false);
+
+    setEditStartDate(task.startDate);
+    setEditStartHour(task.startHour ?? "");
+    setEditReportedBy(
+      task.assignees.map((a) => ({
+        userId: a.userId ?? undefined,
+        teamId: a.teamId ?? undefined,
+        label: a.type === "USER" ? a.userFullName ?? "" : a.teamName ?? "",
+      })),
+    );
+    setEditAssignedTo(
+      task.assignedTo.map((a) => ({
+        userId: a.userId ?? undefined,
+        teamId: a.teamId ?? undefined,
+        label: a.type === "USER" ? a.userFullName ?? "" : a.teamName ?? "",
+      })),
+    );
+    setEditTagIds(task.tags.map((t) => t.id));
+    setEditDescription(task.description);
+    setEditingField(field);
+  }
+
+  function toggleEditing(field: NonNullable<typeof editingField>) {
+    if (editingField === field) {
+      setEditingField(null);
+    } else {
+      startEditing(field);
+    }
+  }
+
+  async function addSparePartLine() {
+    if (!task || !newSparePartId) {
+      return;
+    }
+
+    const nextSpareParts = [
+      ...task.spareParts.map((sp) => ({
+        sparePartId: sp.sparePartId,
+        quantity: sp.quantity,
+      })),
+      { sparePartId: newSparePartId, quantity: newSparePartQuantity },
+    ];
+
+    await savePatch({ spareParts: nextSpareParts }, false);
+    setNewSparePartId("");
+    setNewSparePartQuantity(1);
+    setShowAddSparePart(false);
+  }
+
+  async function addDocumentEntry() {
+    if (!task || !newDocumentFile) {
+      return;
+    }
+
+    await savePatch({}, false, [newDocumentFile]);
+    setNewDocumentFile(null);
+
+    setShowAddDocument(false);
+  }
+
+  async function savePatch(
+    patch: Partial<UpdateTaskInput>,
+    closeAfter = true,
+    files: File[] = [],
+  ) {
+    if (!task) {
+      return;
+    }
+
+    setSaving(true);
+
+    const payload: UpdateTaskInput = {
+      equipmentOnly: task.equipmentOnly,
+      equipmentId: task.equipment?.id ?? 0,
+      description: task.description,
+      allDay: task.allDay,
+      startDate: task.startDate,
+      startHour: task.startHour,
+      endDate: task.endDate,
+      endHour: task.endHour,
+      plannedMaintenanceHours: task.plannedMaintenanceHours,
+      plannedMaintenanceMinutes: task.plannedMaintenanceMinutes,
+      plannedStoppedHours: task.plannedStoppedHours,
+      plannedStoppedMinutes: task.plannedStoppedMinutes,
+      assignees: task.assignees.map((a) => ({
+        userId: a.userId ?? undefined,
+        teamId: a.teamId ?? undefined,
+      })),
+      assignedTo: task.assignedTo.map((a) => ({
+        userId: a.userId ?? undefined,
+        teamId: a.teamId ?? undefined,
+      })),
+      tagIds: task.tags.map((t) => t.id),
+      spareParts: task.spareParts.map((sp) => ({
+        sparePartId: sp.sparePartId,
+        quantity: sp.quantity,
+      })),
+      links: [],
+      notifyAssignees: false,
+      status:
+        task.status === "LATE" || task.status === "PLANNED"
+          ? "IN_PROGRESS"
+          : task.status,
+      removeDocumentIds: [],
+      ...patch,
+    };
+
+    try {
+      const updated = await updateTask(task.id, payload, files);
+      setTask(updated);
+      if (closeAfter) {
+        setEditingField(null);
+      }
+    } catch (requestError) {
+      console.error(requestError);
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "La mise à jour a échoué. Réessayez.";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const equipmentImage = useMemo(
     () => getFileUrl(task?.equipment?.image),
@@ -225,25 +418,186 @@ function TaskDetailsPage() {
         </div>
       </div>
 
+      {error && <div className="resource-error-message">{error}</div>}
+
       <div className="task-details-grid">
         <div className="task-details-main">
           <article className="details-card task-info-card">
             <div className="task-detail-item">
               <CalendarDays size={21} />
               <div>
-                <span>Date planifiée</span>
-                <strong>
-                  {formatDate(task.startDate)}
-                  {task.startHour ? ` à ${formatTime(task.startHour)}` : ""}
-                </strong>
+                <span>
+                  Date planifiée
+                  <button
+                    type="button"
+                    className={`task-detail-edit-btn-inline ${
+                      editingField === "date" ? "active" : ""
+                    }`}
+                    onClick={() => toggleEditing("date")}
+                    disabled={saving}
+                    aria-label="Modifier la date"
+                  >
+                    {editingField === "date" ? (
+                      <X size={13} />
+                    ) : (
+                      <Pencil size={13} />
+                    )}
+                  </button>
+                </span>
+                {editingField === "date" ? (
+                  <div className="task-inline-edit">
+                    <input
+                      type="date"
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      onBlur={() =>
+                        void savePatch(
+                          {
+                            startDate: editStartDate,
+                            startHour: editStartHour || null,
+                          },
+                          false,
+                        )
+                      }
+                    />
+                    <input
+                      type="time"
+                      value={editStartHour}
+                      onChange={(e) => setEditStartHour(e.target.value)}
+                      onBlur={() =>
+                        void savePatch(
+                          {
+                            startDate: editStartDate,
+                            startHour: editStartHour || null,
+                          },
+                          false,
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  <strong>
+                    {formatDate(task.startDate)}
+                    {task.startHour ? ` à ${formatTime(task.startHour)}` : ""}
+                  </strong>
+                )}
               </div>
             </div>
 
             <div className="task-detail-item">
               <Users size={21} />
               <div>
-                <span>Signalé par</span>
-                {task.assignees.length > 0 ? (
+                <span>
+                  Signalé par
+                  <button
+                    type="button"
+                    className={`task-detail-edit-btn-inline ${
+                      editingField === "reportedBy" ? "active" : ""
+                    }`}
+                    onClick={() => toggleEditing("reportedBy")}
+                    disabled={saving}
+                    aria-label="Modifier signalé par"
+                  >
+                    {editingField === "reportedBy" ? (
+                      <X size={13} />
+                    ) : (
+                      <Pencil size={13} />
+                    )}
+                  </button>
+                </span>
+                {editingField === "reportedBy" ? (
+                  <div className="task-inline-edit task-inline-edit-column">
+                    <div className="task-chip-list">
+                      {editReportedBy.map((item) => (
+                        <span
+                          className="task-chip"
+                          key={item.userId ?? item.teamId}
+                        >
+                          {item.label}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = editReportedBy.filter(
+                                (i) => i !== item,
+                              );
+                              setEditReportedBy(next);
+                              void savePatch(
+                                {
+                                  assignees: next.map((i) => ({
+                                    userId: i.userId,
+                                    teamId: i.teamId,
+                                  })),
+                                },
+                                false,
+                              );
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="task-filter-dropdown">
+                      <button
+                        type="button"
+                        className="task-filter-dropdown-trigger"
+                        onClick={() =>
+                          setShowReportedByDropdown((current) => !current)
+                        }
+                      >
+                        + Ajouter un utilisateur
+                      </button>
+
+                      {showReportedByDropdown && (
+                        <div className="task-filter-dropdown-panel">
+                          {userOptions
+                            .filter(
+                              (user) =>
+                                !editReportedBy.some(
+                                  (i) => i.userId === user.id,
+                                ),
+                            )
+                            .map((user) => (
+                              <button
+                                type="button"
+                                key={user.id}
+                                className="task-filter-dropdown-row"
+                                onClick={() => {
+                                  const next = [
+                                    ...editReportedBy,
+                                    {
+                                      userId: user.id,
+                                      label: `${user.firstName} ${user.lastName}`,
+                                    },
+                                  ];
+                                  setEditReportedBy(next);
+                                  setShowReportedByDropdown(false);
+                                  void savePatch(
+                                    {
+                                      assignees: next.map((i) => ({
+                                        userId: i.userId,
+                                        teamId: i.teamId,
+                                      })),
+                                    },
+                                    false,
+                                  );
+                                }}
+                              >
+                                <span
+                                  className="task-filter-avatar"
+                                  style={{ background: avatarColor(user.id) }}
+                                >
+                                  {initials(user.firstName, user.lastName)}
+                                </span>
+                                {user.firstName} {user.lastName}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : task.assignees.length > 0 ? (
                   <div className="task-avatar-list">
                     {task.assignees.map((assignee) => (
                       <span
@@ -251,6 +605,21 @@ function TaskDetailsPage() {
                           assignee.userId || assignee.teamId
                         }`}
                       >
+                        <span
+                          className="task-detail-avatar"
+                          style={{
+                            background: avatarColor(
+                              assignee.userId ?? assignee.teamId ?? 0,
+                            ),
+                          }}
+                        >
+                          {assignee.type === "USER"
+                            ? initials(
+                                assignee.userFullName?.split(" ")[0],
+                                assignee.userFullName?.split(" ")[1],
+                              )
+                            : teamInitials(assignee.teamName ?? "")}
+                        </span>
                         {assignee.type === "USER"
                           ? assignee.userFullName
                           : assignee.teamName}
@@ -266,8 +635,175 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <Users size={21} />
               <div>
-                <span>Assigné à</span>
-                {task.assignedTo.length > 0 ? (
+                <span>
+                  Assigné à
+                  <button
+                    type="button"
+                    className={`task-detail-edit-btn-inline ${
+                      editingField === "assignedTo" ? "active" : ""
+                    }`}
+                    onClick={() => toggleEditing("assignedTo")}
+                    disabled={saving}
+                    aria-label="Modifier assigné à"
+                  >
+                    {editingField === "assignedTo" ? (
+                      <X size={13} />
+                    ) : (
+                      <Pencil size={13} />
+                    )}
+                  </button>
+                </span>
+                {editingField === "assignedTo" ? (
+                  <div className="task-inline-edit task-inline-edit-column">
+                    <div className="task-chip-list">
+                      {editAssignedTo.map((item) => (
+                        <span
+                          className="task-chip"
+                          key={item.userId ?? `team-${item.teamId}`}
+                        >
+                          {item.label}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = editAssignedTo.filter(
+                                (i) => i !== item,
+                              );
+                              setEditAssignedTo(next);
+                              void savePatch(
+                                {
+                                  assignedTo: next.map((i) => ({
+                                    userId: i.userId,
+                                    teamId: i.teamId,
+                                  })),
+                                },
+                                false,
+                              );
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="task-filter-dropdown">
+                      <button
+                        type="button"
+                        className="task-filter-dropdown-trigger"
+                        onClick={() =>
+                          setShowAssignedToDropdown((current) => !current)
+                        }
+                      >
+                        + Ajouter un collègue ou une équipe
+                      </button>
+
+                      {showAssignedToDropdown && (
+                        <div className="task-filter-dropdown-panel">
+                          {teamOptions.filter(
+                            (team) =>
+                              !editAssignedTo.some((i) => i.teamId === team.id),
+                          ).length > 0 && (
+                            <p className="task-filter-dropdown-heading">
+                              Équipes
+                            </p>
+                          )}
+
+                          {teamOptions
+                            .filter(
+                              (team) =>
+                                !editAssignedTo.some(
+                                  (i) => i.teamId === team.id,
+                                ),
+                            )
+                            .map((team) => (
+                              <button
+                                type="button"
+                                key={`team-${team.id}`}
+                                className="task-filter-dropdown-row"
+                                onClick={() => {
+                                  const next = [
+                                    ...editAssignedTo,
+                                    { teamId: team.id, label: team.name },
+                                  ];
+                                  setEditAssignedTo(next);
+                                  setShowAssignedToDropdown(false);
+                                  void savePatch(
+                                    {
+                                      assignedTo: next.map((i) => ({
+                                        userId: i.userId,
+                                        teamId: i.teamId,
+                                      })),
+                                    },
+                                    false,
+                                  );
+                                }}
+                              >
+                                <span
+                                  className="task-filter-team-avatar"
+                                  style={{ background: avatarColor(team.id) }}
+                                >
+                                  {teamInitials(team.name)}
+                                </span>
+                                {team.name}
+                              </button>
+                            ))}
+
+                          {userOptions.filter(
+                            (user) =>
+                              !editAssignedTo.some((i) => i.userId === user.id),
+                          ).length > 0 && (
+                            <p className="task-filter-dropdown-heading">
+                              Collègues
+                            </p>
+                          )}
+
+                          {userOptions
+                            .filter(
+                              (user) =>
+                                !editAssignedTo.some(
+                                  (i) => i.userId === user.id,
+                                ),
+                            )
+                            .map((user) => (
+                              <button
+                                type="button"
+                                key={user.id}
+                                className="task-filter-dropdown-row"
+                                onClick={() => {
+                                  const next = [
+                                    ...editAssignedTo,
+                                    {
+                                      userId: user.id,
+                                      label: `${user.firstName} ${user.lastName}`,
+                                    },
+                                  ];
+                                  setEditAssignedTo(next);
+                                  setShowAssignedToDropdown(false);
+                                  void savePatch(
+                                    {
+                                      assignedTo: next.map((i) => ({
+                                        userId: i.userId,
+                                        teamId: i.teamId,
+                                      })),
+                                    },
+                                    false,
+                                  );
+                                }}
+                              >
+                                <span
+                                  className="task-filter-avatar"
+                                  style={{ background: avatarColor(user.id) }}
+                                >
+                                  {initials(user.firstName, user.lastName)}
+                                </span>
+                                {user.firstName} {user.lastName}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : task.assignedTo.length > 0 ? (
                   <div className="task-avatar-list">
                     {task.assignedTo.map((assignee) => (
                       <span
@@ -275,6 +811,21 @@ function TaskDetailsPage() {
                           assignee.userId || assignee.teamId
                         }`}
                       >
+                        <span
+                          className="task-detail-avatar"
+                          style={{
+                            background: avatarColor(
+                              assignee.userId ?? assignee.teamId ?? 0,
+                            ),
+                          }}
+                        >
+                          {assignee.type === "USER"
+                            ? initials(
+                                assignee.userFullName?.split(" ")[0],
+                                assignee.userFullName?.split(" ")[1],
+                              )
+                            : teamInitials(assignee.teamName ?? "")}
+                        </span>
                         {assignee.type === "USER"
                           ? assignee.userFullName
                           : assignee.teamName}
@@ -290,8 +841,57 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <Tag size={21} />
               <div>
-                <span>Labels</span>
-                {task.tags.length > 0 ? (
+                <span>
+                  Labels
+                  <button
+                    type="button"
+                    className={`task-detail-edit-btn-inline ${
+                      editingField === "labels" ? "active" : ""
+                    }`}
+                    onClick={() => toggleEditing("labels")}
+                    disabled={saving}
+                    aria-label="Modifier les labels"
+                  >
+                    {editingField === "labels" ? (
+                      <X size={13} />
+                    ) : (
+                      <Pencil size={13} />
+                    )}
+                  </button>
+                </span>
+                {editingField === "labels" ? (
+                  <div className="task-inline-edit task-inline-edit-column">
+                    <div className="task-chip-list">
+                      {tagOptions.map((tag) => (
+                        <button
+                          type="button"
+                          key={tag.id}
+                          className={`team-tag-toggle ${
+                            editTagIds.includes(tag.id) ? "active" : ""
+                          }`}
+                          style={{
+                            borderColor: tag.color,
+                            color: editTagIds.includes(tag.id)
+                              ? "#ffffff"
+                              : tag.color,
+                            background: editTagIds.includes(tag.id)
+                              ? tag.color
+                              : "transparent",
+                          }}
+                          onClick={() => {
+                            const next = editTagIds.includes(tag.id)
+                              ? editTagIds.filter((id) => id !== tag.id)
+                              : [...editTagIds, tag.id];
+                            setEditTagIds(next);
+                            void savePatch({ tagIds: next }, false);
+                          }}
+                        >
+                          {tag.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : task.tags.length > 0 ? (
                   <div className="task-cell-tags">
                     {task.tags.map((tag) => (
                       <span key={tag.id} style={{ backgroundColor: tag.color }}>
@@ -308,8 +908,41 @@ function TaskDetailsPage() {
             <div className="task-detail-item task-detail-wide">
               <FileText size={21} />
               <div>
-                <span>Description</span>
-                <strong>{task.description || "Aucune description renseignée."}</strong>
+                <span>
+                  Description
+                  <button
+                    type="button"
+                    className={`task-detail-edit-btn-inline ${
+                      editingField === "description" ? "active" : ""
+                    }`}
+                    onClick={() => toggleEditing("description")}
+                    disabled={saving}
+                    aria-label="Modifier la description"
+                  >
+                    {editingField === "description" ? (
+                      <X size={13} />
+                    ) : (
+                      <Pencil size={13} />
+                    )}
+                  </button>
+                </span>
+                {editingField === "description" ? (
+                  <div className="task-inline-edit task-inline-edit-column">
+                    <textarea
+                      rows={4}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      onBlur={() =>
+                        void savePatch(
+                          { description: editDescription },
+                          false,
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  <strong>{task.description || "Aucune description renseignée."}</strong>
+                )}
               </div>
             </div>
           </article>
@@ -320,7 +953,50 @@ function TaskDetailsPage() {
             </div>
 
             <div className="details-subsection">
-              <h3>Pièces détachées à prévoir</h3>
+              <div className="details-subsection-header">
+                <h3>Pièces détachées à prévoir</h3>
+                <button
+                  type="button"
+                  className="details-add-btn"
+                  onClick={() => setShowAddSparePart((current) => !current)}
+                  aria-label="Ajouter une pièce détachée"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              {showAddSparePart && (
+                <div className="task-inline-edit task-inline-edit-column details-add-form">
+                  <SparePartSelect
+                    spareParts={sparePartOptions}
+                    excludedIds={task.spareParts.map((sp) => sp.sparePartId)}
+                    onSelect={(part) => setNewSparePartId(part.id)}
+                    placeholder="Sélectionner une pièce détachée"
+                  />
+
+                  {newSparePartId && (
+                    <p className="details-add-selected">
+                      Sélectionnée :{" "}
+                      <strong>
+                        {
+                          sparePartOptions.find(
+                            (p) => p.id === newSparePartId,
+                          )?.name
+                        }
+                      </strong>
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    className="task-inline-done"
+                    disabled={saving || !newSparePartId}
+                    onClick={() => void addSparePartLine()}
+                    >
+                      <Plus size={14} /> Ajouter
+                    </button>
+                </div>
+              )}
 
               {task.spareParts.length === 0 ? (
                 <p className="task-empty-hint">Aucune pièce détachée liée.</p>
@@ -353,7 +1029,45 @@ function TaskDetailsPage() {
             </div>
 
             <div className="details-subsection">
-              <h3>Documents</h3>
+              <div className="details-subsection-header">
+                <h3>Documents</h3>
+                <button
+                  type="button"
+                  className="details-add-btn"
+                  onClick={() => setShowAddDocument((current) => !current)}
+                  aria-label="Ajouter un document"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              {showAddDocument && (
+                <div className="task-inline-edit task-inline-edit-column details-add-form">
+                  <label className="task-dropzone details-dropzone">
+                    <Upload size={20} />
+                    <span>
+                      {newDocumentFile
+                        ? newDocumentFile.name
+                        : "Cliquez pour choisir un fichier"}
+                    </span>
+                    <input
+                      type="file"
+                      onChange={(e) =>
+                        setNewDocumentFile(e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    className="task-inline-done"
+                    disabled={saving || !newDocumentFile}
+                    onClick={() => void addDocumentEntry()}
+                  >
+                    <Plus size={14} /> Ajouter
+                  </button>
+                </div>
+              )}
 
               {task.documents.length === 0 ? (
                 <p className="task-empty-hint">Aucun document joint.</p>
@@ -393,7 +1107,7 @@ function TaskDetailsPage() {
               <h2>Activités</h2>
               <button
                 type="button"
-                className="resource-primary-button"
+                className="success-button"
                 onClick={() => navigate(`/admin/activities/create?taskId=${task.id}`)}
               >
                 <Plus size={17} />
@@ -406,7 +1120,6 @@ function TaskDetailsPage() {
             ) : (
               <div className="activity-timeline">
                 {activities.map((activity) => {
-                  const activityStatus = ACTIVITY_STATUS_META[activity.status];
                   const mainIntervenant = activity.intervenants?.[0];
                   const total = activityTotal(activity);
 
@@ -416,7 +1129,12 @@ function TaskDetailsPage() {
                       className="activity-history-card"
                     >
                       <div className="activity-history-header">
-                        <span className="activity-avatar">
+                        <span
+                          className="activity-avatar"
+                          style={{
+                            background: avatarColor(mainIntervenant?.userId ?? 0),
+                          }}
+                        >
                           {initials(
                             mainIntervenant?.firstName,
                             mainIntervenant?.lastName,
@@ -429,11 +1147,6 @@ function TaskDetailsPage() {
                               }`.trim()
                             : "Administrateur"}
                         </strong>
-                        <span
-                          className={`task-status-badge ${activityStatus.className}`}
-                        >
-                          {activityStatus.label}
-                        </span>
                       </div>
 
                       <div className="activity-history-grid">
@@ -469,24 +1182,6 @@ function TaskDetailsPage() {
                               </div>
                             </div>
                           </div>
-
-                          {activity.intervenants?.length > 0 && (
-                            <div className="task-detail-item task-detail-wide">
-                              <Users size={19} />
-                              <div>
-                                <span>Intervenants</span>
-                                <div className="task-avatar-list">
-                                  {activity.intervenants.map((person) => (
-                                    <span key={person.userId}>
-                                      {`${person.firstName || ""} ${
-                                        person.lastName || ""
-                                      }`.trim() || person.email || "Utilisateur"}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
 
                           {activity.measureReadings?.length > 0 && (
                             <div className="activity-linked-lines">
@@ -580,9 +1275,9 @@ function TaskDetailsPage() {
                 <strong>{task.costCenterName || "Non défini"}</strong>
               </div>
             </div>
+          </article>
 
-            <div className="details-divider" />
-
+          <article className="details-card">
             <div className="task-detail-item">
               <Clock size={21} />
               <div>

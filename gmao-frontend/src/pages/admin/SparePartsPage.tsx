@@ -12,6 +12,7 @@ import {
   PackagePlus,
   Pencil,
   Search,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 
@@ -24,6 +25,8 @@ import {
 
 import type { SparePart } from "../../types/sparePart";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
+
+import "./task-styles.css";
 
 
 const BACKEND_URL = "http://localhost:8090";
@@ -53,6 +56,13 @@ function SparePartsPage() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterMinQuantity, setFilterMinQuantity] = useState("");
+  const [filterMaxQuantity, setFilterMaxQuantity] = useState("");
+  const [filterMinPrice, setFilterMinPrice] = useState("");
+  const [filterMaxPrice, setFilterMaxPrice] = useState("");
+  const [filterLowStockOnly, setFilterLowStockOnly] = useState(false);
+
   async function loadSpareParts(): Promise<void> {
     try {
       setLoading(true);
@@ -74,26 +84,56 @@ function SparePartsPage() {
   const filteredSpareParts = useMemo(() => {
     const value = search.trim().toLowerCase();
 
-    if (!value) {
-      return spareParts;
-    }
+    return spareParts.filter((part) => {
+      const matchesSearch =
+        !value ||
+        [
+          part.name,
+          part.code,
+          part.articleCode,
+          part.brand,
+          part.manufacturerReference,
+          part.location,
+          part.costCenterId,
+        ]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(value));
 
-    return spareParts.filter((part) =>
-      [
-        part.name,
-        part.code,
-        part.articleCode,
-        part.brand,
-        part.manufacturerReference,
-        part.location,
-        part.costCenterId,
-      ]
-        .filter(Boolean)
-        .some((field) =>
-          String(field).toLowerCase().includes(value),
-        ),
-    );
-  }, [spareParts, search]);
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (filterMinQuantity && part.quantity < Number(filterMinQuantity)) {
+        return false;
+      }
+
+      if (filterMaxQuantity && part.quantity > Number(filterMaxQuantity)) {
+        return false;
+      }
+
+      if (filterMinPrice && part.unitPrice < Number(filterMinPrice)) {
+        return false;
+      }
+
+      if (filterMaxPrice && part.unitPrice > Number(filterMaxPrice)) {
+        return false;
+      }
+
+      if (filterLowStockOnly && part.quantity >= part.minimumStock) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    spareParts,
+    search,
+    filterMinQuantity,
+    filterMaxQuantity,
+    filterMinPrice,
+    filterMaxPrice,
+    filterLowStockOnly,
+  ]);
 
   async function handleDelete(part: SparePart): Promise<void> {
     const confirmed = window.confirm(
@@ -207,16 +247,100 @@ function getStockDotClass(part: SparePart): string {
         </div>
       )}
 
-      <div className="supplier-search-bar">
-        <Search size={18} />
+      <div className="supplier-toolbar-row">
+        <div className="supplier-search-bar">
+          <Search size={18} />
 
-        <input
-          type="search"
-          placeholder="Rechercher une pièce détachée..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+          <input
+            type="search"
+            placeholder="Rechercher une pièce détachée..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+
+        <button
+          type="button"
+          className={`task-filter-toggle ${showFilters ? "active" : ""}`}
+          onClick={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal size={16} />
+          Filtrer
+        </button>
       </div>
+
+      {showFilters && (
+        <div className="task-filter-panel">
+          <div className="task-filter-grid">
+            <div className="task-filter-field">
+              <label>Quantité minimum</label>
+              <input
+                type="number"
+                min={0}
+                value={filterMinQuantity}
+                onChange={(e) => setFilterMinQuantity(e.target.value)}
+              />
+            </div>
+
+            <div className="task-filter-field">
+              <label>Quantité maximum</label>
+              <input
+                type="number"
+                min={0}
+                value={filterMaxQuantity}
+                onChange={(e) => setFilterMaxQuantity(e.target.value)}
+              />
+            </div>
+
+            <div className="task-filter-field">
+              <label>Prix unitaire minimum</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={filterMinPrice}
+                onChange={(e) => setFilterMinPrice(e.target.value)}
+              />
+            </div>
+
+            <div className="task-filter-field">
+              <label>Prix unitaire maximum</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={filterMaxPrice}
+                onChange={(e) => setFilterMaxPrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="task-toggle-row">
+            <span>Le stock est inférieur au minimum</span>
+            <input
+              type="checkbox"
+              checked={filterLowStockOnly}
+              onChange={(e) => setFilterLowStockOnly(e.target.checked)}
+            />
+          </div>
+
+          <div className="task-filter-actions">
+            <button
+              type="button"
+              className="task-filter-reset"
+              onClick={() => {
+                setFilterMinQuantity("");
+                setFilterMaxQuantity("");
+                setFilterMinPrice("");
+                setFilterMaxPrice("");
+                setFilterLowStockOnly(false);
+              }}
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="supplier-loading">

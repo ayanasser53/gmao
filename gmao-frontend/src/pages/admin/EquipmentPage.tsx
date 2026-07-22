@@ -7,12 +7,15 @@ import {
 
 import {
   ArrowLeft,
+  CheckCircle2,
   ImagePlus,
   Link2,
+  MapPin as MapPinIcon,
   Package,
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   Tag as TagIcon,
   Trash2,
   Wrench,
@@ -31,9 +34,12 @@ import {
 import { getTags } from "../../services/tagService";
 import { getCostCenters } from "../../services/costCenterService";
 import { getSpareParts } from "../../services/sparePartService";
+import { getMaintenancePlans } from "../../services/maintenancePlanService";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 import SparePartSelect from "../../components/admin/SparePartSelect";
+
+import "./task-styles.css";
 
 import type {
   Equipment,
@@ -120,6 +126,21 @@ function EquipmentPage() {
   const [error, setError] =
     useState<string>("");
 
+  const [equipmentIdsWithPlan, setEquipmentIdsWithPlan] = useState<
+    Set<number>
+  >(new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterPlan, setFilterPlan] = useState<"all" | "without" | "with">(
+    "all",
+  );
+  const [filterCostCenterId, setFilterCostCenterId] = useState("");
+  const [filterTagId, setFilterTagId] = useState("");
+  const [filterLinkedEquipmentId, setFilterLinkedEquipmentId] = useState("");
+  const [filterLinkedSparePartId, setFilterLinkedSparePartId] = useState("");
+  const [openFilterDropdown, setOpenFilterDropdown] = useState<
+    "tags" | "equipment" | "spareParts" | null
+  >(null);
+
   async function loadData(): Promise<void> {
     try {
       setLoading(true);
@@ -130,17 +151,22 @@ function EquipmentPage() {
         tagData,
         costCenterData,
         sparePartData,
+        maintenancePlanData,
       ] = await Promise.all([
         getEquipment(),
         getTags(),
         getCostCenters(),
         getSpareParts(),
+        getMaintenancePlans().catch(() => []),
       ]);
 
       setEquipment(equipmentData);
       setTags(tagData);
       setCostCenters(costCenterData);
       setSpareParts(sparePartData);
+      setEquipmentIdsWithPlan(
+        new Set(maintenancePlanData.map((plan) => plan.equipmentId)),
+      );
     } catch (requestError) {
       console.error(
         "Erreur chargement :",
@@ -164,7 +190,7 @@ function EquipmentPage() {
       search.trim().toLowerCase();
 
     return equipment.filter((item) => {
-      return (
+      const matchesSearch =
         !value ||
         item.name.toLowerCase().includes(value) ||
         item.description
@@ -178,10 +204,64 @@ function EquipmentPage() {
           .includes(value) ||
         item.costCenterName
           ?.toLowerCase()
-          .includes(value)
-      );
+          .includes(value);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (filterPlan === "with" && !equipmentIdsWithPlan.has(item.id)) {
+        return false;
+      }
+
+      if (filterPlan === "without" && equipmentIdsWithPlan.has(item.id)) {
+        return false;
+      }
+
+      if (
+        filterCostCenterId &&
+        item.costCenterId !== Number(filterCostCenterId)
+      ) {
+        return false;
+      }
+
+      if (
+        filterTagId &&
+        !item.tags.some((tag) => tag.id === Number(filterTagId))
+      ) {
+        return false;
+      }
+
+      if (
+        filterLinkedEquipmentId &&
+        !item.linkedEquipment.some(
+          (linked) => linked.id === Number(filterLinkedEquipmentId),
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        filterLinkedSparePartId &&
+        !item.linkedSpareParts.some(
+          (linked) => linked.id === Number(filterLinkedSparePartId),
+        )
+      ) {
+        return false;
+      }
+
+      return true;
     });
-  }, [equipment, search]);
+  }, [
+    equipment,
+    search,
+    filterPlan,
+    equipmentIdsWithPlan,
+    filterCostCenterId,
+    filterTagId,
+    filterLinkedEquipmentId,
+    filterLinkedSparePartId,
+  ]);
 
   function openCreateDrawer(): void {
     setEditingId(null);
@@ -498,7 +578,349 @@ return (
             }
           />
         </div>
+
+        <button
+          type="button"
+          className={`task-filter-toggle ${showFilters ? "active" : ""}`}
+          onClick={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal size={16} />
+          Filtrer
+        </button>
       </div>
+
+      {showFilters && (
+        <div className="task-filter-panel">
+          <div className="equipment-filter-columns">
+            <div className="equipment-filter-radios">
+              <label className="equipment-filter-radio">
+                <input
+                  type="radio"
+                  name="equipment-plan-filter"
+                  checked={filterPlan === "all"}
+                  onChange={() => setFilterPlan("all")}
+                />
+                Tous les équipements
+              </label>
+              <label className="equipment-filter-radio">
+                <input
+                  type="radio"
+                  name="equipment-plan-filter"
+                  checked={filterPlan === "without"}
+                  onChange={() => setFilterPlan("without")}
+                />
+                Équipements sans plan de maintenance
+              </label>
+              <label className="equipment-filter-radio">
+                <input
+                  type="radio"
+                  name="equipment-plan-filter"
+                  checked={filterPlan === "with"}
+                  onChange={() => setFilterPlan("with")}
+                />
+                Équipements avec plan de maintenance
+              </label>
+
+              <div className="task-filter-field">
+                <label>
+                  <MapPinIcon size={15} /> Centre de coût
+                </label>
+                <select
+                  value={filterCostCenterId}
+                  onChange={(e) => setFilterCostCenterId(e.target.value)}
+                >
+                  <option value="">Tous</option>
+                  {costCenters.map((cc) => (
+                    <option key={cc.id} value={cc.id}>
+                      {cc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="task-filter-field">
+              <label>
+                <TagIcon size={15} /> Tags
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenFilterDropdown((current) =>
+                      current === "tags" ? null : "tags",
+                    )
+                  }
+                >
+                  {(() => {
+                    const tag = tags.find(
+                      (t) => t.id === Number(filterTagId),
+                    );
+
+                    return tag ? (
+                      <span
+                        className="task-filter-tag-chip"
+                        style={{
+                          color: tag.color ?? "#617287",
+                          borderColor: tag.color ?? "#cfdbe6",
+                          background: `${tag.color ?? "#617287"}1a`,
+                        }}
+                      >
+                        {tag.name}
+                      </span>
+                    ) : (
+                      <span>Tous</span>
+                    );
+                  })()}
+                </button>
+
+                {openFilterDropdown === "tags" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterTagId ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterTagId("");
+                        setOpenFilterDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterTagId && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {tags.map((tag) => {
+                      const isSelected = filterTagId === String(tag.id);
+
+                      return (
+                        <button
+                          type="button"
+                          key={tag.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterTagId(String(tag.id));
+                            setOpenFilterDropdown(null);
+                          }}
+                        >
+                          <span
+                            className="task-filter-tag-chip"
+                            style={{
+                              color: tag.color ?? "#617287",
+                              borderColor: tag.color ?? "#cfdbe6",
+                              background: `${tag.color ?? "#617287"}1a`,
+                            }}
+                          >
+                            {tag.name}
+                          </span>
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="task-filter-field">
+              <label>
+                <Link2 size={15} /> Équipement lié
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenFilterDropdown((current) =>
+                      current === "equipment" ? null : "equipment",
+                    )
+                  }
+                >
+                  {(() => {
+                    const item = equipment.find(
+                      (e) => e.id === Number(filterLinkedEquipmentId),
+                    );
+
+                    if (!item) {
+                      return <span>Tous</span>;
+                    }
+
+                    const image = getFileUrl(item.image);
+
+                    return (
+                      <>
+                        <span className="task-filter-equip-thumb">
+                          {image ? (
+                            <img src={image} alt={item.name} />
+                          ) : (
+                            <Wrench size={13} />
+                          )}
+                        </span>
+                        {item.name}
+                      </>
+                    );
+                  })()}
+                </button>
+
+                {openFilterDropdown === "equipment" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterLinkedEquipmentId ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterLinkedEquipmentId("");
+                        setOpenFilterDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterLinkedEquipmentId && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {equipment.map((item) => {
+                      const isSelected =
+                        filterLinkedEquipmentId === String(item.id);
+                      const image = getFileUrl(item.image);
+
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterLinkedEquipmentId(String(item.id));
+                            setOpenFilterDropdown(null);
+                          }}
+                        >
+                          <span className="task-filter-equip-thumb">
+                            {image ? (
+                              <img src={image} alt={item.name} />
+                            ) : (
+                              <Wrench size={13} />
+                            )}
+                          </span>
+                          {item.name}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <label className="equipment-filter-spacer">
+                <Package size={15} /> Pièce liée
+              </label>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setOpenFilterDropdown((current) =>
+                      current === "spareParts" ? null : "spareParts",
+                    )
+                  }
+                >
+                  {(() => {
+                    const part = spareParts.find(
+                      (p) => p.id === Number(filterLinkedSparePartId),
+                    );
+
+                    if (!part) {
+                      return <span>Tous</span>;
+                    }
+
+                    const image = getFileUrl(part.image);
+
+                    return (
+                      <>
+                        <span className="task-filter-equip-thumb">
+                          {image ? (
+                            <img src={image} alt={part.name} />
+                          ) : (
+                            <Package size={13} />
+                          )}
+                        </span>
+                        {part.name}
+                      </>
+                    );
+                  })()}
+                </button>
+
+                {openFilterDropdown === "spareParts" && (
+                  <div className="task-filter-dropdown-panel">
+                    <button
+                      type="button"
+                      className={`task-filter-dropdown-row ${
+                        !filterLinkedSparePartId ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterLinkedSparePartId("");
+                        setOpenFilterDropdown(null);
+                      }}
+                    >
+                      Tous
+                      {!filterLinkedSparePartId && <CheckCircle2 size={16} />}
+                    </button>
+
+                    {spareParts.map((part) => {
+                      const isSelected =
+                        filterLinkedSparePartId === String(part.id);
+                      const image = getFileUrl(part.image);
+
+                      return (
+                        <button
+                          type="button"
+                          key={part.id}
+                          className={`task-filter-dropdown-row ${
+                            isSelected ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setFilterLinkedSparePartId(String(part.id));
+                            setOpenFilterDropdown(null);
+                          }}
+                        >
+                          <span className="task-filter-equip-thumb">
+                            {image ? (
+                              <img src={image} alt={part.name} />
+                            ) : (
+                              <Package size={13} />
+                            )}
+                          </span>
+                          {part.name}
+                          {isSelected && <CheckCircle2 size={16} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="task-filter-actions">
+            <button
+              type="button"
+              className="task-filter-reset"
+              onClick={() => {
+                setFilterPlan("all");
+                setFilterCostCenterId("");
+                setFilterTagId("");
+                setFilterLinkedEquipmentId("");
+                setFilterLinkedSparePartId("");
+              }}
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="equipment-loading">

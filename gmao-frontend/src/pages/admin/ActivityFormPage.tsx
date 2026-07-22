@@ -8,7 +8,6 @@ import {
   Plus,
   Save,
   Trash2,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -18,16 +17,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   createActivity,
   createActivityAndFinishTask,
-  createActivityForTask,
 } from "../../services/activityService";
 import { getMeasures } from "../../services/measureService";
 import { getSpareParts } from "../../services/sparePartService";
 import { getTasks } from "../../services/taskService";
-import { getUsers } from "../../services/userService";
 import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { TaskListItem } from "../../types/task";
-import type { UserSummary } from "../../types/user";
 
 import "./task-styles.css";
 
@@ -43,11 +39,6 @@ function parseDecimal(value: string) {
   return Number(value.replace(",", "."));
 }
 
-function userLabel(user: UserSummary) {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  return fullName || user.email || `Utilisateur ${user.id}`;
-}
-
 function ActivityFormPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -55,7 +46,6 @@ function ActivityFormPage() {
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
-  const [users, setUsers] = useState<UserSummary[]>([]);
   const [measures, setMeasures] = useState<Measure[]>([]);
   const [taskId, setTaskId] = useState(presetTaskId ?? "");
   const [description, setDescription] = useState("");
@@ -74,24 +64,20 @@ function ActivityFormPage() {
   const [measureValue, setMeasureValue] = useState("");
   const [measureDate, setMeasureDate] = useState(today());
   const [measureHour, setMeasureHour] = useState(currentTime());
-  const [intervenantId, setIntervenantId] = useState("");
-  const [intervenantIds, setIntervenantIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [tasksData, sparePartsData, usersData, measuresData] = await Promise.all([
+        const [tasksData, sparePartsData, measuresData] = await Promise.all([
           getTasks(),
           getSpareParts(),
-          getUsers(),
           getMeasures(),
         ]);
 
         setTasks(tasksData);
         setSpareParts(sparePartsData);
-        setUsers(usersData.filter((user) => user.active));
         setMeasures(measuresData);
       } catch {
         setError("Impossible de charger les donnees.");
@@ -113,14 +99,6 @@ function ActivityFormPage() {
     return spareParts.find((sparePart) => sparePart.id === Number(sparePartId));
   }, [spareParts, sparePartId]);
 
-  const selectedIntervenants = useMemo(() => {
-    return users.filter((user) => intervenantIds.includes(user.id));
-  }, [users, intervenantIds]);
-
-  const availableIntervenants = useMemo(() => {
-    return users.filter((user) => !intervenantIds.includes(user.id));
-  }, [users, intervenantIds]);
-
   function closeForm() {
     navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
   }
@@ -130,22 +108,6 @@ function ActivityFormPage() {
 
     setSpentHours(Math.floor(total / 60));
     setSpentMinutes(total % 60);
-  }
-
-  function addIntervenant(value: string) {
-    const nextId = Number(value);
-
-    if (!nextId || intervenantIds.includes(nextId)) {
-      setIntervenantId("");
-      return;
-    }
-
-    setIntervenantIds((current) => [...current, nextId]);
-    setIntervenantId("");
-  }
-
-  function removeIntervenant(userId: number) {
-    setIntervenantIds((current) => current.filter((id) => id !== userId));
   }
 
   async function submit(finishTask: boolean) {
@@ -227,7 +189,7 @@ function ActivityFormPage() {
       spentMinutes,
       status: finishTask ? "DONE" as const : "IN_PROGRESS" as const,
       spareParts: selectedSpareParts,
-      intervenantIds,
+      intervenantIds: [],
       additionalCosts: selectedAdditionalCosts,
       measureReadings: selectedMeasureReadings,
     };
@@ -238,8 +200,6 @@ function ActivityFormPage() {
 
       if (finishTask) {
         await createActivityAndFinishTask(Number(taskId), payload);
-      } else if (presetTaskId) {
-        await createActivityForTask(Number(taskId), payload);
       } else {
         await createActivity(payload);
       }
@@ -616,41 +576,6 @@ function ActivityFormPage() {
                   >
                     <Trash2 size={18} />
                   </button>
-                </div>
-              )}
-
-              <div className="measure-form-group activity-intervenants-field">
-                <label>Intervenants additionnels</label>
-                <select
-                  value={intervenantId}
-                  onChange={(event) => addIntervenant(event.target.value)}
-                >
-                  <option value="">
-                    Selectionnez un administrateur ou technicien
-                  </option>
-                  {availableIntervenants.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {userLabel(user)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedIntervenants.length > 0 && (
-                <div className="activity-selected-users">
-                  {selectedIntervenants.map((user) => (
-                    <span key={user.id}>
-                      <Users size={15} />
-                      {userLabel(user)}
-                      <button
-                        type="button"
-                        onClick={() => removeIntervenant(user.id)}
-                        aria-label={`Retirer ${userLabel(user)}`}
-                      >
-                        <X size={14} />
-                      </button>
-                    </span>
-                  ))}
                 </div>
               )}
             </div>

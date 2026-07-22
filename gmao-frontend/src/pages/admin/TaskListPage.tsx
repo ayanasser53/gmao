@@ -6,7 +6,6 @@ import {
   Clock,
   Download,
   History,
-  ListChecks,
   MapPin,
   Plus,
   Search,
@@ -20,12 +19,12 @@ import { useNavigate } from "react-router-dom";
 
 import { getEquipment } from "../../services/equipmentService";
 import { getCostCenters } from "../../services/costCenterService";
-import { getTasks, getTaskSummary, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
+import { getTasks, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
 import type { Equipment } from "../../types/equipment";
 import type { CostCenter } from "../../types/costCenter";
-import type { TaskListItem, TaskStatus, TaskSummary } from "../../types/task";
+import type { TaskListItem, TaskStatus } from "../../types/task";
 import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
@@ -52,10 +51,6 @@ function formatDate(value: string): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatDuration(hours: number, minutes: number): string {
-  return `${hours}h ${minutes.toString().padStart(2, "0")}mn`;
 }
 
 const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
@@ -93,7 +88,6 @@ function TaskListPage() {
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
-  const [summary, setSummary] = useState<TaskSummary | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TaskStatus>("PLANNED");
   const [loading, setLoading] = useState(true);
@@ -132,10 +126,9 @@ function TaskListPage() {
   useEffect(() => {
     async function load(): Promise<void> {
       try {
-        const [taskList, taskSummary, users, teams, tags, equipmentList, costCenters] =
+        const [taskList, users, teams, tags, equipmentList, costCenters] =
           await Promise.all([
             getTasks(),
-            getTaskSummary(),
             getUsersDetailed().catch(() => [] as UserDetail[]),
             getTeams().catch(() => [] as Team[]),
             fetchTagOptions().catch(() => [] as TagOption[]),
@@ -144,7 +137,6 @@ function TaskListPage() {
           ]);
 
         setTasks(taskList);
-        setSummary(taskSummary);
         setUserOptions(users);
         setTeamOptions(teams);
         setTagOptions(tags);
@@ -409,20 +401,9 @@ function TaskListPage() {
           onClick={() => setShowFilters((current) => !current)}
         >
           <SlidersHorizontal size={16} />
-          Filtres
+          Filtrer
           {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
         </button>
-
-        {summary && (
-          <span className="task-summary-chip">
-            <ListChecks size={16} />
-            <strong>{summary.totalTasks}</strong> tâches ·{" "}
-            {formatDuration(
-              summary.totalPlannedHours,
-              summary.totalPlannedMinutes,
-            )}
-          </span>
-        )}
       </div>
 
       {showFilters && (

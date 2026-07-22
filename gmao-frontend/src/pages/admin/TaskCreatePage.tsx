@@ -1,6 +1,7 @@
 ﻿import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Plus,
   Search,
   Tag as TagIcon,
@@ -100,6 +101,8 @@ function TaskCreatePage() {
   const [assignSearch, setAssignSearch] = useState("");
   const [assignMode, setAssignMode] = useState<"manual" | "tags">("manual");
   const [assignTagIds, setAssignTagIds] = useState<number[]>([]);
+  const [showReportedByDropdown, setShowReportedByDropdown] = useState(false);
+  const [showAssignSection, setShowAssignSection] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -506,20 +509,47 @@ function TaskCreatePage() {
                 ))}
               </div>
 
-              <select
-                className="task-add-select"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) addAssignee(Number(e.target.value));
-                }}
-              >
-                <option value="">+ Sélectionner un utilisateur</option>
-                {userOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setShowReportedByDropdown((current) => !current)
+                  }
+                >
+                  + Sélectionner un utilisateur
+                </button>
+
+                {showReportedByDropdown && (
+                  <div className="task-filter-dropdown-panel">
+                    {userOptions.length === 0 && (
+                      <p className="task-empty-hint">
+                        Aucun collègue disponible.
+                      </p>
+                    )}
+
+                    {userOptions.map((option) => (
+                      <button
+                        type="button"
+                        key={option.id}
+                        className="task-filter-dropdown-row"
+                        onClick={() => {
+                          addAssignee(option.id);
+                          setShowReportedByDropdown(false);
+                        }}
+                      >
+                        <span
+                          className="task-filter-avatar"
+                          style={{ background: avatarColor(option.id) }}
+                        >
+                          {initials(option.label)}
+                        </span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Assigned to */}
@@ -549,17 +579,37 @@ function TaskCreatePage() {
 
               {assignMode === "manual" ? (
                 <div className="assign-picker">
-                <div className="assign-picker-search">
-                  <Search size={16} />
-                  <input
-                    type="text"
-                    placeholder="Rechercher un collègue ou une équipe..."
-                    value={assignSearch}
-                    onChange={(e) => setAssignSearch(e.target.value)}
-                  />
-                </div>
+                  <div className="assign-picker-search">
+                    <Search size={16} />
+                    <input
+                      type="text"
+                      placeholder="Rechercher un collègue ou une équipe..."
+                      value={assignSearch}
+                      onChange={(e) => setAssignSearch(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="assign-picker-search-toggle"
+                      onClick={() =>
+                        setShowAssignSection((current) => !current)
+                      }
+                      aria-label={
+                        showAssignSection
+                          ? "Masquer la liste"
+                          : "Afficher la liste"
+                      }
+                    >
+                      <ChevronDown
+                        size={18}
+                        className={`section-toggle-chevron ${
+                          showAssignSection ? "open" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-                <div className="assign-picker-list">
+                  {showAssignSection && (
+                    <div className="assign-picker-list">
                   <p className="assign-picker-heading">Équipes</p>
 
                   {filteredTeamOptions.length === 0 && (
@@ -588,8 +638,11 @@ function TaskCreatePage() {
                             : addAssignedTeam(team.id)
                         }
                       >
-                        <span className="assign-picker-team-icon">
-                          <UsersRound size={16} />
+                        <span
+                          className="assign-picker-avatar"
+                          style={{ background: avatarColor(team.id) }}
+                        >
+                          {initials(team.name)}
                         </span>
                         {team.name}
                         {isSelected && (
@@ -645,6 +698,7 @@ function TaskCreatePage() {
                     );
                   })}
                 </div>
+              )}
               </div>
               ) : (
                 <div className="assign-tag-picker">

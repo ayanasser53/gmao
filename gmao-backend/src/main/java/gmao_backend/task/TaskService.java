@@ -43,6 +43,8 @@ public class TaskService {
 
     private final SparePartRepository sparePartRepository;
 
+    private final TaskSparePartRepository taskSparePartRepository;
+
     private final TaskMapper mapper;
 
     private final TaskDocumentStorageService storage;
@@ -187,6 +189,8 @@ public class TaskService {
         );
 
         task.getSpareParts().clear();
+        taskSparePartRepository.deleteAllByTaskId(task.getId());
+        taskSparePartRepository.flush();
 
         task.getSpareParts().addAll(
                 resolveSpareParts(task, request.spareParts())
