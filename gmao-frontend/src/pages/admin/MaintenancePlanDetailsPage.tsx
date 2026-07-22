@@ -8,7 +8,6 @@ import {
   History,
   MapPin,
   Package,
-  Pencil,
   Plus,
   Scale,
   Tags,
@@ -239,15 +238,6 @@ export default function MaintenancePlanDetailsPage() {
 
   return (
     <main className="admin-page">
-      <button
-        type="button"
-        className="back-link"
-        onClick={() => navigate("/admin/maintenance-plans")}
-      >
-        <ArrowLeft size={19} />
-        Retour aux plans de maintenance
-      </button>
-
       {error && <div className="form-error">{error}</div>}
 
       <section className="details-header">
@@ -261,11 +251,11 @@ export default function MaintenancePlanDetailsPage() {
 
         <button
           type="button"
-          className="primary-action"
-          onClick={() => navigate(`/admin/maintenance-plans/${plan.id}/edit`)}
+          className="maintenance-form-back-button"
+          onClick={() => navigate("/admin/maintenance-plans")}
         >
-          <Pencil size={18} />
-          Modifier
+          <ArrowLeft size={18} />
+          Retour aux plans de maintenance
         </button>
       </section>
 

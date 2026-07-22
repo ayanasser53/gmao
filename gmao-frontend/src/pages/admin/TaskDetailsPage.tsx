@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import SparePartSelect from "../../components/admin/SparePartSelect";
 
@@ -154,8 +154,11 @@ function activityTotal(activity: Activity): number {
 function TaskDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const taskId = Number(id);
+  const equipmentBackSource =
+    searchParams.get("from") === "activities" ? "activities" : "tasks";
   const [task, setTask] = useState<Task | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1243,7 +1246,10 @@ function TaskDetailsPage() {
               type="button"
               className="task-equipment-summary"
               onClick={() =>
-                task.equipment && navigate(`/admin/equipment/${task.equipment.id}`)
+                task.equipment &&
+                navigate(
+                  `/admin/equipment/${task.equipment.id}?from=${equipmentBackSource}`,
+                )
               }
               disabled={!task.equipment}
             >

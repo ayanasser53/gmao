@@ -4,7 +4,6 @@
   ChevronRight,
   MapPin,
   Package,
-  Pencil,
   Tag as TagIcon,
   Wrench,
 } from "lucide-react";
@@ -18,6 +17,7 @@ import {
   Link,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 
 import { getEquipmentById } from "../../services/equipmentService";
@@ -64,6 +64,14 @@ function getFileUrl(
 function EquipmentDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const source = searchParams.get("from");
+  const backTarget =
+    source === "activities"
+      ? { label: "Retour aux activités", path: "/admin/activities" }
+      : source === "tasks"
+      ? { label: "Retour aux tâches", path: "/admin/tasks" }
+      : { label: "Retour aux équipements", path: "/admin/equipment" };
 
   const [equipment, setEquipment] =
     useState<Equipment | null>(null);
@@ -140,9 +148,9 @@ function EquipmentDetailsPage() {
         <button
           type="button"
           className="equipment-primary-button"
-          onClick={() => navigate("/admin/equipment")}
+          onClick={() => navigate(backTarget.path)}
         >
-          Retour aux équipements
+          {backTarget.label}
         </button>
       </div>
     );
@@ -161,8 +169,8 @@ function EquipmentDetailsPage() {
         <button
           type="button"
           className="equipment-detail-back"
-          onClick={() => navigate("/admin/equipment")}
-          aria-label="Retour aux équipements"
+          onClick={() => navigate(backTarget.path)}
+          aria-label={backTarget.label}
         >
           <ArrowLeft size={20} />
         </button>
@@ -176,11 +184,11 @@ function EquipmentDetailsPage() {
         </div>
 
         <Link
-          to="/admin/equipment"
+          to={backTarget.path}
           className="equipment-primary-button"
         >
-          <Pencil size={17} />
-          Retour aux équipements
+          <ArrowLeft size={17} />
+          {backTarget.label}
         </Link>
       </div>
 

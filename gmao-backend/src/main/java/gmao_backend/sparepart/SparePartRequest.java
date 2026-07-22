@@ -22,6 +22,7 @@ public record SparePartRequest(
         String articleCode,
         SparePartVisibility visibility,
         Long supplierId,
+        List<Long> tagIds,
         List<Long> linkedEquipmentIds,
         List<Long> linkedSparePartIds
 ) {

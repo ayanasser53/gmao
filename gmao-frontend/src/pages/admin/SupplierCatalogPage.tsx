@@ -45,6 +45,7 @@ type StoredCatalog = {
 };
 
 const catalogStorageKey = "gmao-supplier-catalog-imports";
+const catalogItemsPerPage = 5;
 
 const officialSuppliers: CatalogSupplier[] = [
   {
@@ -264,6 +265,7 @@ function SupplierCatalogPage() {
   const [storedCatalog, setStoredCatalog] = useState<StoredCatalog>(() =>
     readStoredCatalog(),
   );
+  const [currentPage, setCurrentPage] = useState(1);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -335,6 +337,25 @@ function SupplierCatalogPage() {
       return matchesSearch;
     });
   }, [catalogItems, getSupplier, search, selectedOption]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedOption]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / catalogItemsPerPage));
+
+  const paginatedItems = useMemo(() => {
+    const safePage = Math.min(currentPage, pageCount);
+    const start = (safePage - 1) * catalogItemsPerPage;
+
+    return filteredItems.slice(start, start + catalogItemsPerPage);
+  }, [currentPage, filteredItems, pageCount]);
+
+  useEffect(() => {
+    if (currentPage > pageCount) {
+      setCurrentPage(pageCount);
+    }
+  }, [currentPage, pageCount]);
 
   const selectedReferenceLabel = useMemo(() => {
     if (selectedOption === "official") {
@@ -630,7 +651,7 @@ function SupplierCatalogPage() {
             </thead>
 
             <tbody>
-              {filteredItems.map((item) => {
+              {paginatedItems.map((item) => {
                 const supplier = getSupplier(item.supplierId);
 
                 return (
@@ -697,6 +718,41 @@ function SupplierCatalogPage() {
             </tbody>
           </table>
         </div>
+
+        {pageCount > 1 && (
+          <div className="catalog-pagination" aria-label="Pagination du catalogue">
+            <button
+              type="button"
+              className="catalog-page-arrow"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              aria-label="Page precedente"
+            >
+              ‹
+            </button>
+
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
+              <button
+                type="button"
+                key={page}
+                className={`catalog-page-button ${currentPage === page ? "active" : ""}`}
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              className="catalog-page-arrow"
+              onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+              disabled={currentPage === pageCount}
+              aria-label="Page suivante"
+            >
+              ›
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

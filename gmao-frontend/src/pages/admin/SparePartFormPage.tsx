@@ -20,6 +20,7 @@ import {
 
 import { getCostCenters } from "../../services/costCenterService";
 import { getEquipment } from "../../services/equipmentService";
+import { getTags } from "../../services/tagService";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 import SparePartSelect from "../../components/admin/SparePartSelect";
@@ -35,6 +36,7 @@ import type {
   SparePart,
   SparePartRequest,
 } from "../../types/sparePart";
+import type { Tag } from "../../types/tag";
 
 type SparePartFormState = Omit<SparePartRequest, "costCenterId"> & {
   costCenterId: string;
@@ -59,6 +61,7 @@ const emptyForm: SparePartFormState = {
   articleCode: "",
   visibility: "PRIVATE",
   supplierId: null,
+  tagIds: [],
   linkedEquipmentIds: [],
   linkedSparePartIds: [],
 };
@@ -72,6 +75,7 @@ function SparePartFormPage() {
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditMode);
@@ -92,22 +96,30 @@ function SparePartFormPage() {
     [id, spareParts],
   );
 
+  const selectedTags = useMemo(
+    () => tags.filter((tag) => form.tagIds.includes(tag.id)),
+    [form.tagIds, tags],
+  );
+
   useEffect(() => {
     async function loadOptions(): Promise<void> {
       try {
-        const [costCenterData, equipmentData, sparePartData] = await Promise.all([
+        const [costCenterData, equipmentData, sparePartData, tagData] = await Promise.all([
           getCostCenters(),
           getEquipment(),
           getSpareParts(),
+          getTags(),
         ]);
 
         setCostCenters(costCenterData);
         setEquipment(equipmentData);
         setSpareParts(sparePartData);
+        setTags(tagData);
       } catch {
         setCostCenters([]);
         setEquipment([]);
         setSpareParts([]);
+        setTags([]);
       }
     }
 
@@ -145,6 +157,7 @@ function SparePartFormPage() {
           articleCode: sparePart.articleCode ?? "",
           visibility: sparePart.visibility ?? "PRIVATE",
           supplierId: sparePart.supplierId,
+          tagIds: sparePart.tags?.map((tag) => tag.id) ?? [],
           linkedEquipmentIds: sparePart.linkedEquipments?.map((item) => item.id) ?? [],
           linkedSparePartIds: sparePart.linkedSpareParts?.map((item) => item.id) ?? [],
         });
@@ -217,6 +230,23 @@ function SparePartFormPage() {
     updateField(
       "linkedSparePartIds",
       form.linkedSparePartIds.filter((itemId) => itemId !== sparePartId),
+    );
+  }
+
+  function addTag(value: string): void {
+    const tagId = Number(value);
+
+    if (!tagId || form.tagIds.includes(tagId)) {
+      return;
+    }
+
+    updateField("tagIds", [...form.tagIds, tagId]);
+  }
+
+  function removeTag(tagId: number): void {
+    updateField(
+      "tagIds",
+      form.tagIds.filter((itemId) => itemId !== tagId),
     );
   }
 
@@ -390,6 +420,42 @@ function SparePartFormPage() {
                     }}
                   />
                 </label>
+              </div>
+
+              <div className="measure-form-group">
+                <label htmlFor="spare-part-tags">Labels / tags</label>
+                <select
+                  id="spare-part-tags"
+                  value=""
+                  onChange={(event) => addTag(event.target.value)}
+                >
+                  <option value="">Sélectionner des labels</option>
+                  {tags
+                    .filter((tag) => !form.tagIds.includes(tag.id))
+                    .map((tag) => (
+                      <option key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </option>
+                    ))}
+                </select>
+
+                {selectedTags.length > 0 && (
+                  <div className="spare-part-selected-tags">
+                    {selectedTags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => removeTag(tag.id)}
+                        style={{
+                          borderColor: tag.color,
+                          background: tag.color,
+                        }}
+                      >
+                        {tag.name} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="supplier-drawer-section-title">

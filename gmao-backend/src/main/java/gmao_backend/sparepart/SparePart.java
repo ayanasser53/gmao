@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.sparepart;
 
 import com.gmao.gmao_backend.supplier.Supplier;
+import com.gmao.gmao_backend.tag.Tag;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -70,13 +71,22 @@ public class SparePart {
     private Supplier supplier;
 
     @ManyToMany
-@JoinTable(
-        name = "spare_part_links",
-        joinColumns = @JoinColumn(name = "spare_part_id"),
-        inverseJoinColumns = @JoinColumn(name = "linked_spare_part_id")
-)
-@Builder.Default
-private Set<SparePart> linkedSpareParts = new HashSet<>();
+    @JoinTable(
+            name = "spare_part_tags",
+            joinColumns = @JoinColumn(name = "spare_part_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    @Builder.Default
+    private Set<Tag> tags = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "spare_part_links",
+            joinColumns = @JoinColumn(name = "spare_part_id"),
+            inverseJoinColumns = @JoinColumn(name = "linked_spare_part_id")
+    )
+    @Builder.Default
+    private Set<SparePart> linkedSpareParts = new HashSet<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;

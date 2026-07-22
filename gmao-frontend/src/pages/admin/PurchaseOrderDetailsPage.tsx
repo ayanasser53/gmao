@@ -1416,7 +1416,7 @@ export default function PurchaseOrderDetailsPage() {
                   </button>
                 </section>
 
-                <footer>
+                <footer className="purchase-edit-footer">
                   <button
                     type="button"
                     className="resource-primary-button"

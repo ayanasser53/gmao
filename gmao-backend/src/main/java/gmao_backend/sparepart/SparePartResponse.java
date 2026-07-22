@@ -25,6 +25,7 @@ public record SparePartResponse(
         SparePartVisibility visibility,
         Long supplierId,
         String supplierName,
+        List<TagResponse> tags,
         List<LinkedEquipmentResponse> linkedEquipments,
         List<LinkedSparePartResponse> linkedSpareParts,
         List<StockMovementResponse> stockMovements,
@@ -36,6 +37,13 @@ public record SparePartResponse(
             String name,
             String description,
             String image
+    ) {}
+
+    public record TagResponse(
+            Long id,
+            String name,
+            String code,
+            String color
     ) {}
 
     public record LinkedSparePartResponse(

@@ -25,6 +25,13 @@ export type StockMovement = {
   movementDate: string
 }
 
+export type SparePartTag = {
+  id: number
+  name: string
+  code: string
+  color: string
+}
+
 export type SparePart = {
   id: number
   name: string
@@ -46,6 +53,7 @@ export type SparePart = {
   visibility: SparePartVisibility
   supplierId: number | null
   supplierName: string | null
+  tags: SparePartTag[]
   linkedEquipments: LinkedEquipment[]
   linkedSpareParts: LinkedSparePart[]
   stockMovements: StockMovement[]
@@ -72,6 +80,7 @@ export type SparePartRequest = {
   articleCode: string
   visibility: SparePartVisibility
   supplierId: number | null
+  tagIds: number[]
   linkedEquipmentIds: number[]
   linkedSparePartIds: number[]
 }

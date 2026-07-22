@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import {
+  ArrowLeft,
   BadgeCheck,
   Building2,
   FileText,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 import {
+  useNavigate,
   useParams,
 } from "react-router-dom";
 
@@ -58,6 +60,7 @@ function displayValue(value: string | null): string {
 
 function SupplierDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +122,17 @@ function SupplierDetailsPage() {
             <BadgeCheck size={14} />
             Partenaire
           </span>
+        </div>
+
+        <div className="supplier-detail-actions">
+          <button
+            type="button"
+            className="supplier-detail-back"
+            onClick={() => navigate("/admin/suppliers")}
+          >
+            <ArrowLeft size={17} />
+            Retour aux fournisseurs
+          </button>
         </div>
       </div>
 

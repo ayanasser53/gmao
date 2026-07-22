@@ -6,6 +6,8 @@ import com.gmao.gmao_backend.equipment.EquipmentRepository;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
+import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.tag.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class SparePartService {
     private final AppFileStorageService fileStorageService;
     private final EquipmentRepository equipmentRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
+    private final TagRepository tagRepository;
 
     public List<SparePartResponse> findAll() {
         return sparePartRepository.findAll()
@@ -81,6 +84,7 @@ public class SparePartService {
                 .articleCode(request.articleCode())
                 .visibility(defaultVisibility(request.visibility()))
                 .supplier(supplier)
+                .tags(resolveTags(request.tagIds()))
                 .linkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), null))
                 .build();
 
@@ -128,6 +132,7 @@ public class SparePartService {
         sparePart.setArticleCode(request.articleCode());
         sparePart.setVisibility(defaultVisibility(request.visibility()));
         sparePart.setSupplier(supplier);
+        sparePart.setTags(resolveTags(request.tagIds()));
         sparePart.setLinkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), sparePart.getId()));
 
         syncLinkedEquipment(sparePart, request.linkedEquipmentIds());
@@ -201,6 +206,21 @@ public class SparePartService {
         }
 
         return linkedSpareParts;
+    }
+
+    private Set<Tag> resolveTags(List<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        Set<Long> uniqueIds = new HashSet<>(tagIds);
+        List<Tag> foundTags = tagRepository.findAllById(uniqueIds);
+
+        if (foundTags.size() != uniqueIds.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Un ou plusieurs tags sont introuvables.");
+        }
+
+        return new HashSet<>(foundTags);
     }
 
     private void syncLinkedEquipment(SparePart sparePart, List<Long> linkedEquipmentIds) {
@@ -304,6 +324,16 @@ public class SparePartService {
                 ))
                 .toList();
 
+        var tags = sparePart.getTags()
+                .stream()
+                .map(tag -> new SparePartResponse.TagResponse(
+                        tag.getId(),
+                        tag.getName(),
+                        tag.getCode(),
+                        tag.getColor()
+                ))
+                .toList();
+
         return new SparePartResponse(
                 sparePart.getId(),
                 sparePart.getName(),
@@ -325,6 +355,7 @@ public class SparePartService {
                 sparePart.getVisibility(),
                 supplier != null ? supplier.getId() : null,
                 supplier != null ? supplier.getName() : null,
+                tags,
                 linkedEquipments,
                 linkedSpareParts,
                 stockMovements,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -8,8 +8,13 @@ import {
   Check,
   Clock,
   Info,
+  Package,
+  Plus,
   Save,
+  Search,
   Scale,
+  Tag,
+  Users,
   Wrench,
 } from "lucide-react";
 import type {
@@ -24,7 +29,14 @@ import {
   updateMaintenancePlan,
 } from "../../services/maintenancePlanService";
 import { getEquipment } from "../../services/equipmentService";
+import { getSpareParts } from "../../services/sparePartService";
+import { getTags } from "../../services/tagService";
+import { createTeam } from "../../services/teamService";
+import { getUsersDetailed } from "../../services/userService";
 import type { Equipment } from "../../types/equipment";
+import type { SparePart } from "../../types/sparePart";
+import type { Tag as TagItem } from "../../types/tag";
+import type { UserDetail } from "../../types/user";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -61,6 +73,7 @@ const defaultPayload: MaintenancePlanPayload = {
   plannedStoppedHours: 0,
   plannedStoppedMinutes: 0,
   status: "PLANNED",
+  spareParts: [],
 };
 
 type MaintenanceSchedulePreset =
@@ -99,6 +112,10 @@ function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
     plannedStoppedHours: plan.plannedStoppedHours,
     plannedStoppedMinutes: plan.plannedStoppedMinutes,
     status: getStatusForForm(plan),
+    spareParts: (plan.spareParts ?? []).map((part) => ({
+      sparePartId: part.sparePartId,
+      quantity: part.quantity,
+    })),
   };
 }
 
@@ -146,13 +163,37 @@ export default function MaintenancePlanFormPage() {
 
   const [form, setForm] = useState<MaintenancePlanPayload>(defaultPayload);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [users, setUsers] = useState<UserDetail[]>([]);
+  const [tags, setTags] = useState<TagItem[]>([]);
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [observerIds, setObserverIds] = useState<number[]>([]);
+  const [labelIds, setLabelIds] = useState<number[]>([]);
+  const [assigneePanelOpen, setAssigneePanelOpen] = useState(false);
+  const [assigneeMode, setAssigneeMode] = useState<"manual" | "labels">("manual");
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [assigneeLabelIds, setAssigneeLabelIds] = useState<number[]>([]);
+  const [teamPanelOpen, setTeamPanelOpen] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [teamDescription, setTeamDescription] = useState("");
+  const [teamMemberIds, setTeamMemberIds] = useState<number[]>([]);
+  const [teamLabelIds, setTeamLabelIds] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
 
   const loadInitialData = useCallback(async () => {
     try {
-      const equipmentData = await getEquipment();
+      const [equipmentData, sparePartData, userData, tagData] = await Promise.all([
+        getEquipment(),
+        getSpareParts().catch(() => [] as SparePart[]),
+        getUsersDetailed().catch(() => [] as UserDetail[]),
+        getTags().catch(() => [] as TagItem[]),
+      ]);
+
       setEquipments(equipmentData);
+      setSpareParts(sparePartData);
+      setUsers(userData);
+      setTags(tagData);
 
       if (id) {
         const plan = await getMaintenancePlanById(Number(id));
@@ -199,6 +240,94 @@ export default function MaintenancePlanFormPage() {
         option.frequencyUnit,
       ),
     }));
+  }
+
+  function toggleNumber(setter: Dispatch<SetStateAction<number[]>>, idValue: number) {
+    setter((current) =>
+      current.includes(idValue)
+        ? current.filter((item) => item !== idValue)
+        : [...current, idValue],
+    );
+  }
+
+  function getUserName(user: UserDetail) {
+    return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+  }
+
+  function initials(label: string) {
+    return label
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase();
+  }
+
+  function applyAssigneeLabels() {
+    if (assigneeLabelIds.length === 0) {
+      return;
+    }
+
+    const matchedUsers = users
+      .filter((user) => user.tags.some((tag) => assigneeLabelIds.includes(tag.id)))
+      .map((user) => user.id);
+
+    setAssigneeIds(Array.from(new Set([...assigneeIds, ...matchedUsers])));
+  }
+
+  async function handleCreateTeam() {
+    if (!teamName.trim()) {
+      setError("Veuillez renseigner le nom de l'équipe.");
+      return;
+    }
+
+    try {
+      await createTeam({
+        name: teamName.trim(),
+        description: teamDescription.trim(),
+        memberIds: teamMemberIds,
+        tagIds: teamLabelIds,
+      });
+
+      setTeamName("");
+      setTeamDescription("");
+      setTeamMemberIds([]);
+      setTeamLabelIds([]);
+      setTeamPanelOpen(false);
+      setAssigneePanelOpen(true);
+    } catch {
+      setError("Impossible de créer l'équipe.");
+    }
+  }
+
+  function addSparePart(sparePartId: number) {
+    if (!sparePartId || form.spareParts?.some((item) => item.sparePartId === sparePartId)) {
+      return;
+    }
+
+    updateField("spareParts", [
+      ...(form.spareParts ?? []),
+      { sparePartId, quantity: 1 },
+    ]);
+  }
+
+  function updateSparePartQuantity(sparePartId: number, quantity: number) {
+    updateField(
+      "spareParts",
+      (form.spareParts ?? []).map((item) =>
+        item.sparePartId === sparePartId
+          ? { ...item, quantity: Math.max(1, quantity) }
+          : item,
+      ),
+    );
+  }
+
+  function removeSparePart(sparePartId: number) {
+    updateField(
+      "spareParts",
+      (form.spareParts ?? []).filter((item) => item.sparePartId !== sparePartId),
+    );
   }
 
   function updateStartDate(value: string) {
@@ -259,22 +388,41 @@ export default function MaintenancePlanFormPage() {
     return dates;
   }, [form.startDate, form.frequencyValue, form.frequencyUnit]);
 
+  const filteredAssigneeUsers = useMemo(() => {
+    const value = assigneeSearch.trim().toLowerCase();
+    if (!value) return users;
+
+    return users.filter((user) =>
+      `${getUserName(user)} ${user.email}`.toLowerCase().includes(value),
+    );
+  }, [assigneeSearch, users]);
+
+  const selectedAssigneeLabels = useMemo(
+    () => tags.filter((tag) => assigneeLabelIds.includes(tag.id)),
+    [assigneeLabelIds, tags],
+  );
+
+  const selectedTeamLabels = useMemo(
+    () => tags.filter((tag) => teamLabelIds.includes(tag.id)),
+    [teamLabelIds, tags],
+  );
+
   return (
     <main className="admin-page">
-      <button
-        type="button"
-        className="back-link"
-        onClick={() => navigate("/admin/maintenance-plans")}
-      >
-        <ArrowLeft size={19} />
-        Retour aux plans
-      </button>
-
-      <section className="form-header">
+      <section className="form-header maintenance-form-header">
         <h1>
           <CalendarClock size={34} />
           {isEdit ? "Modifier le plan de maintenance" : "Créer un plan de maintenance"}
         </h1>
+
+        <button
+          type="button"
+          className="maintenance-form-back-button"
+          onClick={() => navigate("/admin/maintenance-plans")}
+        >
+          <ArrowLeft size={19} />
+          Retour aux plans de maintenance
+        </button>
 
         <div className="wizard-steps">
           <button
@@ -360,6 +508,244 @@ export default function MaintenancePlanFormPage() {
               <span>Ce plan de maintenance est réglementaire</span>
             </label>
 
+            <div className="form-section-title">
+              <Users size={22} />
+              <h2>Assignés</h2>
+            </div>
+
+            <div className="maintenance-choice-panel">
+              <span>Sélectionner les assignés</span>
+              {assigneeIds.length > 0 && (
+                <div className="maintenance-selected-line">
+                  {assigneeIds.map((userId) => {
+                    const user = users.find((item) => item.id === userId);
+                    return (
+                      <button
+                        key={`user-${userId}`}
+                        type="button"
+                        className="maintenance-selected-user"
+                        onClick={() => toggleNumber(setAssigneeIds, userId)}
+                      >
+                        {user ? getUserName(user) : userId} ×
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                type="button"
+                className="maintenance-select-button"
+                onClick={() => setAssigneePanelOpen(true)}
+              >
+                Sélectionner
+              </button>
+            </div>
+
+            <label className="form-field">
+              <span>Observateurs</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value) toggleNumber(setObserverIds, value);
+                }}
+              >
+                <option value="">Observateurs</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getUserName(user)}
+                  </option>
+                ))}
+              </select>
+              <small>Ces utilisateurs recevront un e-mail pour chaque tâche terminée</small>
+            </label>
+
+            {observerIds.length > 0 && (
+              <div className="maintenance-selected-line">
+                {observerIds.map((userId) => {
+                  const user = users.find((item) => item.id === userId);
+                  return (
+                    <button
+                      key={userId}
+                      type="button"
+                      className="maintenance-selected-user"
+                      onClick={() => toggleNumber(setObserverIds, userId)}
+                    >
+                      {user ? getUserName(user) : userId} ×
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="form-section-title">
+              <Tag size={22} />
+              <h2>Labels</h2>
+            </div>
+
+            <label className="form-field">
+              <span>Labels</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value) toggleNumber(setLabelIds, value);
+                }}
+              >
+                <option value="">Sélectionner des labels</option>
+                {tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {labelIds.length > 0 && (
+              <div className="maintenance-selected-line">
+                {labelIds.map((tagId) => {
+                  const tag = tags.find((item) => item.id === tagId);
+                  return (
+                    <button
+                      key={tagId}
+                      type="button"
+                      className="maintenance-selected-label"
+                      onClick={() => toggleNumber(setLabelIds, tagId)}
+                      style={{
+                        borderColor: tag?.color || "#d6e2ed",
+                        background: tag?.color || undefined,
+                      }}
+                    >
+                      {tag?.name || tagId} ×
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="form-section-title">
+              <Clock size={22} />
+              <h2>Durée estimée de chaque tâche</h2>
+            </div>
+
+            <div className="form-grid two">
+              <label className="form-field">
+                <span>Heures de maintenance</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.plannedMaintenanceHours}
+                  onChange={(event) =>
+                    updateField(
+                      "plannedMaintenanceHours",
+                      Number(event.target.value)
+                    )
+                  }
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Minutes de maintenance</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={form.plannedMaintenanceMinutes}
+                  onChange={(event) =>
+                    updateField(
+                      "plannedMaintenanceMinutes",
+                      Number(event.target.value)
+                    )
+                  }
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Heures d'arrêt</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.plannedStoppedHours}
+                  onChange={(event) =>
+                    updateField("plannedStoppedHours", Number(event.target.value))
+                  }
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Minutes d'arrêt</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={form.plannedStoppedMinutes}
+                  onChange={(event) =>
+                    updateField(
+                      "plannedStoppedMinutes",
+                      Number(event.target.value)
+                    )
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="form-section-title">
+              <Package size={22} />
+              <h2>Pièces détachées à prévoir</h2>
+            </div>
+
+            <label className="form-field">
+              <span>Ajouter une pièce détachée</span>
+              <select
+                value=""
+                onChange={(event) => addSparePart(Number(event.target.value))}
+              >
+                <option value="">Sélectionner une pièce détachée</option>
+                {spareParts
+                  .filter(
+                    (part) =>
+                      !(form.spareParts ?? []).some(
+                        (item) => item.sparePartId === part.id,
+                      ),
+                  )
+                  .map((part) => (
+                    <option key={part.id} value={part.id}>
+                      {part.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            {(form.spareParts ?? []).length > 0 && (
+              <div className="maintenance-spare-lines">
+                {(form.spareParts ?? []).map((line) => {
+                  const part = spareParts.find((item) => item.id === line.sparePartId);
+                  return (
+                    <div key={line.sparePartId}>
+                      <span>{part?.name || `Pièce #${line.sparePartId}`}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.quantity}
+                        onChange={(event) =>
+                          updateSparePartQuantity(
+                            line.sparePartId,
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSparePart(line.sparePartId)}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <label className="form-field">
               <span>Statut utilisateur</span>
               <select
@@ -422,74 +808,8 @@ export default function MaintenancePlanFormPage() {
 
 
               <div className="form-section-title">
-                <Clock size={22} />
-                <h2>Durée estimée de chaque tâche</h2>
-              </div>
-
-              <div className="form-grid two">
-                <label className="form-field">
-                  <span>Heures de maintenance</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.plannedMaintenanceHours}
-                    onChange={(event) =>
-                      updateField(
-                        "plannedMaintenanceHours",
-                        Number(event.target.value)
-                      )
-                    }
-                  />
-                </label>
-
-                <label className="form-field">
-                  <span>Minutes de maintenance</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={form.plannedMaintenanceMinutes}
-                    onChange={(event) =>
-                      updateField(
-                        "plannedMaintenanceMinutes",
-                        Number(event.target.value)
-                      )
-                    }
-                  />
-                </label>
-
-                <label className="form-field">
-                  <span>Heures d'arrêt</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.plannedStoppedHours}
-                    onChange={(event) =>
-                      updateField("plannedStoppedHours", Number(event.target.value))
-                    }
-                  />
-                </label>
-
-                <label className="form-field">
-                  <span>Minutes d'arrêt</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={form.plannedStoppedMinutes}
-                    onChange={(event) =>
-                      updateField(
-                        "plannedStoppedMinutes",
-                        Number(event.target.value)
-                      )
-                    }
-                  />
-                </label>
-              </div>
-
-              <div className="form-section-title">
                 <Calendar size={22} />
-                <h2>À partir de</h2>
+                <h2>ì partir de</h2>
               </div>
 
               <label className="form-field">
@@ -510,7 +830,7 @@ export default function MaintenancePlanFormPage() {
               </strong>
 
               <span>
-                À partir du{" "}
+                ì partir du{" "}
                 {new Intl.DateTimeFormat("fr-FR", {
                   day: "numeric",
                   month: "long",
@@ -578,7 +898,7 @@ export default function MaintenancePlanFormPage() {
                 <h2>Tâches</h2>
               </div>
 
-              <p>À partir de {form.startDate || "-"}</p>
+              <p>ì partir de {form.startDate || "-"}</p>
               <p>
                 Temps de maintenance planifié : {form.plannedMaintenanceHours}h{" "}
                 {form.plannedMaintenanceMinutes}mn.
@@ -606,6 +926,291 @@ export default function MaintenancePlanFormPage() {
           </section>
         )}
       </form>
+
+      {assigneePanelOpen && (
+        <div className="maintenance-side-overlay">
+          <aside className="maintenance-side-panel">
+            <div className="maintenance-side-header">
+              <button
+                type="button"
+                onClick={() => setAssigneePanelOpen(false)}
+                aria-label="Retour"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <h2>Sélectionner des éléments</h2>
+            </div>
+
+            <div className="info-box">
+              <Info size={18} />
+              <span>Recherchez et sélectionnez des éléments.</span>
+            </div>
+
+            <div className="maintenance-assign-modes">
+              <button
+                type="button"
+                className={assigneeMode === "manual" ? "active" : ""}
+                onClick={() => setAssigneeMode("manual")}
+              >
+                <Users size={19} />
+                Sélection manuelle
+              </button>
+              <button
+                type="button"
+                className={assigneeMode === "labels" ? "active" : ""}
+                onClick={() => setAssigneeMode("labels")}
+              >
+                <Tag size={19} />
+                Sélection par label(s)
+              </button>
+            </div>
+
+            {assigneeMode === "manual" ? (
+              <>
+                <label className="maintenance-panel-search">
+                  <Search size={18} />
+                  <input
+                    value={assigneeSearch}
+                    onChange={(event) => setAssigneeSearch(event.target.value)}
+                    placeholder="Rechercher..."
+                  />
+                </label>
+
+                <div className="maintenance-panel-list">
+                  <button
+                    type="button"
+                    className="maintenance-create-team-button"
+                    onClick={() => {
+                      setTeamPanelOpen(true);
+                      setAssigneePanelOpen(false);
+                    }}
+                  >
+                    <Plus size={17} />
+                    Créer une équipe
+                  </button>
+
+                  <h3>Collègues</h3>
+                  {filteredAssigneeUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      className={assigneeIds.includes(user.id) ? "selected" : ""}
+                      onClick={() => toggleNumber(setAssigneeIds, user.id)}
+                    >
+                      <span className="maintenance-user-avatar">
+                        {initials(getUserName(user))}
+                      </span>
+                      {getUserName(user)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="maintenance-label-panel">
+                <label className="form-field">
+                  <span>Labels</span>
+                  <select
+                    value=""
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (value) toggleNumber(setAssigneeLabelIds, value);
+                    }}
+                  >
+                    <option value="">Sélectionnez un label...</option>
+                    {tags.map((tag) => (
+                      <option key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <strong>Labels sélectionnés</strong>
+                {assigneeLabelIds.length === 0 && <p>Aucun label sélectionné.</p>}
+                {selectedAssigneeLabels.map((label) => (
+                  <button
+                    key={label.id}
+                    type="button"
+                    className="maintenance-match-pill maintenance-match-button maintenance-selected-label"
+                    onClick={() => toggleNumber(setAssigneeLabelIds, label.id)}
+                    style={{
+                      borderColor: label.color || "#d6e2ed",
+                      background: label.color || undefined,
+                    }}
+                  >
+                    {label.name} ×
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="maintenance-side-footer">
+              <span>
+                {assigneeMode === "labels"
+                  ? assigneeLabelIds.length === 0
+                    ? "Aucun label sélectionné."
+                    : `${assigneeLabelIds.length} label(s) sélectionné(s).`
+                  : assigneeIds.length === 0
+                  ? "Aucun élément sélectionné."
+                  : `${assigneeIds.length} élément(s) sélectionné(s).`}
+              </span>
+              <div>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setAssigneePanelOpen(false)}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={() => {
+                    if (assigneeMode === "labels") applyAssigneeLabels();
+                    setAssigneePanelOpen(false);
+                  }}
+                >
+                  Sélectionner
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {teamPanelOpen && (
+        <div className="maintenance-side-overlay">
+          <aside className="maintenance-side-panel maintenance-team-panel">
+            <div className="maintenance-side-header">
+              <button
+                type="button"
+                onClick={() => {
+                  setTeamPanelOpen(false);
+                  setAssigneePanelOpen(true);
+                }}
+                aria-label="Retour"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <h2>Créer une équipe</h2>
+            </div>
+
+            <div className="info-box">
+              <Info size={18} />
+              <span>
+                Une équipe est dynamique : vous pouvez faire évoluer les collègues
+                la composant.
+              </span>
+            </div>
+
+            <label className="form-field">
+              <span>Nom de l'équipe *</span>
+              <input
+                value={teamName}
+                maxLength={255}
+                onChange={(event) => setTeamName(event.target.value)}
+                placeholder="Ex : Équipe hydraulique"
+              />
+              <small>{teamName.length} / 255</small>
+            </label>
+
+            <label className="form-field">
+              <span>Description</span>
+              <textarea
+                value={teamDescription}
+                maxLength={5000}
+                onChange={(event) => setTeamDescription(event.target.value)}
+                placeholder="Ex : Ceci est l'équipe hydraulique"
+              />
+              <small>{teamDescription.length} / 5000</small>
+            </label>
+
+            <label className="form-field">
+              <span>Collègues</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value) toggleNumber(setTeamMemberIds, value);
+                }}
+              >
+                <option value="">Sélectionnez un collègue...</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getUserName(user)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {teamMemberIds.length > 0 && (
+              <div className="maintenance-selected-line">
+                {teamMemberIds.map((userId) => {
+                  const user = users.find((item) => item.id === userId);
+                  return (
+                    <button
+                      key={userId}
+                      type="button"
+                      className="maintenance-selected-user"
+                      onClick={() => toggleNumber(setTeamMemberIds, userId)}
+                    >
+                      {user ? getUserName(user) : userId} ×
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <label className="form-field">
+              <span>Labels</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (value) toggleNumber(setTeamLabelIds, value);
+                }}
+              >
+                <option value="">Sélectionnez un label...</option>
+                {tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedTeamLabels.length > 0 && (
+              <div className="maintenance-selected-line">
+                {selectedTeamLabels.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="maintenance-selected-label"
+                    onClick={() => toggleNumber(setTeamLabelIds, tag.id)}
+                    style={{
+                      borderColor: tag.color || "#d6e2ed",
+                      background: tag.color || undefined,
+                    }}
+                  >
+                    {tag.name} ×
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="maintenance-side-footer">
+              <span />
+              <button
+                type="button"
+                className="primary-action"
+                onClick={handleCreateTeam}
+              >
+                Créer une équipe
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </main>
   );
 }

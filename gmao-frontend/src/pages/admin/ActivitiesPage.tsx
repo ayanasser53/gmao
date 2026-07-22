@@ -92,7 +92,7 @@ function ActivitiesPage() {
       return;
     }
 
-    navigate(`/admin/tasks/${activity.taskId}`);
+    navigate(`/admin/tasks/${activity.taskId}?from=activities`);
   }
 
   return (
