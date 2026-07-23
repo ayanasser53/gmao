@@ -52,7 +52,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findAll() {
         return taskRepository
-                .findAllByOrderByStartDateDescStartHourDesc()
+               .findAllByOrderByCreatedAtDesc()
                 .stream()
                 .map(mapper::toListItemResponse)
                 .toList();

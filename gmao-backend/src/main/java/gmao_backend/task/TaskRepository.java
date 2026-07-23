@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    List<Task> findAllByOrderByStartDateDescStartHourDesc();
+   List<Task> findAllByOrderByCreatedAtDesc();
 
     boolean existsByEquipmentId(Long equipmentId);
 
