@@ -108,8 +108,8 @@ function money(value: number | null | undefined, currency?: string | null) {
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> =
   {
-    PLANNED: { label: "PlanifiÃ©e", className: "task-status-planned" },
-    DONE: { label: "TerminÃ©e", className: "task-status-done" },
+    PLANNED: { label: "Planifiée", className: "task-status-planned" },
+    DONE: { label: "Terminée", className: "task-status-done" },
     LATE: { label: "En retard", className: "task-status-late" },
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   };
@@ -202,7 +202,7 @@ function TaskDetailsPage() {
   useEffect(() => {
     async function loadTaskDetails() {
       if (!Number.isFinite(taskId)) {
-        setError("TÃ¢che introuvable.");
+        setError("Tâche introuvable.");
         setLoading(false);
         return;
       }
@@ -226,7 +226,7 @@ function TaskDetailsPage() {
         setSparePartOptions(spareParts);
       } catch (requestError) {
         console.error(requestError);
-        setError("Impossible de charger les dÃ©tails de la tÃ¢che.");
+        setError("Impossible de charger les détails de la tâche.");
       } finally {
         setLoading(false);
       }
@@ -360,7 +360,7 @@ function TaskDetailsPage() {
       const message =
         requestError instanceof Error
           ? requestError.message
-          : "La mise Ã  jour a Ã©chouÃ©. RÃ©essayez.";
+          : "La mise à jour a échoué. Réessayez.";
       setError(message);
     } finally {
       setSaving(false);
@@ -410,7 +410,7 @@ function TaskDetailsPage() {
     return (
       <section className="admin-page">
         <div className="resource-error-message">
-          {error || "TÃ¢che introuvable."}
+          {error || "Tâche introuvable."}
         </div>
       </section>
     );
@@ -425,16 +425,16 @@ function TaskDetailsPage() {
           type="button"
           className="details-back-button"
           onClick={() => navigate("/admin/tasks")}
-          aria-label="Retour aux tÃ¢ches"
+          aria-label="Retour aux tâches"
         >
           <ArrowLeft size={22} />
         </button>
 
         <div>
-          <div className="details-eyebrow">Fiche tÃ¢che</div>
+          <div className="details-eyebrow">Fiche tâche</div>
           <div className="details-title-row">
             <ClipboardList size={30} />
-            <h1>TÃ¢che</h1>
+            <h1>Tâche</h1>
             <span className="activity-id-badge">#{task.id}</span>
             <span className={`task-status-badge ${status.className}`}>
               {status.label}
@@ -452,7 +452,7 @@ function TaskDetailsPage() {
               <CalendarDays size={21} />
               <div>
                 <span>
-                  Date planifiÃ©e
+                  Date planifiée
                   <button
                     type="button"
                     className={`task-detail-edit-btn-inline ${
@@ -503,7 +503,7 @@ function TaskDetailsPage() {
                 ) : (
                   <strong>
                     {formatDate(task.startDate)}
-                    {task.startHour ? ` Ã  ${formatTime(task.startHour)}` : ""}
+                    {task.startHour ? ` à ${formatTime(task.startHour)}` : ""}
                   </strong>
                 )}
               </div>
@@ -513,7 +513,7 @@ function TaskDetailsPage() {
               <Users size={21} />
               <div>
                 <span>
-                  SignalÃ© par
+                  Signalé par
                   <button
                     type="button"
                     className={`task-detail-edit-btn-inline ${
@@ -521,7 +521,7 @@ function TaskDetailsPage() {
                     }`}
                     onClick={() => toggleEditing("reportedBy")}
                     disabled={saving}
-                    aria-label="Modifier signalÃ© par"
+                    aria-label="Modifier signalé par"
                   >
                     {editingField === "reportedBy" ? (
                       <X size={13} />
@@ -652,7 +652,7 @@ function TaskDetailsPage() {
                     ))}
                   </div>
                 ) : (
-                  <strong>Personne renseignÃ©e pour l'instant.</strong>
+                  <strong>Personne renseignée pour l'instant.</strong>
                 )}
               </div>
             </div>
@@ -661,7 +661,7 @@ function TaskDetailsPage() {
               <Users size={21} />
               <div>
                 <span>
-                  AssignÃ© Ã 
+                  Assigné à
                   <button
                     type="button"
                     className={`task-detail-edit-btn-inline ${
@@ -669,7 +669,7 @@ function TaskDetailsPage() {
                     }`}
                     onClick={() => toggleEditing("assignedTo")}
                     disabled={saving}
-                    aria-label="Modifier assignÃ© Ã "
+                    aria-label="Modifier assigné à"
                   >
                     {editingField === "assignedTo" ? (
                       <X size={13} />
@@ -719,7 +719,7 @@ function TaskDetailsPage() {
                           setShowAssignedToDropdown((current) => !current)
                         }
                       >
-                        + Ajouter un collÃ¨gue ou une Ã©quipe
+                        + Ajouter un collègue ou une équipe
                       </button>
 
                       {showAssignedToDropdown && (
@@ -729,7 +729,7 @@ function TaskDetailsPage() {
                               !editAssignedTo.some((i) => i.teamId === team.id),
                           ).length > 0 && (
                             <p className="task-filter-dropdown-heading">
-                              Ã‰quipes
+                              Équipes
                             </p>
                           )}
 
@@ -778,7 +778,7 @@ function TaskDetailsPage() {
                               !editAssignedTo.some((i) => i.userId === user.id),
                           ).length > 0 && (
                             <p className="task-filter-dropdown-heading">
-                              CollÃ¨gues
+                              Collègues
                             </p>
                           )}
 
@@ -858,7 +858,7 @@ function TaskDetailsPage() {
                     ))}
                   </div>
                 ) : (
-                  <strong>Personne assignÃ©e pour l'instant.</strong>
+                  <strong>Personne assignée pour l'instant.</strong>
                 )}
               </div>
             </div>
@@ -966,7 +966,7 @@ function TaskDetailsPage() {
                     />
                   </div>
                 ) : (
-                  <strong>{task.description || "Aucune description renseignÃ©e."}</strong>
+                  <strong>{task.description || "Aucune description renseignée."}</strong>
                 )}
               </div>
             </div>
@@ -979,12 +979,12 @@ function TaskDetailsPage() {
 
             <div className="details-subsection">
               <div className="details-subsection-header">
-                <h3>PiÃ¨ces dÃ©tachÃ©es Ã  prÃ©voir</h3>
+                <h3>Pièces détachées à prévoir</h3>
                 <button
                   type="button"
                   className="details-add-btn"
                   onClick={() => setShowAddSparePart((current) => !current)}
-                  aria-label="Ajouter une piÃ¨ce dÃ©tachÃ©e"
+                  aria-label="Ajouter une pièce détachée"
                 >
                   <Plus size={20} />
                 </button>
@@ -996,12 +996,12 @@ function TaskDetailsPage() {
                     spareParts={sparePartOptions}
                     excludedIds={task.spareParts.map((sp) => sp.sparePartId)}
                     onSelect={(part) => setNewSparePartId(part.id)}
-                    placeholder="SÃ©lectionner une piÃ¨ce dÃ©tachÃ©e"
+                    placeholder="Sélectionner une pièce détachée"
                   />
 
                   {newSparePartId && (
                     <p className="details-add-selected">
-                      SÃ©lectionnÃ©e :{" "}
+                      Sélectionnée :{" "}
                       <strong>
                         {
                           sparePartOptions.find(
@@ -1024,7 +1024,7 @@ function TaskDetailsPage() {
               )}
 
               {task.spareParts.length === 0 ? (
-                <p className="task-empty-hint">Aucune piÃ¨ce dÃ©tachÃ©e liÃ©e.</p>
+                <p className="task-empty-hint">Aucune pièce détachée liée.</p>
               ) : (
                 <div className="task-linked-list">
                   {task.spareParts.map((line) => {
@@ -1042,8 +1042,8 @@ function TaskDetailsPage() {
                         <div>
                           <strong>{line.name}</strong>
                           <span>
-                            Code : {line.code || "Non dÃ©fini"} Â· QuantitÃ© Ã 
-                            prÃ©voir : {line.quantity}
+                            Code : {line.code || "Non défini"} · Quantité à
+                            prévoir : {line.quantity}
                           </span>
                         </div>
                       </div>
@@ -1161,19 +1161,19 @@ function TaskDetailsPage() {
 
           <article className="details-card task-activity-card">
             <div className="details-section-header">
-              <h2>ActivitÃ©s</h2>
+              <h2>Activités</h2>
               <button
                 type="button"
                 className="success-button"
                 onClick={() => navigate(`/admin/activities/create?taskId=${task.id}`)}
               >
                 <Plus size={17} />
-                Ajouter une activitÃ©
+                Ajouter une activité
               </button>
             </div>
 
             {activities.length === 0 ? (
-              <p className="task-empty-hint">Aucune activitÃ© enregistrÃ©e.</p>
+              <p className="task-empty-hint">Aucune activité enregistrée.</p>
             ) : (
               <div className="activity-timeline">
                 {activities.map((activity) => {
@@ -1221,7 +1221,7 @@ function TaskDetailsPage() {
                             <div className="task-detail-item">
                               <CalendarDays size={19} />
                               <div>
-                                <span>RÃ©alisÃ©e le</span>
+                                <span>Réalisée le</span>
                                 <strong>
                                   {formatShortDate(activity.performedDate)}{" "}
                                   {formatTime(activity.performedEndTime)}
@@ -1232,7 +1232,7 @@ function TaskDetailsPage() {
                             <div className="task-detail-item">
                               <Clock size={19} />
                               <div>
-                                <span>Temps passÃ©</span>
+                                <span>Temps passé</span>
                                 <strong>
                                   {formatDuration(
                                     activity.spentHours,
@@ -1248,8 +1248,8 @@ function TaskDetailsPage() {
                               {activity.measureReadings.map((reading) => (
                                 <span key={reading.id}>
                                   <Gauge size={15} />
-                                  <em>Compteur :</em> {reading.measureName} Â·{" "}
-                                  {reading.value} {reading.unitSymbol} Â·{" "}
+                                  <em>Compteur :</em> {reading.measureName} ·{" "}
+                                  {reading.value} {reading.unitSymbol} ·{" "}
                                   {formatShortDate(reading.readingDate)}{" "}
                                   {formatTime(reading.readingHour)}
                                 </span>
@@ -1262,8 +1262,8 @@ function TaskDetailsPage() {
                               {activity.spareParts.map((item) => (
                                 <span key={item.sparePartId}>
                                   <Package size={15} />
-                                  <em>PiÃ¨ce dÃ©tachÃ©e :</em> {item.name} Â·{" "}
-                                  {item.quantity} Â·{" "}
+                                  <em>Pièce détachée :</em> {item.name} ·{" "}
+                                  {item.quantity} ·{" "}
                                   {money(
                                     (item.unitPrice || 0) * item.quantity,
                                     item.currency,
@@ -1278,7 +1278,7 @@ function TaskDetailsPage() {
                               {activity.additionalCosts.map((item) => (
                                 <span key={item.id}>
                                   <Plus size={15} />
-                                  <em>CoÃ»t additionnel :</em> {item.label} Â·{" "}
+                                  <em>Coût additionnel :</em> {item.label} ·{" "}
                                   {money(item.amount, item.currency)}
                                 </span>
                               ))}
@@ -1298,7 +1298,7 @@ function TaskDetailsPage() {
 
         <aside className="task-details-side">
           <article className="details-card">
-            <h2>Ã‰quipement</h2>
+            <h2>Équipement</h2>
             <button
               type="button"
               className="task-equipment-summary"
@@ -1318,8 +1318,8 @@ function TaskDetailsPage() {
                 )}
               </span>
               <span>
-                <em>Nom de l'Ã©quipement</em>
-                <strong>{task.equipment?.name || "Non dÃ©fini"}</strong>
+                <em>Nom de l'équipement</em>
+                <strong>{task.equipment?.name || "Non défini"}</strong>
               </span>
             </button>
 
@@ -1327,15 +1327,15 @@ function TaskDetailsPage() {
               <MapPin size={21} />
               <div>
                 <span>Code article</span>
-                <strong>{task.equipment?.itemCode || "Non dÃ©fini"}</strong>
+                <strong>{task.equipment?.itemCode || "Non défini"}</strong>
               </div>
             </div>
 
             <div className="task-detail-item">
               <MapPin size={21} />
               <div>
-                <span>Centre de coÃ»t</span>
-                <strong>{task.costCenterName || "Non dÃ©fini"}</strong>
+                <span>Centre de coût</span>
+                <strong>{task.costCenterName || "Non défini"}</strong>
               </div>
             </div>
           </article>
@@ -1344,7 +1344,7 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <Clock size={21} />
               <div>
-                <span>Temps passÃ©</span>
+                <span>Temps passé</span>
                 <strong>
                   {formatDuration(
                     Math.floor(spentMinutes / 60),
@@ -1357,7 +1357,7 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <CheckCircle2 size={21} />
               <div>
-                <span>CoÃ»ts supplÃ©mentaires</span>
+                <span>Coûts supplémentaires</span>
                 <strong>
                   {money(
                     activities.reduce(
@@ -1381,3 +1381,4 @@ function TaskDetailsPage() {
 }
 
 export default TaskDetailsPage;
+

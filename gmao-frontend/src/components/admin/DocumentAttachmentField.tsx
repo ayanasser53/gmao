@@ -65,7 +65,7 @@ async function inflateZipEntry(data: Uint8Array, compressionMethod: number) {
   if (compressionMethod === 0) return data;
 
   if (compressionMethod !== 8) {
-    throw new Error("Compression non supportee.");
+    throw new Error("Compression non supportée.");
   }
 
   const DecompressionStreamCtor = (
@@ -75,7 +75,7 @@ async function inflateZipEntry(data: Uint8Array, compressionMethod: number) {
   ).DecompressionStream;
 
   if (!DecompressionStreamCtor) {
-    throw new Error("La previsualisation Word n'est pas supportee par ce navigateur.");
+    throw new Error("La prévisualisation Word n'est pas supportée par ce navigateur.");
   }
 
   const dataBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
@@ -214,7 +214,7 @@ export function DocumentPreviewModal({
       className="maintenance-photo-preview-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label="Apercu des documents"
+      aria-label="Aperçu des documents"
     >
       <div className="maintenance-photo-preview">
         <div className="maintenance-photo-preview-header">
@@ -229,10 +229,10 @@ export function DocumentPreviewModal({
               href={selectedDocument.url}
               download={selectedDocument.name}
               className="maintenance-document-download"
-              aria-label={`Telecharger ${selectedDocument.name}`}
+              aria-label={`Télécharger ${selectedDocument.name}`}
             >
               <Download size={18} />
-              Telecharger
+              Télécharger
             </a>
             <button type="button" onClick={() => onSelectIndex(null)} aria-label="Fermer l'apercu">
               <X size={20} />
@@ -417,7 +417,7 @@ export default function DocumentAttachmentField({
         <input type="file" multiple={multiple} onChange={(event) => addFiles(event.target.files)} />
         <UploadCloud size={30} />
         <span>
-          Deposer un fichier ici ou <strong>parcourir</strong>
+          Déposer un fichier ici ou <strong>parcourir</strong>
         </span>
       </label>
 
@@ -465,9 +465,9 @@ export default function DocumentAttachmentField({
             <div className="maintenance-photo-preview-header">
               <div>
                 <strong>Prendre une photo</strong>
-                <span>Camera du PC, telephone ou tablette</span>
+                <span>Caméra du PC, téléphone ou tablette</span>
               </div>
-              <button type="button" onClick={closeCameraPreview} aria-label="Fermer la camera">
+              <button type="button" onClick={closeCameraPreview} aria-label="Fermer la caméra">
                 <X size={20} />
               </button>
             </div>

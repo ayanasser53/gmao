@@ -42,6 +42,22 @@ type DetailTab =
   | "linked-equipment"
   | "linked-spare-parts";
 
+function getDocumentExtension(document: StoredEquipmentDocument): string {
+  return document.name.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isPdfDocument(document: StoredEquipmentDocument): boolean {
+  return document.type === "application/pdf" || getDocumentExtension(document) === "pdf";
+}
+
+function isImageDocument(document: StoredEquipmentDocument): boolean {
+  return document.isPhoto || document.type.startsWith("image/");
+}
+
+function isTextDocument(document: StoredEquipmentDocument): boolean {
+  return document.type.startsWith("text/") || ["txt", "csv"].includes(getDocumentExtension(document));
+}
+
 function getFileUrl(
   path: string | null | undefined,
   folder?: UploadFolder,
@@ -340,7 +356,13 @@ function EquipmentDetailsPage() {
                   {equipmentDocuments.map((document) => (
                     <span
                       key={document.id}
-                      className="equipment-document-chip"
+                      className={`equipment-document-chip ${
+                        isPdfDocument(document)
+                          ? "equipment-document-chip-pdf"
+                          : isImageDocument(document)
+                          ? "equipment-document-chip-image"
+                          : ""
+                      }`}
                     >
                       <button
                         type="button"
@@ -541,13 +563,17 @@ function EquipmentDetailsPage() {
                 </button>
               )}
 
-              {selectedDocument.type.startsWith("image/") ? (
+              {isImageDocument(selectedDocument) ? (
                 <img
                   src={selectedDocument.dataUrl}
                   alt={selectedDocument.name}
                 />
-              ) : selectedDocument.type === "application/pdf" ||
-                selectedDocument.type.startsWith("text/") ? (
+              ) : isPdfDocument(selectedDocument) ? (
+                <iframe
+                  src={selectedDocument.dataUrl}
+                  title={selectedDocument.name}
+                />
+              ) : isTextDocument(selectedDocument) ? (
                 <iframe
                   src={selectedDocument.dataUrl}
                   title={selectedDocument.name}

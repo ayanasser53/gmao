@@ -174,7 +174,7 @@ function ActivitiesPage() {
         setEquipment(equipmentData);
         setCostCenters(costCentersData);
       } catch {
-        setError("Impossible de charger les activites.");
+        setError("Impossible de charger les activités.");
       }
     }
 
@@ -300,16 +300,16 @@ function ActivitiesPage() {
 
   function getExportOptions() {
     return {
-      title: "Liste des activites",
-      fileName: "activites",
+      title: "Liste des activités",
+      fileName: "activit?s",
       headers: [
         "Equipement",
         "Tache",
         "Activite",
         "Date",
         "Heure fin",
-        "Temps passe",
-        "Cout",
+        "Temps pass?",
+        "Co?t",
         "Compteur",
       ],
       rows: filteredActivities.map((activity) => [
@@ -378,7 +378,7 @@ function ActivitiesPage() {
             className="supplier-primary-button"
           >
             <Plus size={18} />
-            Ajouter une activite
+            Ajouter une activité
           </Link>
         </div>
       </div>
@@ -396,7 +396,7 @@ function ActivitiesPage() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Rechercher une activite..."
+            placeholder="Rechercher une activité..."
           />
         </div>
 
@@ -512,7 +512,7 @@ function ActivitiesPage() {
                     setFilterStartDate(event.target.value)
                   }
                 />
-                <span aria-hidden="true">→</span>
+                <span aria-hidden="true">â†’</span>
                 <input
                   type="date"
                   value={filterEndDate}
@@ -840,7 +840,7 @@ function ActivitiesPage() {
               <th>Activite</th>
               <th>Date</th>
               <th>Heure fin</th>
-              <th>Temps passe</th>
+              <th>Temps pass?</th>
             </tr>
           </thead>
 
@@ -893,3 +893,4 @@ function ActivitiesPage() {
 }
 
 export default ActivitiesPage;
+

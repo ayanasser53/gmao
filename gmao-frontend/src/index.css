@@ -4515,6 +4515,40 @@ button.linked-item-card {
   gap: 8px;
 }
 
+.equipment-detail-documents .equipment-documents-list {
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.equipment-detail-documents .equipment-document-chip {
+  min-height: 48px;
+  padding: 0;
+  overflow: hidden;
+  background: #eef7fd;
+  border: 1px solid #c9dce9;
+  border-radius: 999px;
+}
+
+.equipment-detail-documents .equipment-document-open {
+  min-height: 48px;
+  padding: 0 18px;
+  color: #0d2f57;
+  font-weight: 800;
+}
+
+.equipment-detail-documents .equipment-document-chip-pdf .equipment-document-open {
+  color: #0d2f57;
+}
+
+.equipment-detail-documents .equipment-document-chip-image .equipment-document-open {
+  color: #0d2f57;
+}
+
+.equipment-detail-documents .equipment-document-open svg {
+  flex-shrink: 0;
+  color: #0d2f57;
+}
+
 .equipment-detail-data-grid {
   display: grid;
   grid-template-columns:
@@ -10174,4 +10208,86 @@ button.linked-compact-row:hover {
   border: 1px solid #86efac;
   border-radius: 8px;
   font-weight: 800;
+}
+.equipment-documents-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: #0d2f57;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+}
+
+.equipment-documents-title svg {
+  color: #087fbd;
+}
+
+.equipment-documents-dropzone {
+  width: 100%;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 26px;
+  color: #617287;
+  background: #fafcfd;
+  border: 2px dashed #087fbd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 21px;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.equipment-documents-dropzone:hover {
+  background: #f5fafd;
+  border-color: #087fbd;
+}
+
+.equipment-documents-dropzone input,
+.equipment-photo-input {
+  display: none;
+}
+
+.equipment-documents-dropzone svg {
+  color: #087fbd;
+}
+
+.equipment-documents-dropzone span {
+  color: #617287;
+  text-align: center;
+  font-weight: 400;
+}
+
+.equipment-documents-dropzone strong {
+  color: #087fbd;
+  font-weight: 800;
+}
+
+.equipment-photo-button {
+  width: max-content;
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 0 22px;
+  color: #087fbd;
+  background: #fff;
+  border: 1px solid #087fbd;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.equipment-photo-button svg {
+  color: #087fbd;
+}
+
+.equipment-documents-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
 }
