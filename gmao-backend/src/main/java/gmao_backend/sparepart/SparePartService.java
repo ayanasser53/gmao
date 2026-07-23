@@ -12,10 +12,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -146,6 +148,132 @@ public class SparePartService {
         fileStorageService.delete(sparePart.getImage(), "spare-parts");
         syncLinkedEquipment(sparePart, List.of());
         sparePartRepository.delete(sparePart);
+    }
+
+    /**
+     * SIMULATION d'appel à une API externe de gestion de stock (ex. WMS,
+     * ERP...). En production, remplacer le contenu de cette méthode par un
+     * appel HTTP réel (RestClient/WebClient) vers le système externe, et
+     * retourner sa quantité réelle au lieu de la valeur simulée ci-dessous.
+     */
+    private static final RestClient RANDOM_ORG_CLIENT = RestClient.create();
+
+    /**
+     * Appel réel à l'API publique Random.org pour simuler la lecture d'un
+     * système externe. Random.org ne connaît évidemment pas votre inventaire
+     * réel : on l'utilise uniquement comme générateur de nombre aléatoire
+     * "vrai" (via un appel HTTP effectif), pour illustrer le principe d'une
+     * réconciliation avec un système tiers. Remplacez cet appel par celui
+     * de votre vrai système externe (ERP, WMS...) quand vous en aurez un.
+     */
+    public List<ExternalStockCheckResponse> checkExternalStockForAll() {
+        return sparePartRepository.findAll()
+                .stream()
+                .map(sparePart -> checkExternalStock(sparePart.getId()))
+                .toList();
+    }
+
+    public ExternalStockCheckResponse checkExternalStock(Long id) {
+        SparePart sparePart = getSparePart(id);
+
+        BigDecimal appQuantity = sparePart.getQuantity() == null
+                ? BigDecimal.ZERO
+                : sparePart.getQuantity();
+
+        int min = Math.max(0, appQuantity.intValue() - 3);
+        int max = appQuantity.intValue() + 3;
+
+        BigDecimal externalQuantity;
+
+        try {
+            String url = String.format(
+                    "https://www.random.org/integers/?num=1&min=%d&max=%d&col=1&base=10&format=plain&rnd=new",
+                    min, max
+            );
+
+            String rawResponse = RANDOM_ORG_CLIENT.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(String.class);
+
+            externalQuantity = new BigDecimal(rawResponse.trim());
+        } catch (Exception exception) {
+            // Si Random.org est injoignable (réseau, quota...), on retombe
+            // sur le stock applicatif pour ne pas bloquer la fonctionnalité.
+            externalQuantity = appQuantity;
+        }
+
+        boolean inSync = appQuantity.compareTo(externalQuantity) == 0;
+
+        return new ExternalStockCheckResponse(
+                sparePart.getId(),
+                sparePart.getName(),
+                appQuantity,
+                externalQuantity,
+                inSync,
+                LocalDateTime.now().toString()
+        );
+    }
+
+    public SparePartResponse reconcileStock(Long id, BigDecimal externalQuantity) {
+        SparePart sparePart = getSparePart(id);
+
+        BigDecimal appQuantity = sparePart.getQuantity() == null
+                ? BigDecimal.ZERO
+                : sparePart.getQuantity();
+
+        BigDecimal delta = externalQuantity.subtract(appQuantity);
+
+        sparePart.setQuantity(externalQuantity);
+        sparePartRepository.save(sparePart);
+
+        if (delta.signum() != 0) {
+            SparePartStockMovement movement = SparePartStockMovement.builder()
+                    .sparePart(sparePart)
+                    .source("API externe")
+                    .reference("Réconciliation stock réel")
+                    .movementType("RECONCILIATION_API")
+                    .quantity(delta)
+                    .unitCost(sparePart.getUnitPrice())
+                    .userName(null)
+                    .movementDate(LocalDateTime.now())
+                    .build();
+
+            stockMovementRepository.save(movement);
+        }
+
+        return toResponse(sparePart);
+    }
+
+    public List<StockMovementHistoryResponse> searchMovementHistory(
+            Long sparePartId,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Long taskId,
+            Long activityId,
+            String userName
+    ) {
+        return stockMovementRepository.search(
+                        sparePartId, startDate, endDate, taskId, activityId, userName
+                )
+                .stream()
+                .map(movement -> new StockMovementHistoryResponse(
+                        movement.getId(),
+                        movement.getSparePart().getId(),
+                        movement.getSparePart().getName(),
+                        movement.getSparePart().getImage(),
+                        movement.getTaskId(),
+                        movement.getTaskDescription(),
+                        movement.getActivityId(),
+                        movement.getActivityDescription(),
+                        movement.getSource(),
+                        movement.getMovementType(),
+                        movement.getQuantity(),
+                        movement.getUnitCost(),
+                        movement.getUserName(),
+                        movement.getMovementDate()
+                ))
+                .toList();
     }
 
     private String resolveImage(String requestImage, MultipartFile image, String currentImage) {
@@ -316,6 +444,9 @@ public class SparePartService {
                         movement.getId(),
                         movement.getSource(),
                         movement.getReference(),
+                        movement.getTaskDescription(),
+                        movement.getActivityId(),
+                        movement.getActivityDescription(),
                         movement.getMovementType(),
                         movement.getQuantity(),
                         movement.getUnitCost(),

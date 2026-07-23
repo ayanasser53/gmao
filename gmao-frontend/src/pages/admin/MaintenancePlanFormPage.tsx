@@ -16,6 +16,7 @@ import {
   Tag,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
 import type {
   MaintenanceFrequencyUnit,
@@ -33,10 +34,28 @@ import { getSpareParts } from "../../services/sparePartService";
 import { getTags } from "../../services/tagService";
 import { createTeam } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
+import EquipmentSelect from "../../components/admin/EquipmentSelect";
+import SparePartSelect from "../../components/admin/SparePartSelect";
 import type { Equipment } from "../../types/equipment";
 import type { SparePart } from "../../types/sparePart";
 import type { Tag as TagItem } from "../../types/tag";
 import type { UserDetail } from "../../types/user";
+
+import "./task-styles.css";
+
+const BACKEND_URL = "http://localhost:8090";
+
+function getFileUrl(path: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -180,6 +199,9 @@ export default function MaintenancePlanFormPage() {
   const [teamLabelIds, setTeamLabelIds] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
+  const [showObserverDropdown, setShowObserverDropdown] = useState(false);
+  const [showLabelDropdown, setShowLabelDropdown] = useState(false);
+  const [showEquipmentImageZoom, setShowEquipmentImageZoom] = useState(false);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -252,6 +274,19 @@ export default function MaintenancePlanFormPage() {
 
   function getUserName(user: UserDetail) {
     return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+  }
+
+  const AVATAR_COLORS = [
+    "#087fbd",
+    "#6b46c1",
+    "#198754",
+    "#a3660f",
+    "#b42318",
+    "#0f766e",
+  ];
+
+  function avatarColor(id: number) {
+    return AVATAR_COLORS[id % AVATAR_COLORS.length];
   }
 
   function initials(label: string) {
@@ -469,20 +504,66 @@ export default function MaintenancePlanFormPage() {
 
             <label className="form-field">
               <span>Équipement *</span>
-              <select
+              <EquipmentSelect
+                equipmentList={equipments}
                 value={form.equipmentId}
-                onChange={(event) =>
-                  updateField("equipmentId", Number(event.target.value))
+                onSelect={(equipment) =>
+                  updateField("equipmentId", equipment.id)
                 }
-              >
-                <option value={0}>Sélectionnez votre option</option>
-                {equipments.map((equipment) => (
-                  <option key={equipment.id} value={equipment.id}>
-                    {equipment.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Sélectionnez votre option"
+              />
             </label>
+
+            {(() => {
+              const selectedEquipment = equipments.find(
+                (item) => item.id === form.equipmentId,
+              );
+              const image = getFileUrl(selectedEquipment?.image ?? null);
+
+              if (!selectedEquipment || !image) {
+                return null;
+              }
+
+              return (
+                <button
+                  type="button"
+                  className="maintenance-equipment-preview"
+                  onClick={() => setShowEquipmentImageZoom(true)}
+                >
+                  <img src={image} alt={selectedEquipment.name} />
+                  <span>Cliquer pour agrandir</span>
+                </button>
+              );
+            })()}
+
+            {showEquipmentImageZoom &&
+              (() => {
+                const selectedEquipment = equipments.find(
+                  (item) => item.id === form.equipmentId,
+                );
+                const image = getFileUrl(selectedEquipment?.image ?? null);
+
+                if (!image) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    className="image-zoom-overlay"
+                    onClick={() => setShowEquipmentImageZoom(false)}
+                  >
+                    <button
+                      type="button"
+                      className="image-zoom-close"
+                      onClick={() => setShowEquipmentImageZoom(false)}
+                      aria-label="Fermer"
+                    >
+                      <X size={22} />
+                    </button>
+                    <img src={image} alt={selectedEquipment?.name} />
+                  </div>
+                );
+              })()}
 
             <label className="form-field">
               <span>Description *</span>
@@ -543,20 +624,43 @@ export default function MaintenancePlanFormPage() {
 
             <label className="form-field">
               <span>Observateurs</span>
-              <select
-                value=""
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (value) toggleNumber(setObserverIds, value);
-                }}
-              >
-                <option value="">Observateurs</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {getUserName(user)}
-                  </option>
-                ))}
-              </select>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() =>
+                    setShowObserverDropdown((current) => !current)
+                  }
+                >
+                  + Ajouter un observateur
+                </button>
+
+                {showObserverDropdown && (
+                  <div className="task-filter-dropdown-panel">
+                    {users
+                      .filter((user) => !observerIds.includes(user.id))
+                      .map((user) => (
+                        <button
+                          type="button"
+                          key={user.id}
+                          className="task-filter-dropdown-row"
+                          onClick={() => {
+                            toggleNumber(setObserverIds, user.id);
+                            setShowObserverDropdown(false);
+                          }}
+                        >
+                          <span
+                            className="task-filter-avatar"
+                            style={{ background: avatarColor(user.id) }}
+                          >
+                            {initials(getUserName(user))}
+                          </span>
+                          {getUserName(user)}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
               <small>Ces utilisateurs recevront un e-mail pour chaque tâche terminée</small>
             </label>
 
@@ -585,20 +689,44 @@ export default function MaintenancePlanFormPage() {
 
             <label className="form-field">
               <span>Labels</span>
-              <select
-                value=""
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (value) toggleNumber(setLabelIds, value);
-                }}
-              >
-                <option value="">Sélectionner des labels</option>
-                {tags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.name}
-                  </option>
-                ))}
-              </select>
+              <div className="task-filter-dropdown">
+                <button
+                  type="button"
+                  className="task-filter-dropdown-trigger"
+                  onClick={() => setShowLabelDropdown((current) => !current)}
+                >
+                  + Sélectionner des labels
+                </button>
+
+                {showLabelDropdown && (
+                  <div className="task-filter-dropdown-panel">
+                    {tags
+                      .filter((tag) => !labelIds.includes(tag.id))
+                      .map((tag) => (
+                        <button
+                          type="button"
+                          key={tag.id}
+                          className="task-filter-dropdown-row"
+                          onClick={() => {
+                            toggleNumber(setLabelIds, tag.id);
+                            setShowLabelDropdown(false);
+                          }}
+                        >
+                          <span
+                            className="task-filter-tag-chip"
+                            style={{
+                              color: tag.color ?? "#617287",
+                              borderColor: tag.color ?? "#cfdbe6",
+                              background: `${tag.color ?? "#617287"}1a`,
+                            }}
+                          >
+                            {tag.name}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
             </label>
 
             {labelIds.length > 0 && (
@@ -696,24 +824,14 @@ export default function MaintenancePlanFormPage() {
 
             <label className="form-field">
               <span>Ajouter une pièce détachée</span>
-              <select
-                value=""
-                onChange={(event) => addSparePart(Number(event.target.value))}
-              >
-                <option value="">Sélectionner une pièce détachée</option>
-                {spareParts
-                  .filter(
-                    (part) =>
-                      !(form.spareParts ?? []).some(
-                        (item) => item.sparePartId === part.id,
-                      ),
-                  )
-                  .map((part) => (
-                    <option key={part.id} value={part.id}>
-                      {part.name}
-                    </option>
-                  ))}
-              </select>
+              <SparePartSelect
+                spareParts={spareParts}
+                excludedIds={(form.spareParts ?? []).map(
+                  (item) => item.sparePartId,
+                )}
+                onSelect={(part) => addSparePart(part.id)}
+                placeholder="Sélectionner une pièce détachée"
+              />
             </label>
 
             {(form.spareParts ?? []).length > 0 && (

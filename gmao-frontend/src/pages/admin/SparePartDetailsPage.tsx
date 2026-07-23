@@ -22,6 +22,8 @@ import { getSparePartById } from "../../services/sparePartService";
 
 import type { SparePart } from "../../types/sparePart";
 
+import "./task-styles.css";
+
 const BACKEND_URL = "http://localhost:8090";
 
 type UploadFolder = "equipment" | "spare-parts";
@@ -81,7 +83,7 @@ function SparePartDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeLinkedTab, setActiveLinkedTab] = useState<
-    "equipment" | "spare-parts" | "movements"
+    "equipment" | "spare-parts"
   >("equipment");
 
   useEffect(() => {
@@ -128,7 +130,6 @@ function SparePartDetailsPage() {
 
   const linkedEquipments = sparePart.linkedEquipments ?? [];
   const linkedSpareParts = sparePart.linkedSpareParts ?? [];
-  const stockMovements = sparePart.stockMovements ?? [];
 
   return (
     <section className="supplier-detail-workspace">
@@ -308,14 +309,6 @@ function SparePartDetailsPage() {
           >
             Pièces détachées liées
           </button>
-
-          <button
-            type="button"
-            className={activeLinkedTab === "movements" ? "active" : ""}
-            onClick={() => setActiveLinkedTab("movements")}
-          >
-            Historique des mouvements
-          </button>
         </div>
 
         {activeLinkedTab === "equipment" && (
@@ -403,48 +396,6 @@ function SparePartDetailsPage() {
                 })}
               </div>
             )}
-          </div>
-        )}
-
-        {activeLinkedTab === "movements" && (
-          <div className="spare-detail-tab-body spare-detail-tab-body-table">
-            <table className="spare-detail-movement-table">
-              <thead>
-                <tr>
-                  <th>Source</th>
-                  <th>Bon de commande</th>
-                  <th>Date</th>
-                  <th>Utilisateur</th>
-                  <th>Quantité</th>
-                  <th>Coût</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {stockMovements.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="spare-detail-table-empty">
-                      Aucun mouvement enregistré.
-                    </td>
-                  </tr>
-                ) : (
-                  stockMovements.map((movement) => (
-                    <tr key={movement.id}>
-                      <td>{movement.source}</td>
-                      <td>{movement.reference || "-"}</td>
-                      <td>{new Date(movement.movementDate).toLocaleString("fr-FR")}</td>
-                      <td>{movement.userName || "-"}</td>
-                      <td>{movement.quantity}</td>
-                      <td>
-                        {movement.unitCost != null
-                          ? `${movement.unitCost} ${sparePart.currency}`
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
           </div>
         )}
       </div>

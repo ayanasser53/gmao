@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  History,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -81,6 +82,12 @@ function AdminNavbar() {
       path: "/admin/spare-parts",
       description: "Gestion du stock des pièces",
       icon: <Boxes size={20} />,
+    },
+    {
+      label: "Historique des mouvements",
+      path: "/admin/stock-movements",
+      description: "Suivi des entrées/sorties de stock",
+      icon: <History size={20} />,
     },
     {
       label: "Tâches",

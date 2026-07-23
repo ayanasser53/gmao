@@ -167,6 +167,20 @@ public class ActivityService {
                     .sparePart(sparePart)
                     .source("Activité")
                     .reference("Correction activité #" + activityId)
+                    .taskId(
+                            line.getActivity() != null && line.getActivity().getTask() != null
+                                    ? line.getActivity().getTask().getId()
+                                    : null
+                    )
+                    .taskDescription(
+                            line.getActivity() != null && line.getActivity().getTask() != null
+                                    ? line.getActivity().getTask().getDescription()
+                                    : null
+                    )
+                    .activityId(activityId)
+                    .activityDescription(
+                            line.getActivity() != null ? line.getActivity().getDescription() : null
+                    )
                     .movementType("CORRECTION")
                     .quantity(BigDecimal.valueOf(line.getQuantity()))
                     .unitCost(sparePart.getUnitPrice())
@@ -231,6 +245,12 @@ public class ActivityService {
                     .sparePart(sparePart)
                     .source("Activité")
                     .reference("Activité #" + activity.getId())
+                    .taskId(activity.getTask() != null ? activity.getTask().getId() : null)
+                    .taskDescription(
+                            activity.getTask() != null ? activity.getTask().getDescription() : null
+                    )
+                    .activityId(activity.getId())
+                    .activityDescription(activity.getDescription())
                     .movementType("CONSOMMATION")
                     .quantity(BigDecimal.valueOf(quantity).negate())
                     .unitCost(sparePart.getUnitPrice())

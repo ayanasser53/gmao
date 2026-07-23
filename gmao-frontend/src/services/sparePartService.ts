@@ -69,3 +69,73 @@ export async function updateSparePart(
 export async function deleteSparePart(id: number): Promise<void> {
   await api.delete(`/spare-parts/${id}`)
 }
+export type ExternalStockCheck = {
+  sparePartId: number
+  sparePartName: string
+  appQuantity: number
+  externalQuantity: number
+  inSync: boolean
+  checkedAt: string
+}
+
+export async function checkExternalStock(
+  id: number,
+): Promise<ExternalStockCheck> {
+  const response = await api.get<ExternalStockCheck>(
+    `/spare-parts/${id}/external-stock-check`,
+  )
+  return response.data
+}
+
+export async function checkExternalStockForAll(): Promise<
+  ExternalStockCheck[]
+> {
+  const response = await api.get<ExternalStockCheck[]>(
+    '/spare-parts/external-stock-check-all',
+  )
+  return response.data
+}
+
+export async function reconcileStock(
+  id: number,
+  externalQuantity: number,
+): Promise<SparePart> {
+  const response = await api.post<SparePart>(
+    `/spare-parts/${id}/reconcile-stock`,
+    null,
+    { params: { externalQuantity } },
+  )
+  return response.data
+}
+
+export type StockMovementHistory = {
+  id: number
+  sparePartId: number
+  sparePartName: string
+  sparePartImage: string | null
+  taskId: number | null
+  taskDescription: string | null
+  activityId: number | null
+  activityDescription: string | null
+  source: string
+  movementType: string
+  quantity: number
+  unitCost: number | null
+  userName: string | null
+  movementDate: string
+}
+
+export async function getStockMovementHistory(params: {
+  sparePartId?: number
+  startDate?: string
+  endDate?: string
+  taskId?: number
+  activityId?: number
+  userName?: string
+}): Promise<StockMovementHistory[]> {
+  const response = await api.get<StockMovementHistory[]>(
+    '/spare-parts/stock-movements',
+    { params },
+  )
+  return response.data
+}

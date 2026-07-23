@@ -414,6 +414,7 @@ function TaskDetailsPage() {
           <div className="details-title-row">
             <ClipboardList size={30} />
             <h1>Tâche</h1>
+            <span className="activity-id-badge">#{task.id}</span>
             <span className={`task-status-badge ${status.className}`}>
               {status.label}
             </span>
@@ -1150,6 +1151,9 @@ function TaskDetailsPage() {
                               }`.trim()
                             : "Administrateur"}
                         </strong>
+                        <span className="activity-id-badge">
+                          #{activity.id}
+                        </span>
                       </div>
 
                       <div className="activity-history-grid">

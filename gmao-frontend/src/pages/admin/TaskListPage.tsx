@@ -915,6 +915,7 @@ function TaskListPage() {
           <table className="resource-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Tâche</th>
                 <th>Équipement</th>
                 <th>Centre de coût</th>
@@ -926,7 +927,7 @@ function TaskListPage() {
             <tbody>
               {filteredTasks.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="resource-table-empty">
+                  <td colSpan={6} className="resource-table-empty">
                     {`Aucune tâche avec le statut "${STATUS_META[activeTab].label}".`}
                   </td>
                 </tr>
@@ -948,6 +949,7 @@ function TaskListPage() {
                     className="supplier-clickable-row"
                     onClick={() => navigate(`/admin/tasks/${task.id}`)}
                   >
+                    <td className="resource-table-id-cell">#{task.id}</td>
                     <td>
                       <div className="task-cell-main">
                         <span className="task-cell-title">

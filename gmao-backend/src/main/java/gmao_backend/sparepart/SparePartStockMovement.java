@@ -28,6 +28,18 @@ public class SparePartStockMovement {
 
     private String reference;
 
+    @Column(name = "task_id")
+    private Long taskId;
+
+    @Column(name = "task_description")
+    private String taskDescription;
+
+    @Column(name = "activity_id")
+    private Long activityId;
+
+    @Column(name = "activity_description")
+    private String activityDescription;
+
     @Column(name = "movement_type", nullable = false)
     private String movementType;
 

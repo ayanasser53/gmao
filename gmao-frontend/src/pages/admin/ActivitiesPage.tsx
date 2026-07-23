@@ -800,6 +800,7 @@ function ActivitiesPage() {
         <table className="supplier-table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>Equipement</th>
               <th>Tache</th>
               <th>Activite</th>
@@ -812,7 +813,7 @@ function ActivitiesPage() {
           <tbody>
             {filteredActivities.length === 0 ? (
               <tr>
-                <td colSpan={6} className="supplier-empty-row">
+                <td colSpan={7} className="supplier-empty-row">
                   Aucun resultat
                 </td>
               </tr>
@@ -829,6 +830,7 @@ function ActivitiesPage() {
                     }
                   }}
                 >
+                  <td className="resource-table-id-cell">#{activity.id}</td>
                   <td>{activity.equipmentName || "-"}</td>
                   <td>
                     <button

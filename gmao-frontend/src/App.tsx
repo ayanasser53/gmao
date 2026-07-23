@@ -36,6 +36,7 @@ import SupplierCatalogPage from "./pages/admin/SupplierCatalogPage";
 import SparePartsPage from "./pages/admin/SparePartsPage";
 import SparePartFormPage from "./pages/admin/SparePartFormPage";
 import SparePartDetailsPage from "./pages/admin/SparePartDetailsPage";
+import MovementHistoryPage from "./pages/admin/MovementHistoryPage";
 
 import ActivitiesPage from "./pages/admin/ActivitiesPage";
 import ActivityFormPage from "./pages/admin/ActivityFormPage";
@@ -125,6 +126,11 @@ function App() {
           <Route
             path="spare-parts"
             element={<SparePartsPage />}
+          />
+
+          <Route
+            path="stock-movements"
+            element={<MovementHistoryPage />}
           />
 
           <Route
