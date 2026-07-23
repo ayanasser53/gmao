@@ -1,11 +1,16 @@
 ﻿import {
   ArrowLeft,
+  Camera,
   CalendarDays,
+  ChevronLeft,
   ChevronRight,
+  Download,
+  FileText,
   MapPin,
   Package,
   Tag as TagIcon,
   Wrench,
+  X,
 } from "lucide-react";
 
 import {
@@ -22,6 +27,10 @@ import {
 
 import { getEquipmentById } from "../../services/equipmentService";
 import { getMaintenancePlans } from "../../services/maintenancePlanService";
+import {
+  readEquipmentDocuments,
+  type StoredEquipmentDocument,
+} from "../../utils/equipmentDocuments";
 
 import type { Equipment } from "../../types/equipment";
 
@@ -30,7 +39,6 @@ const BACKEND_URL = "http://localhost:8090";
 type UploadFolder = "equipment" | "spare-parts";
 
 type DetailTab =
-  | "information"
   | "linked-equipment"
   | "linked-spare-parts";
 
@@ -79,6 +87,10 @@ function EquipmentDetailsPage() {
     useState<Equipment | null>(null);
   const [activeTab, setActiveTab] =
     useState<DetailTab>("linked-equipment");
+  const [equipmentDocuments, setEquipmentDocuments] =
+    useState<StoredEquipmentDocument[]>([]);
+  const [selectedDocumentIndex, setSelectedDocumentIndex] =
+    useState<number | null>(null);
   const [loading, setLoading] =
     useState<boolean>(true);
   const [error, setError] =
@@ -113,6 +125,7 @@ function EquipmentDetailsPage() {
         );
 
         setEquipment(data);
+        setEquipmentDocuments(readEquipmentDocuments(equipmentId));
         setMaintenancePlanSparePartIds(maintenanceSparePartIds);
         setActiveTab("linked-equipment");
       } catch (requestError) {
@@ -164,6 +177,40 @@ function EquipmentDetailsPage() {
     (part) => !maintenancePlanSparePartIds.has(part.id),
   );
   const tags = equipment.tags ?? [];
+  const selectedDocument =
+    selectedDocumentIndex !== null
+      ? equipmentDocuments[selectedDocumentIndex] ?? null
+      : null;
+
+  function openDocumentPreview(documentId: string): void {
+    const documentIndex = equipmentDocuments.findIndex(
+      (document) => document.id === documentId,
+    );
+
+    if (documentIndex >= 0) {
+      setSelectedDocumentIndex(documentIndex);
+    }
+  }
+
+  function showPreviousDocument(): void {
+    setSelectedDocumentIndex((current) => {
+      if (current === null || equipmentDocuments.length === 0) {
+        return current;
+      }
+
+      return current === 0 ? equipmentDocuments.length - 1 : current - 1;
+    });
+  }
+
+  function showNextDocument(): void {
+    setSelectedDocumentIndex((current) => {
+      if (current === null || equipmentDocuments.length === 0) {
+        return current;
+      }
+
+      return current === equipmentDocuments.length - 1 ? 0 : current + 1;
+    });
+  }
 
   return (
     <section className="equipment-detail-page">
@@ -282,6 +329,40 @@ function EquipmentDetailsPage() {
                 )}
               </div>
             </div>
+
+            <div className="equipment-detail-documents">
+              <span className="equipment-detail-label">
+                Documents et photos
+              </span>
+
+              {equipmentDocuments.length > 0 ? (
+                <div className="equipment-documents-list">
+                  {equipmentDocuments.map((document) => (
+                    <span
+                      key={document.id}
+                      className="equipment-document-chip"
+                    >
+                      <button
+                        type="button"
+                        className="equipment-document-open"
+                        onClick={() => openDocumentPreview(document.id)}
+                      >
+                        {document.isPhoto ? (
+                          <Camera size={16} />
+                        ) : (
+                          <FileText size={16} />
+                        )}
+                        <span>{document.name}</span>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="equipment-detail-muted">
+                  Aucun document ou photo associé.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -315,42 +396,6 @@ function EquipmentDetailsPage() {
       </div>
 
       <div className="equipment-detail-tab-content">
-        {activeTab === "information" && (
-          <div className="equipment-detail-table">
-            <div>
-              <span>Date de création</span>
-
-              <strong>
-                {equipment.createdAt
-                  ? new Date(equipment.createdAt).toLocaleString("fr-FR")
-                  : "-"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Dernière modification</span>
-
-              <strong>
-                {equipment.updatedAt
-                  ? new Date(equipment.updatedAt).toLocaleString("fr-FR")
-                  : "-"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Nombre d'équipements liés</span>
-
-              <strong>{linkedEquipment.length}</strong>
-            </div>
-
-            <div>
-              <span>Nombre de pièces liées</span>
-
-              <strong>{linkedSpareParts.length}</strong>
-            </div>
-          </div>
-        )}
-
         {activeTab === "linked-equipment" && (
           <div className="linked-compact-list">
             {linkedEquipment.length > 0 ? (
@@ -445,6 +490,99 @@ function EquipmentDetailsPage() {
           </div>
         )}
       </div>
+
+      {selectedDocument && (
+        <div
+          className="maintenance-photo-preview-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Aperçu des documents"
+        >
+          <div className="maintenance-photo-preview">
+            <div className="maintenance-photo-preview-header">
+              <div>
+                <strong>{selectedDocument.name}</strong>
+                <span>
+                  {selectedDocumentIndex! + 1} /{" "}
+                  {equipmentDocuments.length}
+                </span>
+              </div>
+
+              <div className="maintenance-document-preview-actions">
+                <a
+                  href={selectedDocument.dataUrl}
+                  download={selectedDocument.name}
+                  className="maintenance-document-download"
+                  aria-label={`Télécharger ${selectedDocument.name}`}
+                >
+                  <Download size={18} />
+                  Télécharger
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocumentIndex(null)}
+                  aria-label="Fermer l'aperçu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="maintenance-photo-preview-body">
+              {equipmentDocuments.length > 1 && (
+                <button
+                  type="button"
+                  className="maintenance-photo-preview-nav previous"
+                  onClick={showPreviousDocument}
+                  aria-label="Document précédent"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+
+              {selectedDocument.type.startsWith("image/") ? (
+                <img
+                  src={selectedDocument.dataUrl}
+                  alt={selectedDocument.name}
+                />
+              ) : selectedDocument.type === "application/pdf" ||
+                selectedDocument.type.startsWith("text/") ? (
+                <iframe
+                  src={selectedDocument.dataUrl}
+                  title={selectedDocument.name}
+                />
+              ) : (
+                <div className="maintenance-document-preview-empty">
+                  <FileText size={44} />
+                  <strong>{selectedDocument.name}</strong>
+                  <span>
+                    Ce format ne peut pas être affiché directement dans le
+                    navigateur.
+                  </span>
+                  <a
+                    href={selectedDocument.dataUrl}
+                    download={selectedDocument.name}
+                  >
+                    Télécharger
+                  </a>
+                </div>
+              )}
+
+              {equipmentDocuments.length > 1 && (
+                <button
+                  type="button"
+                  className="maintenance-photo-preview-nav next"
+                  onClick={showNextDocument}
+                  aria-label="Document suivant"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

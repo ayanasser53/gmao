@@ -52,6 +52,36 @@ function formatSpentTime(activity: Activity) {
   return `${activity.spentHours}h ${activity.spentMinutes}min`;
 }
 
+function formatMoney(amount: number): string {
+  return `${new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)} EUR`;
+}
+
+function getActivityCost(activity: Activity): number {
+  const sparePartsCost = activity.spareParts.reduce(
+    (sum, part) => sum + part.quantity * (part.unitPrice ?? 0),
+    0,
+  );
+  const additionalCosts = activity.additionalCosts.reduce(
+    (sum, cost) => sum + (cost.amount ?? 0),
+    0,
+  );
+
+  return sparePartsCost + additionalCosts;
+}
+
+function formatActivityCounters(activity: Activity): string {
+  if (!activity.measureReadings.length) {
+    return "-";
+  }
+
+  return activity.measureReadings
+    .map((reading) => `${reading.measureName}: ${reading.value} ${reading.unitSymbol}`)
+    .join(", ");
+}
+
 function getFileUrl(path: string | null): string | null {
   if (!path) {
     return null;
@@ -279,6 +309,8 @@ function ActivitiesPage() {
         "Date",
         "Heure fin",
         "Temps passe",
+        "Cout",
+        "Compteur",
       ],
       rows: filteredActivities.map((activity) => [
         activity.equipmentName || "-",
@@ -287,6 +319,8 @@ function ActivitiesPage() {
         activity.performedDate,
         activity.performedEndTime,
         formatSpentTime(activity),
+        formatMoney(getActivityCost(activity)),
+        formatActivityCounters(activity),
       ]),
     };
   }

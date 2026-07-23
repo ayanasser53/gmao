@@ -37,6 +37,8 @@ import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
 
+const BACKEND_URL = "http://localhost:8090";
+
 type DisplayStatus = "planned" | "in_progress" | "late" | "done";
 type MaintenanceTab = "all" | DisplayStatus;
 type MaintenanceFilterDropdown =
@@ -51,6 +53,15 @@ interface MaintenancePlanWithAssignees extends MaintenancePlan {
   assignees?: { userId?: number | null; id?: number | null }[];
   assignedTo?: { userId?: number | null; id?: number | null }[];
 }
+
+type MaintenanceFilterOption = {
+  value: string;
+  label: string;
+  tone?: string;
+  imageUrl?: string | null;
+  initials?: string;
+  avatarColor?: string;
+};
 
 const STATUS_TABS = [
   {
@@ -86,11 +97,59 @@ const STATUS_TABS = [
 ] as const;
 
 const TRIGGER_FILTER_OPTIONS = [
-  { value: "FIXED_DATE", label: "Quotidien" },
-  { value: "TASK_CLOSURE", label: "Clôture de tâche" },
-  { value: "EXTERNAL_API", label: "API externe" },
-  { value: "COUNTER", label: "Compteur" },
+  { value: "DAYS:1", label: "Quotidien", tone: "planned" },
+  { value: "WEEKS:1", label: "Hebdomadaire", tone: "progress" },
+  { value: "MONTHS:1", label: "Mensuel", tone: "equipment" },
+  { value: "MONTHS:3", label: "Trimestriel", tone: "cost" },
+  { value: "YEARS:1", label: "Annuel", tone: "done" },
 ];
+
+const AVATAR_COLORS = [
+  "#087fbd",
+  "#0f9f6e",
+  "#7c3aed",
+  "#d97706",
+  "#dc2626",
+  "#4f46e5",
+];
+
+interface MaintenanceRealizationExportDraft {
+  hours?: number;
+  minutes?: number;
+  measureValue?: string;
+  additionalCost?: string;
+}
+
+function getFileUrl(
+  path: string | null | undefined,
+  folder?: "equipment" | "users",
+): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:")
+  ) {
+    return path;
+  }
+
+  if (
+    path.startsWith("/uploads/") ||
+    path.startsWith("uploads/") ||
+    path.includes("/")
+  ) {
+    return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  }
+
+  if (folder) {
+    return `${BACKEND_URL}/uploads/${folder}/${path}`;
+  }
+
+  return `${BACKEND_URL}/${path}`;
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -144,6 +203,52 @@ function getTabLabel(tab: MaintenanceTab) {
   return tab === "all" ? "Tout" : getStatusLabel(tab);
 }
 
+function formatDuration(hours: number, minutes: number): string {
+  return `${hours || 0}h ${String(minutes || 0).padStart(2, "0")}min`;
+}
+
+function formatMoney(amount: number): string {
+  return `${new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)} EUR`;
+}
+
+function getRealizationStorageKey(planId: number) {
+  return `maintenance-plan-realization-${planId}`;
+}
+
+function readPlanRealizationDraft(
+  planId: number,
+): MaintenanceRealizationExportDraft | null {
+  try {
+    const storedDraft = localStorage.getItem(getRealizationStorageKey(planId));
+
+    if (!storedDraft) {
+      return null;
+    }
+
+    return JSON.parse(storedDraft) as MaintenanceRealizationExportDraft;
+  } catch {
+    return null;
+  }
+}
+
+function formatPlanCounter(
+  plan: MaintenancePlan,
+  draft: MaintenanceRealizationExportDraft | null,
+) {
+  if (draft?.measureValue) {
+    return draft.measureValue;
+  }
+
+  if (plan.triggerType === "COUNTER") {
+    return plan.triggerLabel || "Compteur";
+  }
+
+  return "-";
+}
+
 function getStoredStatus(status: DisplayStatus): MaintenancePlanStatus {
   if (status === "done") return "DONE";
   if (status === "late") return "LATE";
@@ -157,6 +262,25 @@ function getUserName(user: UserSummary): string {
     user.email ||
     `Utilisateur ${user.id}`
   );
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+
+  return `${first}${second}`.toUpperCase() || "?";
+}
+
+function getAvatarColor(id: number) {
+  return AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
+}
+
+function getScheduleFilterValue(plan: MaintenancePlan) {
+  const unit = String(plan.frequencyUnit ?? "").toUpperCase();
+  const value = Number(plan.frequencyValue ?? 1);
+
+  return `${unit}:${value}`;
 }
 
 function planHasAssignee(plan: MaintenancePlan, userId: string) {
@@ -278,7 +402,10 @@ export default function MaintenancePlansPage() {
         return false;
       }
 
-      if (filterTriggerType && plan.triggerType !== filterTriggerType) {
+      if (
+        filterTriggerType &&
+        getScheduleFilterValue(plan) !== filterTriggerType
+      ) {
         return false;
       }
 
@@ -354,9 +481,18 @@ export default function MaintenancePlansPage() {
         "Declencheur",
         "Prochaine echeance",
         "Statut",
+        "Temps planifie",
+        "Temps d'arret planifie",
+        "Temps passe",
+        "Cout",
+        "Compteur",
       ],
       rows: filteredPlans.map((plan) => {
         const status = getDisplayStatus(plan);
+        const realizationDraft = readPlanRealizationDraft(plan.id);
+        const realizedHours = Number(realizationDraft?.hours ?? 0);
+        const realizedMinutes = Number(realizationDraft?.minutes ?? 0);
+        const additionalCost = Number(realizationDraft?.additionalCost ?? 0);
 
         return [
           plan.description,
@@ -364,6 +500,14 @@ export default function MaintenancePlansPage() {
           plan.triggerLabel || "-",
           formatDate(plan.nextDueDate),
           getStatusLabel(status),
+          formatDuration(
+            plan.plannedMaintenanceHours,
+            plan.plannedMaintenanceMinutes,
+          ),
+          formatDuration(plan.plannedStoppedHours, plan.plannedStoppedMinutes),
+          realizationDraft ? formatDuration(realizedHours, realizedMinutes) : "-",
+          realizationDraft ? formatMoney(additionalCost) : "-",
+          formatPlanCounter(plan, realizationDraft),
         ];
       }),
     };
@@ -382,9 +526,31 @@ export default function MaintenancePlansPage() {
     value: string,
     setValue: (nextValue: string) => void,
     placeholder: string,
-    options: { value: string; label: string; tone?: string }[],
+    options: MaintenanceFilterOption[],
   ) {
     const selectedOption = options.find((option) => option.value === value);
+    const renderOptionMedia = (option: MaintenanceFilterOption) => {
+      if (option.imageUrl) {
+        return (
+          <span className="maintenance-filter-option-thumb">
+            <img src={option.imageUrl} alt="" />
+          </span>
+        );
+      }
+
+      if (option.initials) {
+        return (
+          <span
+            className="maintenance-filter-option-avatar"
+            style={{ backgroundColor: option.avatarColor }}
+          >
+            {option.initials}
+          </span>
+        );
+      }
+
+      return null;
+    };
 
     return (
       <div className="task-filter-dropdown maintenance-filter-dropdown">
@@ -396,12 +562,15 @@ export default function MaintenancePlansPage() {
           }
         >
           {selectedOption ? (
-            <span
-              className={`maintenance-filter-option-pill ${
-                selectedOption.tone ? `tone-${selectedOption.tone}` : ""
-              }`}
-            >
-              {selectedOption.label}
+            <span className="maintenance-filter-selected-option">
+              {renderOptionMedia(selectedOption)}
+              <span
+                className={`maintenance-filter-option-pill ${
+                  selectedOption.tone ? `tone-${selectedOption.tone}` : ""
+                }`}
+              >
+                {selectedOption.label}
+              </span>
             </span>
           ) : (
             <span>{placeholder}</span>
@@ -437,6 +606,7 @@ export default function MaintenancePlansPage() {
                     setOpenDropdown(null);
                   }}
                 >
+                  {renderOptionMedia(option)}
                   <span
                     className={`maintenance-filter-option-pill ${
                       option.tone ? `tone-${option.tone}` : ""
@@ -537,17 +707,7 @@ export default function MaintenancePlansPage() {
                 filterTriggerType,
                 setFilterTriggerType,
                 "Sélectionnez votre option",
-                TRIGGER_FILTER_OPTIONS.map((option) => ({
-                  ...option,
-                  tone:
-                    option.value === "FIXED_DATE"
-                      ? "planned"
-                      : option.value === "TASK_CLOSURE"
-                        ? "done"
-                        : option.value === "EXTERNAL_API"
-                          ? "late"
-                          : "progress",
-                })),
+                TRIGGER_FILTER_OPTIONS,
               )}
             </div>
 
@@ -561,6 +721,7 @@ export default function MaintenancePlansPage() {
                 equipment.map((item) => ({
                   value: String(item.id),
                   label: item.name,
+                  imageUrl: getFileUrl(item.image, "equipment"),
                   tone: "equipment",
                 })),
               )}
@@ -573,11 +734,18 @@ export default function MaintenancePlansPage() {
                 filterAssigneeId,
                 setFilterAssigneeId,
                 "Assignés",
-                users.map((user) => ({
-                  value: String(user.id),
-                  label: getUserName(user),
-                  tone: "user",
-                })),
+                users.map((user) => {
+                  const label = getUserName(user);
+
+                  return {
+                    value: String(user.id),
+                    label,
+                    imageUrl: getFileUrl(user.photo, "users"),
+                    initials: getInitials(label),
+                    avatarColor: getAvatarColor(user.id),
+                    tone: "user",
+                  };
+                }),
               )}
             </div>
 

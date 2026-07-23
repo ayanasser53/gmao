@@ -307,6 +307,73 @@
   font-weight: 700;
 }
 
+.maintenance-filter-selected-option {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.maintenance-filter-option-thumb,
+.maintenance-filter-option-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(18, 54, 92, 0.12);
+}
+
+.maintenance-filter-option-thumb {
+  color: #087fbd;
+  background: #edf6fb;
+}
+
+.maintenance-filter-option-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.maintenance-filter-option-avatar {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.maintenance-filter-option-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: #12365c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.maintenance-filter-option-pill.tone-planned {
+  color: #b06d09;
+}
+
+.maintenance-filter-option-pill.tone-progress,
+.maintenance-filter-option-pill.tone-equipment,
+.maintenance-filter-option-pill.tone-user,
+.maintenance-filter-option-pill.tone-cost {
+  color: #087fbd;
+}
+
+.maintenance-filter-option-pill.tone-done {
+  color: #15945f;
+}
+
+.maintenance-filter-option-pill.tone-neutral {
+  color: #087fbd;
+}
+
 .task-filter-period {
   display: flex;
   align-items: center;

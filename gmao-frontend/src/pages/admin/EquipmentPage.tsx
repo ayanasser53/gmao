@@ -1,13 +1,19 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
 
 import {
   ArrowLeft,
+  Camera,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
   ImagePlus,
   Link2,
   MapPin as MapPinIcon,
@@ -18,6 +24,7 @@ import {
   SlidersHorizontal,
   Tag as TagIcon,
   Trash2,
+  UploadCloud,
   Wrench,
   X,
 } from "lucide-react";
@@ -35,6 +42,11 @@ import { getTags } from "../../services/tagService";
 import { getCostCenters } from "../../services/costCenterService";
 import { getSpareParts } from "../../services/sparePartService";
 import { getMaintenancePlans } from "../../services/maintenancePlanService";
+import {
+  readEquipmentDocuments,
+  writeEquipmentDocuments,
+  type StoredEquipmentDocument,
+} from "../../utils/equipmentDocuments";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 import SparePartSelect from "../../components/admin/SparePartSelect";
@@ -51,6 +63,15 @@ import type { CostCenter } from "../../types/costCenter";
 import type { SparePart } from "../../types/sparePart";
 
 const BACKEND_URL = "http://localhost:8090";
+
+type EquipmentDocumentDraft = {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  dataUrl: string;
+  isPhoto: boolean;
+};
 
 const initialForm: EquipmentPayload = {
   name: "",
@@ -82,6 +103,28 @@ function getFileUrl(
   return `${BACKEND_URL}${
     path.startsWith("/") ? path : `/${path}`
   }`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function toStoredDocuments(
+  documents: EquipmentDocumentDraft[],
+): StoredEquipmentDocument[] {
+  return documents.map((document) => ({
+    id: document.id,
+    name: document.name,
+    type: document.type,
+    dataUrl: document.dataUrl,
+    isPhoto: document.isPhoto,
+    createdAt: new Date().toISOString(),
+  }));
 }
 
 function EquipmentPage() {
@@ -116,6 +159,38 @@ function EquipmentPage() {
 
   const [imagePreview, setImagePreview] =
     useState<string | null>(null);
+
+  const [equipmentDocuments, setEquipmentDocuments] =
+    useState<EquipmentDocumentDraft[]>([]);
+
+  const [selectedEquipmentDocumentIndex, setSelectedEquipmentDocumentIndex] =
+    useState<number | null>(null);
+
+  const selectedEquipmentDocument =
+    selectedEquipmentDocumentIndex !== null
+      ? equipmentDocuments[selectedEquipmentDocumentIndex] ?? null
+      : null;
+
+  const [cameraOpen, setCameraOpen] =
+    useState<boolean>(false);
+
+  const [cameraError, setCameraError] =
+    useState<string>("");
+
+  const documentInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const photoInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const cameraVideoRef =
+    useRef<HTMLVideoElement | null>(null);
+
+  const cameraCanvasRef =
+    useRef<HTMLCanvasElement | null>(null);
+
+  const cameraStreamRef =
+    useRef<MediaStream | null>(null);
 
   const [loading, setLoading] =
     useState<boolean>(true);
@@ -183,6 +258,13 @@ function EquipmentPage() {
 
   useEffect(() => {
     void loadData();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    };
   }, []);
 
   const filteredEquipment = useMemo(() => {
@@ -275,6 +357,7 @@ function EquipmentPage() {
 
     setImageFile(null);
     setImagePreview(null);
+    clearEquipmentDocuments();
     setError("");
     setDrawerOpen(true);
   }
@@ -309,6 +392,17 @@ function EquipmentPage() {
 
     setImageFile(null);
     setImagePreview(getFileUrl(item.image));
+    setEquipmentDocuments(
+      readEquipmentDocuments(item.id).map((document) => ({
+        id: document.id,
+        name: document.name,
+        type: document.type,
+        url: document.dataUrl,
+        dataUrl: document.dataUrl,
+        isPhoto: document.isPhoto,
+      })),
+    );
+    setSelectedEquipmentDocumentIndex(null);
     setError("");
     setDrawerOpen(true);
   }
@@ -322,11 +416,194 @@ function EquipmentPage() {
       URL.revokeObjectURL(imagePreview);
     }
 
+    clearEquipmentDocuments();
+
     setDrawerOpen(false);
     setEditingId(null);
     setForm(initialForm);
     setImageFile(null);
     setImagePreview(null);
+  }
+
+  function clearEquipmentDocuments(): void {
+    setEquipmentDocuments((previous) => {
+      previous.forEach((document) => {
+        if (document.url.startsWith("blob:")) {
+          URL.revokeObjectURL(document.url);
+        }
+      });
+
+      return [];
+    });
+    setSelectedEquipmentDocumentIndex(null);
+  }
+
+  async function addEquipmentDocuments(
+    fileList: FileList | null,
+    isPhoto = false,
+  ): Promise<void> {
+    if (!fileList?.length) {
+      return;
+    }
+
+    const newDocuments = await Promise.all(
+      Array.from(fileList).map(async (file, index) => {
+        const dataUrl = await readFileAsDataUrl(file);
+
+        return {
+          id: `${Date.now()}-${index}-${file.name}`,
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          url: dataUrl,
+          dataUrl,
+          isPhoto,
+        };
+      }),
+    );
+
+    setEquipmentDocuments((previous) => [
+      ...previous,
+      ...newDocuments,
+    ]);
+  }
+
+  function removeEquipmentDocument(
+    documentId: string,
+  ): void {
+    setEquipmentDocuments((previous) => {
+      const documentToRemove = previous.find(
+        (document) => document.id === documentId,
+      );
+
+      if (
+        documentToRemove?.url.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(documentToRemove.url);
+      }
+
+      return previous.filter(
+        (document) => document.id !== documentId,
+      );
+    });
+
+    setSelectedEquipmentDocumentIndex((current) => {
+      if (current === null) return current;
+      const documentIndex = equipmentDocuments.findIndex(
+        (document) => document.id === documentId,
+      );
+      if (documentIndex < 0) return current;
+      if (equipmentDocuments.length <= 1) return null;
+      if (current > documentIndex) return current - 1;
+      if (current === documentIndex) return Math.max(0, current - 1);
+      return current;
+    });
+  }
+
+  function openEquipmentDocumentPreview(documentId: string): void {
+    const documentIndex = equipmentDocuments.findIndex(
+      (document) => document.id === documentId,
+    );
+
+    if (documentIndex >= 0) {
+      setSelectedEquipmentDocumentIndex(documentIndex);
+    }
+  }
+
+  function showPreviousEquipmentDocument(): void {
+    setSelectedEquipmentDocumentIndex((current) => {
+      if (current === null || equipmentDocuments.length === 0) {
+        return current;
+      }
+
+      return current === 0 ? equipmentDocuments.length - 1 : current - 1;
+    });
+  }
+
+  function showNextEquipmentDocument(): void {
+    setSelectedEquipmentDocumentIndex((current) => {
+      if (current === null || equipmentDocuments.length === 0) {
+        return current;
+      }
+
+      return current === equipmentDocuments.length - 1 ? 0 : current + 1;
+    });
+  }
+
+  async function openEquipmentCamera(): Promise<void> {
+    setCameraOpen(true);
+    setCameraError("");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      cameraStreamRef.current = stream;
+
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        await cameraVideoRef.current.play();
+      }
+    } catch (requestError) {
+      console.error(requestError);
+      setCameraError(
+        "Impossible d'ouvrir la camera. Vous pouvez choisir une photo depuis vos fichiers.",
+      );
+    }
+  }
+
+  function closeEquipmentCamera(): void {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraOpen(false);
+    setCameraError("");
+  }
+
+  function captureEquipmentPhoto(): void {
+    const video = cameraVideoRef.current;
+    const canvas = cameraCanvasRef.current;
+
+    if (!video || !canvas) {
+      return;
+    }
+
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        return;
+      }
+
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-");
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+      const document: EquipmentDocumentDraft = {
+        id: `photo-equipement-${timestamp}-${crypto.randomUUID()}`,
+        name: `photo-equipement-${timestamp}.jpg`,
+        type: "image/jpeg",
+        url: dataUrl,
+        dataUrl,
+        isPhoto: true,
+      };
+
+      setEquipmentDocuments((previous) => {
+        const nextDocuments = [...previous, document];
+        setSelectedEquipmentDocumentIndex(nextDocuments.length - 1);
+        return nextDocuments;
+      });
+
+      closeEquipmentCamera();
+    }, "image/jpeg", 0.92);
   }
 
   function toggleTag(tagId: number): void {
@@ -495,6 +772,10 @@ function EquipmentPage() {
                 ? saved
                 : item,
             ),
+      );
+      writeEquipmentDocuments(
+        saved.id,
+        toStoredDocuments(equipmentDocuments),
       );
 
       closeDrawer();
@@ -1137,6 +1418,101 @@ return (
             </div>
 
             <div className="equipment-form-field">
+              <label className="equipment-documents-title">
+                <FileText size={18} />
+                Documents
+              </label>
+
+              <label className="equipment-documents-dropzone">
+                <UploadCloud size={26} />
+
+                <span>
+                  Déposer un fichier ici ou{" "}
+                  <strong>parcourir</strong>
+                </span>
+
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  multiple
+                  onChange={(event) => {
+                    void addEquipmentDocuments(
+                      event.target.files,
+                    );
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="equipment-photo-input"
+                onChange={(event) => {
+                  void addEquipmentDocuments(
+                    event.target.files,
+                    true,
+                  );
+                  event.target.value = "";
+                  closeEquipmentCamera();
+                }}
+              />
+
+              <button
+                type="button"
+                className="equipment-photo-button"
+                onClick={() => void openEquipmentCamera()}
+              >
+                <Camera size={18} />
+                Prendre une photo
+              </button>
+
+              {equipmentDocuments.length > 0 && (
+                <div className="equipment-documents-list">
+                  {equipmentDocuments.map(
+                    (document) => (
+                      <span
+                        key={document.id}
+                        className="equipment-document-chip"
+                      >
+                        <button
+                          type="button"
+                          className="equipment-document-open"
+                          onClick={() =>
+                            openEquipmentDocumentPreview(
+                              document.id,
+                            )
+                          }
+                        >
+                          {document.isPhoto ? (
+                            <Camera size={16} />
+                          ) : (
+                            <FileText size={16} />
+                          )}
+                          <span>{document.name}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          aria-label={`Retirer ${document.name}`}
+                          onClick={() =>
+                            removeEquipmentDocument(
+                              document.id,
+                            )
+                          }
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="equipment-form-field">
               <label>Nom *</label>
 
               <input
@@ -1393,6 +1769,168 @@ return (
           </div>
         </form>
       </aside>
+
+      {cameraOpen && (
+        <div
+          className="maintenance-photo-preview-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Prendre une photo"
+        >
+          <div className="maintenance-photo-preview camera">
+            <div className="maintenance-photo-preview-header">
+              <div>
+                <strong>Prendre une photo</strong>
+                <span>Camera de l'appareil</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeEquipmentCamera}
+                aria-label="Fermer la camera"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="maintenance-camera-body">
+              {cameraError ? (
+                <div className="maintenance-document-preview-empty">
+                  {cameraError}
+                </div>
+              ) : (
+                <video ref={cameraVideoRef} playsInline muted />
+              )}
+
+              <canvas ref={cameraCanvasRef} />
+            </div>
+
+            <div className="maintenance-camera-footer">
+              <button
+                type="button"
+                className="equipment-cancel-button"
+                onClick={() => photoInputRef.current?.click()}
+              >
+                Choisir une photo
+              </button>
+
+              <button
+                type="button"
+                className="equipment-cancel-button"
+                onClick={closeEquipmentCamera}
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                className="equipment-primary-button"
+                onClick={captureEquipmentPhoto}
+                disabled={Boolean(cameraError)}
+              >
+                Capturer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEquipmentDocument && (
+        <div
+          className="maintenance-photo-preview-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Apercu des documents"
+        >
+          <div className="maintenance-photo-preview">
+            <div className="maintenance-photo-preview-header">
+              <div>
+                <strong>{selectedEquipmentDocument.name}</strong>
+                <span>
+                  {selectedEquipmentDocumentIndex! + 1} /{" "}
+                  {equipmentDocuments.length}
+                </span>
+              </div>
+
+              <div className="maintenance-document-preview-actions">
+                <a
+                  href={selectedEquipmentDocument.url}
+                  download={selectedEquipmentDocument.name}
+                  className="maintenance-document-download"
+                  aria-label={`Telecharger ${selectedEquipmentDocument.name}`}
+                >
+                  <Download size={18} />
+                  Telecharger
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedEquipmentDocumentIndex(null)}
+                  aria-label="Fermer l'apercu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="maintenance-photo-preview-body">
+              {equipmentDocuments.length > 1 && (
+                <button
+                  type="button"
+                  className="maintenance-photo-preview-nav previous"
+                  onClick={showPreviousEquipmentDocument}
+                  aria-label="Document precedent"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+
+              {selectedEquipmentDocument.type.startsWith("image/") ? (
+                <img
+                  src={selectedEquipmentDocument.url}
+                  alt={selectedEquipmentDocument.name}
+                />
+              ) : selectedEquipmentDocument.type === "application/pdf" ? (
+                <iframe
+                  src={selectedEquipmentDocument.url}
+                  title={selectedEquipmentDocument.name}
+                />
+              ) : selectedEquipmentDocument.type.startsWith("text/") ? (
+                <iframe
+                  src={selectedEquipmentDocument.url}
+                  title={selectedEquipmentDocument.name}
+                />
+              ) : (
+                <div className="maintenance-document-preview-empty">
+                  <FileText size={44} />
+                  <strong>{selectedEquipmentDocument.name}</strong>
+                  <span>
+                    Ce format ne peut pas etre affiche directement par le
+                    navigateur.
+                  </span>
+                  <a
+                    href={selectedEquipmentDocument.url}
+                    download={selectedEquipmentDocument.name}
+                  >
+                    Telecharger
+                  </a>
+                </div>
+              )}
+
+              {equipmentDocuments.length > 1 && (
+                <button
+                  type="button"
+                  className="maintenance-photo-preview-nav next"
+                  onClick={showNextEquipmentDocument}
+                  aria-label="Document suivant"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

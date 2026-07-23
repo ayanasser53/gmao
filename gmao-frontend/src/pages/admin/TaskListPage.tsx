@@ -17,11 +17,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getActivities } from "../../services/activityService";
 import { getEquipment } from "../../services/equipmentService";
 import { getCostCenters } from "../../services/costCenterService";
 import { getTasks, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
+import type { Activity } from "../../types/activity";
 import type { Equipment } from "../../types/equipment";
 import type { CostCenter } from "../../types/costCenter";
 import type { TaskListItem, TaskStatus } from "../../types/task";
@@ -60,6 +62,8 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
 };
 
+type TaskTab = "ALL" | TaskStatus;
+
 const AVATAR_COLORS = [
   "#087fbd",
   "#6b46c1",
@@ -84,12 +88,50 @@ function teamInitials(name: string): string {
   return `${first}${second}`.toUpperCase();
 }
 
+function formatDuration(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${String(minutes).padStart(2, "0")}min`;
+}
+
+function formatMoney(amount: number): string {
+  return `${new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)} EUR`;
+}
+
+function getActivityCost(activity: Activity): number {
+  const sparePartsCost = activity.spareParts.reduce(
+    (sum, part) => sum + part.quantity * (part.unitPrice ?? 0),
+    0,
+  );
+  const additionalCosts = activity.additionalCosts.reduce(
+    (sum, cost) => sum + (cost.amount ?? 0),
+    0,
+  );
+
+  return sparePartsCost + additionalCosts;
+}
+
+function formatTaskCounters(activities: Activity[]): string {
+  const counters = activities.flatMap((activity) =>
+    activity.measureReadings.map(
+      (reading) => `${reading.measureName}: ${reading.value} ${reading.unitSymbol}`,
+    ),
+  );
+
+  return counters.length ? counters.join(", ") : "-";
+}
+
 function TaskListPage() {
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<TaskStatus>("PLANNED");
+  const [activeTab, setActiveTab] = useState<TaskTab>("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
@@ -126,7 +168,15 @@ function TaskListPage() {
   useEffect(() => {
     async function load(): Promise<void> {
       try {
-        const [taskList, users, teams, tags, equipmentList, costCenters] =
+        const [
+          taskList,
+          users,
+          teams,
+          tags,
+          equipmentList,
+          costCenters,
+          activityList,
+        ] =
           await Promise.all([
             getTasks(),
             getUsersDetailed().catch(() => [] as UserDetail[]),
@@ -134,9 +184,11 @@ function TaskListPage() {
             fetchTagOptions().catch(() => [] as TagOption[]),
             getEquipment().catch(() => [] as Equipment[]),
             getCostCenters().catch(() => [] as CostCenter[]),
+            getActivities().catch(() => [] as Activity[]),
           ]);
 
         setTasks(taskList);
+        setActivities(activityList);
         setUserOptions(users);
         setTeamOptions(teams);
         setTagOptions(tags);
@@ -178,6 +230,7 @@ function TaskListPage() {
 
   const statusCounts = useMemo(() => {
     return {
+      ALL: tasks.length,
       PLANNED: tasks.filter((task) => task.status === "PLANNED").length,
       IN_PROGRESS: tasks.filter((task) => task.status === "IN_PROGRESS").length,
       LATE: tasks.filter((task) => task.status === "LATE").length,
@@ -189,7 +242,7 @@ function TaskListPage() {
     const query = search.trim().toLowerCase();
 
     return tasks.filter((task) => {
-      if (task.status !== activeTab) {
+      if (activeTab !== "ALL" && task.status !== activeTab) {
         return false;
       }
 
@@ -268,16 +321,37 @@ function TaskListPage() {
     });
   }, [tasks, search, activeTab, appliedFilters]);
 
+  const taskActivityTotals = useMemo(() => {
+    const totals = new Map<number, { spentMinutes: number; cost: number }>();
+
+    activities.forEach((activity) => {
+      const current = totals.get(activity.taskId) ?? {
+        spentMinutes: 0,
+        cost: 0,
+      };
+
+      current.spentMinutes += activity.spentHours * 60 + activity.spentMinutes;
+      current.cost += getActivityCost(activity);
+      totals.set(activity.taskId, current);
+    });
+
+    return totals;
+  }, [activities]);
+
   const activeFilterCount = Object.values(appliedFilters).filter(
     Boolean,
   ).length;
 
   function getExportOptions() {
-    const statusLabel = STATUS_META[activeTab].label.toLowerCase();
+    const statusLabel =
+      activeTab === "ALL" ? "toutes" : STATUS_META[activeTab].label.toLowerCase();
 
     return {
-      title: `Taches - Statut ${statusLabel}`,
-      fileName: `taches-statut-${statusLabel.replace(/\s+/g, "-")}`,
+      title: activeTab === "ALL" ? "Taches - Toutes" : `Taches - Statut ${statusLabel}`,
+      fileName:
+        activeTab === "ALL"
+          ? "taches-toutes"
+          : `taches-statut-${statusLabel.replace(/\s+/g, "-")}`,
       headers: [
         "Tache",
         "Equipement",
@@ -285,21 +359,37 @@ function TaskListPage() {
         "Signale par",
         "Date",
         "Statut",
+        "Temps passe",
+        "Cout",
+        "Compteur",
       ],
-      rows: filteredTasks.map((task) => [
-        task.description,
-        task.equipment?.name || "-",
-        task.costCenterName || "Non defini",
-        task.assignees
-          .map((assignee) =>
-            assignee.type === "USER"
-              ? assignee.userFullName
-              : assignee.teamName,
-          )
-          .join(", ") || "Non renseigne",
-        formatDate(task.startDate),
-        STATUS_META[task.status].label,
-      ]),
+      rows: filteredTasks.map((task) => {
+        const totals = taskActivityTotals.get(task.id) ?? {
+          spentMinutes: 0,
+          cost: 0,
+        };
+        const taskActivities = activities.filter(
+          (activity) => activity.taskId === task.id,
+        );
+
+        return [
+          task.description,
+          task.equipment?.name || "-",
+          task.costCenterName || "Non defini",
+          task.assignees
+            .map((assignee) =>
+              assignee.type === "USER"
+                ? assignee.userFullName
+                : assignee.teamName,
+            )
+            .join(", ") || "Non renseigne",
+          formatDate(task.startDate),
+          STATUS_META[task.status].label,
+          formatDuration(totals.spentMinutes),
+          formatMoney(totals.cost),
+          formatTaskCounters(taskActivities),
+        ];
+      }),
     };
   }
 
@@ -868,6 +958,15 @@ function TaskListPage() {
       <div className="task-status-cards">
         <button
           type="button"
+          className={`tab-all ${activeTab === "ALL" ? "active" : ""}`}
+          onClick={() => setActiveTab("ALL")}
+        >
+          <ClipboardList size={18} />
+          Tout
+          <span>{statusCounts.ALL}</span>
+        </button>
+        <button
+          type="button"
           className={`tab-planned ${activeTab === "PLANNED" ? "active" : ""}`}
           onClick={() => setActiveTab("PLANNED")}
         >
@@ -928,7 +1027,9 @@ function TaskListPage() {
               {filteredTasks.length === 0 && (
                 <tr>
                   <td colSpan={6} className="resource-table-empty">
-                    {`Aucune tâche avec le statut "${STATUS_META[activeTab].label}".`}
+                    {activeTab === "ALL"
+                      ? "Aucune tâche trouvée."
+                      : `Aucune tâche avec le statut "${STATUS_META[activeTab].label}".`}
                   </td>
                 </tr>
               )}

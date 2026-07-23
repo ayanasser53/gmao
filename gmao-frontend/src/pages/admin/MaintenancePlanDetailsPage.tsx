@@ -505,7 +505,7 @@ export default function MaintenancePlanDetailsPage() {
       setCameraError("");
 
       if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraError("La camÃ©ra n'est pas disponible sur ce navigateur.");
+        setCameraError("La caméra n'est pas disponible sur ce navigateur.");
         return;
       }
 
@@ -520,7 +520,7 @@ export default function MaintenancePlanDetailsPage() {
         await cameraVideoRef.current.play();
       }
     } catch {
-      setCameraError("Impossible d'ouvrir la camÃ©ra. VÃ©rifiez l'autorisation du navigateur.");
+      setCameraError("Impossible d'ouvrir la caméra. Vérifiez l'autorisation du navigateur.");
     }
   }
 
@@ -1109,7 +1109,7 @@ export default function MaintenancePlanDetailsPage() {
 
           <div className="measure-form-group">
             <label htmlFor="realization-actor">
-              RÃ©alisÃ©e par <span>*</span>
+              Réalisée par <span>*</span>
             </label>
             <select
               id="realization-actor"
@@ -1343,7 +1343,7 @@ export default function MaintenancePlanDetailsPage() {
           />
           <UploadCloud size={24} />
           <span>
-            DÃ©poser un fichier ici ou <strong>parcourir</strong>
+            Déposer un fichier ici ou <strong>parcourir</strong>
           </span>
         </label>
 
