@@ -251,10 +251,12 @@ public class SparePartService {
             LocalDateTime endDate,
             Long taskId,
             Long activityId,
+            Long maintenancePlanId,
             String userName
     ) {
         return stockMovementRepository.search(
-                        sparePartId, startDate, endDate, taskId, activityId, userName
+                        sparePartId, startDate, endDate, taskId, activityId,
+                        maintenancePlanId, userName
                 )
                 .stream()
                 .map(movement -> new StockMovementHistoryResponse(
@@ -266,6 +268,8 @@ public class SparePartService {
                         movement.getTaskDescription(),
                         movement.getActivityId(),
                         movement.getActivityDescription(),
+                        movement.getMaintenancePlanId(),
+                        movement.getMaintenancePlanDescription(),
                         movement.getSource(),
                         movement.getMovementType(),
                         movement.getQuantity(),

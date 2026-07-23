@@ -12,6 +12,8 @@ public record StockMovementHistoryResponse(
         String taskDescription,
         Long activityId,
         String activityDescription,
+        Long maintenancePlanId,
+        String maintenancePlanDescription,
         String source,
         String movementType,
         BigDecimal quantity,

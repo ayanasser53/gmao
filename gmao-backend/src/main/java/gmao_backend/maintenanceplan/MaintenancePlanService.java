@@ -4,10 +4,17 @@ import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
+import com.gmao.gmao_backend.sparepart.SparePartStockMovementRepository;
+import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +27,8 @@ public class MaintenancePlanService {
     private final MaintenancePlanRepository maintenancePlanRepository;
     private final EquipmentRepository equipmentRepository;
     private final SparePartRepository sparePartRepository;
+    private final SparePartStockMovementRepository stockMovementRepository;
+    private final UserRepository userRepository;
 
     public List<MaintenancePlanResponse> findAll() {
         ensureDueOccurrences();
@@ -92,8 +101,66 @@ public class MaintenancePlanService {
         MaintenancePlan plan = maintenancePlanRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
 
-        plan.setStatus(resolveSavedStatus(status));
-        return toResponse(maintenancePlanRepository.save(plan));
+        MaintenancePlanStatus previousStatus = plan.getStatus();
+        MaintenancePlanStatus nextStatus = resolveSavedStatus(status);
+
+        plan.setStatus(nextStatus);
+        MaintenancePlan savedPlan = maintenancePlanRepository.save(plan);
+
+        boolean justCompleted =
+                nextStatus == MaintenancePlanStatus.DONE
+                        && previousStatus != MaintenancePlanStatus.DONE;
+
+        if (justCompleted) {
+            consumeSpareParts(savedPlan);
+        }
+
+        return toResponse(savedPlan);
+    }
+
+    /**
+     * Décrémente le stock de chaque pièce détachée liée au plan de
+     * maintenance, et enregistre un mouvement de stock associé, au moment
+     * où le plan passe au statut "Terminé". Reproduit exactement le
+     * comportement déjà en place pour les activités.
+     */
+    private void consumeSpareParts(MaintenancePlan plan) {
+        for (MaintenancePlanSparePart line : plan.getSpareParts()) {
+            SparePart sparePart = line.getSparePart();
+
+            BigDecimal currentStock = sparePart.getQuantity() == null
+                    ? BigDecimal.ZERO
+                    : sparePart.getQuantity();
+            sparePart.setQuantity(currentStock.subtract(BigDecimal.valueOf(line.getQuantity())));
+            sparePartRepository.save(sparePart);
+
+            SparePartStockMovement movement = SparePartStockMovement.builder()
+                    .sparePart(sparePart)
+                    .source("Plan de maintenance")
+                    .reference("Plan #" + plan.getId())
+                    .maintenancePlanId(plan.getId())
+                    .maintenancePlanDescription(plan.getDescription())
+                    .movementType("CONSOMMATION")
+                    .quantity(BigDecimal.valueOf(line.getQuantity()).negate())
+                    .unitCost(sparePart.getUnitPrice())
+                    .userName(currentUserName())
+                    .movementDate(LocalDateTime.now())
+                    .build();
+
+            stockMovementRepository.save(movement);
+        }
+    }
+
+    private String currentUserName() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            return null;
+        }
+
+        return userRepository.findByEmail(authentication.getName())
+                .map(user -> (user.getFirstName() + " " + user.getLastName()).trim())
+                .orElse(null);
     }
 
     public void delete(Long id) {

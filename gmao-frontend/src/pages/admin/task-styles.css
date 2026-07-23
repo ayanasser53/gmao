@@ -2077,3 +2077,31 @@ a.task-linked-row:hover {
   font-size: 12px;
   font-weight: 700;
 }
+.task-filter-field input[type="date"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  color: #23384f;
+  background-color: #fafcfd;
+  border: 1px solid #cddceb;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-filter-field input[type="date"]:focus {
+  outline: none;
+  border-color: #087fbd;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(8, 127, 189, 0.12);
+}
+
+.task-filter-field input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.task-filter-field input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

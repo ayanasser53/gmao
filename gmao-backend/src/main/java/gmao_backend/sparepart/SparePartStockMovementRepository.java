@@ -19,6 +19,7 @@ public interface SparePartStockMovementRepository
               and (:endDate is null or m.movementDate <= :endDate)
               and (:taskId is null or m.taskId = :taskId)
               and (:activityId is null or m.activityId = :activityId)
+              and (:maintenancePlanId is null or m.maintenancePlanId = :maintenancePlanId)
               and (:userName is null or m.userName = :userName)
             order by m.movementDate desc
             """)
@@ -28,6 +29,7 @@ public interface SparePartStockMovementRepository
             @Param("endDate") LocalDateTime endDate,
             @Param("taskId") Long taskId,
             @Param("activityId") Long activityId,
+            @Param("maintenancePlanId") Long maintenancePlanId,
             @Param("userName") String userName
     );
 }

@@ -4,11 +4,14 @@ import {
   Activity as ActivityIcon,
   BadgeCheck,
   Boxes,
+  CalendarCheck,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   History,
   Package,
   RefreshCw,
+  Search,
   SlidersHorizontal,
   Users,
 } from "lucide-react";
@@ -26,11 +29,13 @@ import {
 import { getUsersDetailed } from "../../services/userService";
 import { getTasks } from "../../services/taskService";
 import { getActivities } from "../../services/activityService";
+import { getMaintenancePlans } from "../../services/maintenancePlanService";
 
 import type { SparePart } from "../../types/sparePart";
 import type { UserDetail } from "../../types/user";
 import type { TaskListItem } from "../../types/task";
 import type { Activity } from "../../types/activity";
+import type { MaintenancePlan } from "../../types/maintenancePlan";
 
 import "./task-styles.css";
 
@@ -76,19 +81,24 @@ function MovementHistoryPage() {
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [movements, setMovements] = useState<StockMovementHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [showFilters, setShowFilters] = useState(false);
+  const [search, setSearch] = useState("");
   const [filterSparePartId, setFilterSparePartId] = useState<number | "">("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [filterTaskId, setFilterTaskId] = useState<number | "">("");
   const [filterActivityId, setFilterActivityId] = useState<number | "">("");
+  const [filterPlanId, setFilterPlanId] = useState<number | "">("");
   const [filterUserId, setFilterUserId] = useState<number | "">("");
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [showActivityDropdown, setShowActivityDropdown] = useState(false);
+  const [showPlanDropdown, setShowPlanDropdown] = useState(false);
 
   const [stockChecks, setStockChecks] = useState<ExternalStockCheck[] | null>(
     null,
@@ -110,6 +120,9 @@ function MovementHistoryPage() {
     getActivities()
       .then(setActivities)
       .catch(() => setActivities([]));
+    getMaintenancePlans()
+      .then(setPlans)
+      .catch(() => setPlans([]));
   }, []);
 
   useEffect(() => {
@@ -130,6 +143,7 @@ function MovementHistoryPage() {
         endDate: filterEndDate || undefined,
         taskId: filterTaskId ? Number(filterTaskId) : undefined,
         activityId: filterActivityId ? Number(filterActivityId) : undefined,
+        maintenancePlanId: filterPlanId ? Number(filterPlanId) : undefined,
         userName: selectedUser
           ? `${selectedUser.firstName} ${selectedUser.lastName}`.trim()
           : undefined,
@@ -149,6 +163,7 @@ function MovementHistoryPage() {
     setFilterEndDate("");
     setFilterTaskId("");
     setFilterActivityId("");
+    setFilterPlanId("");
     setFilterUserId("");
   }
 
@@ -213,6 +228,38 @@ function MovementHistoryPage() {
   const selectedActivity = activities.find(
     (activity) => activity.id === filterActivityId,
   );
+  const selectedPlan = plans.find((plan) => plan.id === filterPlanId);
+
+  const activeFilterCount = [
+    filterSparePartId,
+    filterStartDate,
+    filterEndDate,
+    filterTaskId,
+    filterActivityId,
+    filterPlanId,
+    filterUserId,
+  ].filter((value) => value !== "" && value !== undefined).length;
+
+  const filteredMovements = (() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return movements;
+    }
+
+    return movements.filter((movement) =>
+      [
+        movement.sparePartName,
+        movement.source,
+        movement.taskDescription,
+        movement.activityDescription,
+        movement.maintenancePlanDescription,
+        movement.userName,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  })();
 
   return (
     <section className="admin-page">
@@ -230,6 +277,28 @@ function MovementHistoryPage() {
           {checkingAll
             ? "Vérification en cours..."
             : "Vérifier le stock réel (toutes les pièces)"}
+        </button>
+      </div>
+
+      <div className="resource-toolbar">
+        <div className="resource-search">
+          <Search size={17} />
+          <input
+            type="text"
+            placeholder="Rechercher un mouvement..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+
+        <button
+          type="button"
+          className={`task-filter-toggle ${showFilters ? "active" : ""}`}
+          onClick={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal size={16} />
+          Filtrer
+          {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
         </button>
       </div>
 
@@ -303,7 +372,8 @@ function MovementHistoryPage() {
         </div>
       )}
 
-      <div className="task-filter-panel">
+      {showFilters && (
+        <div className="task-filter-panel">
         <div className="task-filter-grid">
           <div className="task-filter-field">
             <label>
@@ -341,7 +411,9 @@ function MovementHistoryPage() {
           </div>
 
           <div className="task-filter-field">
-            <label>Date de début</label>
+            <label>
+              <CalendarDays size={15} /> Date de début
+            </label>
             <input
               type="date"
               value={filterStartDate}
@@ -350,7 +422,9 @@ function MovementHistoryPage() {
           </div>
 
           <div className="task-filter-field">
-            <label>Date de fin</label>
+            <label>
+              <CalendarDays size={15} /> Date de fin
+            </label>
             <input
               type="date"
               value={filterEndDate}
@@ -472,6 +546,62 @@ function MovementHistoryPage() {
 
           <div className="task-filter-field">
             <label>
+              <CalendarCheck size={15} /> Plan de maintenance
+            </label>
+            <div className="task-filter-dropdown">
+              <button
+                type="button"
+                className="task-filter-dropdown-trigger"
+                onClick={() => setShowPlanDropdown((current) => !current)}
+              >
+                {selectedPlan ? (
+                  `#${selectedPlan.id} — ${selectedPlan.description}`
+                ) : (
+                  <span>Tous</span>
+                )}
+              </button>
+
+              {showPlanDropdown && (
+                <div className="task-filter-dropdown-panel">
+                  <button
+                    type="button"
+                    className={`task-filter-dropdown-row ${
+                      !filterPlanId ? "selected" : ""
+                    }`}
+                    onClick={() => {
+                      setFilterPlanId("");
+                      setShowPlanDropdown(false);
+                    }}
+                  >
+                    Tous
+                    {!filterPlanId && <CheckCircle2 size={16} />}
+                  </button>
+
+                  {plans.map((plan) => (
+                    <button
+                      type="button"
+                      key={plan.id}
+                      className={`task-filter-dropdown-row ${
+                        filterPlanId === plan.id ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setFilterPlanId(plan.id);
+                        setShowPlanDropdown(false);
+                      }}
+                    >
+                      #{plan.id} — {plan.description}
+                      {filterPlanId === plan.id && (
+                        <CheckCircle2 size={16} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="task-filter-field">
+            <label>
               <Users size={15} /> Utilisateur
             </label>
             <div className="task-filter-dropdown">
@@ -562,7 +692,8 @@ function MovementHistoryPage() {
             Réinitialiser les filtres
           </button>
         </div>
-      </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="supplier-loading">Chargement des mouvements...</div>
@@ -575,6 +706,7 @@ function MovementHistoryPage() {
                 <th>Source</th>
                 <th>ID Tâche</th>
                 <th>ID Activité</th>
+                <th>Plan de maintenance</th>
                 <th>Description</th>
                 <th>Utilisateur</th>
                 <th>Quantité</th>
@@ -583,14 +715,14 @@ function MovementHistoryPage() {
             </thead>
 
             <tbody>
-              {movements.length === 0 ? (
+              {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="spare-detail-table-empty">
+                  <td colSpan={9} className="spare-detail-table-empty">
                     Aucun mouvement trouvé pour ces filtres.
                   </td>
                 </tr>
               ) : (
-                movements.map((movement) => {
+                filteredMovements.map((movement) => {
                   const image = getFileUrl(movement.sparePartImage);
                   const [firstName, ...rest] = (movement.userName || "").split(
                     " ",
@@ -614,6 +746,13 @@ function MovementHistoryPage() {
                       <td>{movement.source}</td>
                       <td>{movement.taskId ?? "-"}</td>
                       <td>{movement.activityId ?? "-"}</td>
+                      <td>
+                        {movement.maintenancePlanId
+                          ? `#${movement.maintenancePlanId} — ${
+                              movement.maintenancePlanDescription || ""
+                            }`
+                          : "-"}
+                      </td>
                       <td>
                         {movement.activityDescription ||
                           movement.taskDescription ||

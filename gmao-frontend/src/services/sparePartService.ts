@@ -117,6 +117,8 @@ export type StockMovementHistory = {
   taskDescription: string | null
   activityId: number | null
   activityDescription: string | null
+  maintenancePlanId: number | null
+  maintenancePlanDescription: string | null
   source: string
   movementType: string
   quantity: number
@@ -131,6 +133,7 @@ export async function getStockMovementHistory(params: {
   endDate?: string
   taskId?: number
   activityId?: number
+  maintenancePlanId?: number
   userName?: string
 }): Promise<StockMovementHistory[]> {
   const response = await api.get<StockMovementHistory[]>(

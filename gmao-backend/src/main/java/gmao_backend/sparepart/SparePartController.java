@@ -84,6 +84,7 @@ public class SparePartController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
             @RequestParam(required = false) Long taskId,
             @RequestParam(required = false) Long activityId,
+            @RequestParam(required = false) Long maintenancePlanId,
             @RequestParam(required = false) String userName
     ) {
         return sparePartService.searchMovementHistory(
@@ -92,6 +93,7 @@ public class SparePartController {
                 endDate != null ? endDate.atTime(23, 59, 59) : null,
                 taskId,
                 activityId,
+                maintenancePlanId,
                 userName
         );
     }

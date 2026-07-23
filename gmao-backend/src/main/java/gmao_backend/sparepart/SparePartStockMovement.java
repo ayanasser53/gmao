@@ -40,6 +40,12 @@ public class SparePartStockMovement {
     @Column(name = "activity_description")
     private String activityDescription;
 
+    @Column(name = "maintenance_plan_id")
+    private Long maintenancePlanId;
+
+    @Column(name = "maintenance_plan_description")
+    private String maintenancePlanDescription;
+
     @Column(name = "movement_type", nullable = false)
     private String movementType;
 
