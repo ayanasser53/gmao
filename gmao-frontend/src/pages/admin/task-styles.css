@@ -109,10 +109,9 @@
 
 .task-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
 }
-
 .task-filter-field {
   display: flex;
   flex-direction: column;
@@ -2104,4 +2103,110 @@ a.task-linked-row:hover {
 
 .task-filter-field input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
+}
+.task-filter-field input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+
+  color: #23384f;
+  background: #fafcfd;
+
+  border: 1px solid #cddceb;
+  border-radius: 8px;
+
+  font-size: 13.5px;
+  font-weight: 600;
+
+  transition: all .15s ease;
+}
+
+.task-filter-field input[type="number"]:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #087fbd;
+  box-shadow: 0 0 0 3px rgba(8,127,189,.12);
+}
+
+.task-filter-field input[type="number"]::-webkit-inner-spin-button,
+.task-filter-field input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+/* =====================================================
+   FILTRES DES PIÈCES DÉTACHÉES
+   ===================================================== */
+
+.spare-parts-filter-panel .task-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  row-gap: 24px;
+  width: 100%;
+}
+
+.spare-parts-filter-panel .task-filter-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.spare-parts-filter-panel
+  .task-filter-field
+  > input[type="number"] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+
+  color: #23384f;
+  background-color: #fafcfd;
+
+  border: 1px solid #cddceb;
+  border-radius: 9px;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.spare-parts-filter-panel
+  .task-filter-field
+  > input[type="number"]:focus {
+  outline: none;
+  color: #173454;
+  background-color: #ffffff;
+  border-color: #087fbd;
+  box-shadow: 0 0 0 3px rgba(8, 127, 189, 0.12);
+}
+
+.spare-parts-filter-panel .task-filter-dropdown,
+.spare-parts-filter-panel .task-filter-dropdown-trigger {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.spare-parts-filter-panel .task-filter-dropdown-trigger {
+  min-height: 52px;
+  padding: 0 16px;
+}
+
+/* Espace entre les champs et le filtre de stock faible */
+.spare-parts-filter-panel .task-toggle-row {
+  margin-top: 26px;
+  margin-bottom: 24px;
+}
+
+/* Espace avant le bouton de réinitialisation */
+.spare-parts-filter-panel .task-filter-actions {
+  margin-top: 24px;
+}
+
+/* Responsive */
+@media (max-width: 850px) {
+  .spare-parts-filter-panel .task-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
 }
