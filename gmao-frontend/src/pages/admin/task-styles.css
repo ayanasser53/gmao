@@ -649,7 +649,7 @@
 
 .task-status-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin: 20px 0 22px;
 }
@@ -685,6 +685,11 @@
   line-height: 1;
 }
 
+.task-status-cards button.tab-all svg {
+  color: #0b84c6;
+  background: #e5f5fc;
+}
+
 .task-status-cards button.tab-planned svg {
   color: #a3660f;
   background: #fdf1dc;
@@ -703,6 +708,12 @@
 .task-status-cards button.tab-done svg {
   color: #198754;
   background: #ddf6e9;
+}
+
+.task-status-cards button.tab-all.active {
+  background: #e5f5fc;
+  border-color: #0b84c6;
+  box-shadow: inset 4px 0 0 #0b84c6;
 }
 
 .task-status-cards button.tab-planned.active {

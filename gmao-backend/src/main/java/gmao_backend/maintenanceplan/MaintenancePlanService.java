@@ -8,7 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,8 @@ public class MaintenancePlanService {
     private final SparePartRepository sparePartRepository;
 
     public List<MaintenancePlanResponse> findAll() {
+        ensureDueOccurrences();
+
         return maintenancePlanRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -182,6 +187,107 @@ public class MaintenancePlanService {
 
     private MaintenancePlanStatus resolveSavedStatus(MaintenancePlanStatus requestedStatus) {
         return requestedStatus == null ? MaintenancePlanStatus.PLANNED : requestedStatus;
+    }
+
+    private void ensureDueOccurrences() {
+        List<MaintenancePlan> existingPlans = maintenancePlanRepository.findAll();
+        Set<String> existingKeys = new HashSet<>(
+                existingPlans.stream()
+                        .map(this::getOccurrenceKey)
+                        .toList()
+        );
+        List<MaintenancePlan> plansToCreate = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        for (MaintenancePlan source : existingPlans) {
+            if (!isRecurringPlan(source) || source.getNextDueDate() == null) {
+                continue;
+            }
+
+            LocalDate nextDate = addInterval(
+                    source.getNextDueDate(),
+                    source.getFrequencyValue(),
+                    source.getFrequencyUnit()
+            );
+            int guard = 0;
+
+            while (!nextDate.isAfter(today) && guard < 366) {
+                MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
+                String key = getOccurrenceKey(nextPlan);
+
+                if (!existingKeys.contains(key)) {
+                    existingKeys.add(key);
+                    plansToCreate.add(nextPlan);
+                }
+
+                nextDate = addInterval(nextDate, source.getFrequencyValue(), source.getFrequencyUnit());
+                guard++;
+            }
+        }
+
+        if (!plansToCreate.isEmpty()) {
+            maintenancePlanRepository.saveAll(plansToCreate);
+        }
+    }
+
+    private boolean isRecurringPlan(MaintenancePlan plan) {
+        return plan.getFrequencyValue() > 0
+                && Set.of("DAYS", "WEEKS", "MONTHS", "YEARS").contains(plan.getFrequencyUnit());
+    }
+
+    private LocalDate addInterval(LocalDate date, int value, String unit) {
+        return switch (unit) {
+            case "DAYS" -> date.plusDays(value);
+            case "WEEKS" -> date.plusWeeks(value);
+            case "MONTHS" -> date.plusMonths(value);
+            case "YEARS" -> date.plusYears(value);
+            default -> date;
+        };
+    }
+
+    private MaintenancePlan copyForOccurrence(MaintenancePlan source, LocalDate dueDate) {
+        MaintenancePlan nextPlan = MaintenancePlan.builder()
+                .equipment(source.getEquipment())
+                .equipmentOnly(source.isEquipmentOnly())
+                .description(source.getDescription())
+                .regulatory(source.isRegulatory())
+                .triggerType(source.getTriggerType())
+                .frequencyValue(source.getFrequencyValue())
+                .frequencyUnit(source.getFrequencyUnit())
+                .startDate(dueDate)
+                .nextDueDate(dueDate)
+                .plannedMaintenanceHours(source.getPlannedMaintenanceHours())
+                .plannedMaintenanceMinutes(source.getPlannedMaintenanceMinutes())
+                .plannedStoppedHours(source.getPlannedStoppedHours())
+                .plannedStoppedMinutes(source.getPlannedStoppedMinutes())
+                .status(MaintenancePlanStatus.PLANNED)
+                .build();
+
+        source.getSpareParts().forEach(item ->
+                nextPlan.getSpareParts().add(
+                        MaintenancePlanSparePart.builder()
+                                .maintenancePlan(nextPlan)
+                                .sparePart(item.getSparePart())
+                                .quantity(item.getQuantity())
+                                .build()
+                )
+        );
+
+        return nextPlan;
+    }
+
+    private String getOccurrenceKey(MaintenancePlan plan) {
+        Long equipmentId = plan.getEquipment() != null ? plan.getEquipment().getId() : null;
+
+        return String.join(
+                "|",
+                String.valueOf(equipmentId),
+                String.valueOf(plan.getDescription()),
+                String.valueOf(plan.getTriggerType()),
+                String.valueOf(plan.getFrequencyValue()),
+                String.valueOf(plan.getFrequencyUnit()),
+                String.valueOf(plan.getNextDueDate())
+        );
     }
 
     private String getTriggerLabel(MaintenancePlan plan) {

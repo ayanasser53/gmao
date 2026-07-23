@@ -38,6 +38,7 @@ import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 import "./task-styles.css";
 
 type DisplayStatus = "planned" | "in_progress" | "late" | "done";
+type MaintenanceTab = "all" | DisplayStatus;
 type MaintenanceFilterDropdown =
   | "trigger"
   | "equipment"
@@ -52,6 +53,12 @@ interface MaintenancePlanWithAssignees extends MaintenancePlan {
 }
 
 const STATUS_TABS = [
+  {
+    status: "all",
+    label: "Tout",
+    className: "tab-all",
+    icon: CheckCircle2,
+  },
   {
     status: "planned",
     label: "Planifié",
@@ -133,6 +140,10 @@ function getStatusLabel(status: DisplayStatus) {
   return "En cours";
 }
 
+function getTabLabel(tab: MaintenanceTab) {
+  return tab === "all" ? "Tout" : getStatusLabel(tab);
+}
+
 function getStoredStatus(status: DisplayStatus): MaintenancePlanStatus {
   if (status === "done") return "DONE";
   if (status === "late") return "LATE";
@@ -174,7 +185,7 @@ export default function MaintenancePlansPage() {
   const [filterCostCenter, setFilterCostCenter] = useState("");
   const [openDropdown, setOpenDropdown] =
     useState<MaintenanceFilterDropdown>(null);
-  const [activeTab, setActiveTab] = useState<DisplayStatus>("planned");
+  const [activeTab, setActiveTab] = useState<MaintenanceTab>("all");
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -241,18 +252,19 @@ export default function MaintenancePlansPage() {
   }
 
   const statusCounts = useMemo(() => {
-    return STATUS_TABS.reduce(
-      (counts, tab) => ({
-        ...counts,
-        [tab.status]: plans.filter((plan) => getDisplayStatus(plan) === tab.status).length,
-      }),
-      {
-        planned: 0,
-        in_progress: 0,
-        late: 0,
-        done: 0,
-      } as Record<DisplayStatus, number>,
-    );
+    const counts: Record<MaintenanceTab, number> = {
+      all: plans.length,
+      planned: 0,
+      in_progress: 0,
+      late: 0,
+      done: 0,
+    };
+
+    plans.forEach((plan) => {
+      counts[getDisplayStatus(plan)] += 1;
+    });
+
+    return counts;
   }, [plans]);
 
   const filteredPlans = useMemo(() => {
@@ -262,7 +274,7 @@ export default function MaintenancePlansPage() {
       const displayStatus = getDisplayStatus(plan);
       const linkedEquipment = equipmentById.get(plan.equipmentId);
 
-      if (displayStatus !== activeTab) {
+      if (activeTab !== "all" && displayStatus !== activeTab) {
         return false;
       }
 
@@ -331,7 +343,7 @@ export default function MaintenancePlansPage() {
   ]);
 
   function getExportOptions() {
-    const statusLabel = getStatusLabel(activeTab).toLowerCase();
+    const statusLabel = getTabLabel(activeTab).toLowerCase();
 
     return {
       title: `Plans de maintenance - Statut ${statusLabel}`,
@@ -687,7 +699,9 @@ export default function MaintenancePlansPage() {
             {filteredPlans.length === 0 ? (
               <tr>
                 <td colSpan={6} className="resource-table-empty">
-                  {`Aucun plan de maintenance avec le statut "${getStatusLabel(activeTab)}".`}
+                  {activeTab === "all"
+                    ? "Aucun plan de maintenance."
+                    : `Aucun plan de maintenance avec le statut "${getStatusLabel(activeTab)}".`}
                 </td>
               </tr>
             ) : (
