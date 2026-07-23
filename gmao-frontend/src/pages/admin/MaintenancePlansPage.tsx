@@ -686,6 +686,7 @@ export default function MaintenancePlansPage() {
         <table className="resource-table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>Plan de maintenance</th>
               <th>Équipement</th>
               <th>Déclencheur</th>
@@ -698,7 +699,7 @@ export default function MaintenancePlansPage() {
           <tbody>
             {filteredPlans.length === 0 ? (
               <tr>
-                <td colSpan={6} className="resource-table-empty">
+                <td colSpan={7} className="resource-table-empty">
                   {activeTab === "all"
                     ? "Aucun plan de maintenance."
                     : `Aucun plan de maintenance avec le statut "${getStatusLabel(activeTab)}".`}
@@ -714,6 +715,7 @@ export default function MaintenancePlansPage() {
                     className="clickable-table-row"
                     onClick={() => navigate(`/admin/maintenance-plans/${plan.id}`)}
                   >
+                    <td className="resource-table-id-cell">#{plan.id}</td>
                     <td>
                       <div className="maintenance-plan-cell">
                         <button

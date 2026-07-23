@@ -38,6 +38,8 @@ import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { UserDetail } from "../../types/user";
 
+import "./task-styles.css";
+
 const BACKEND_URL = "http://localhost:8090";
 
 function getImageUrl(imagePath?: string | null) {
@@ -826,6 +828,7 @@ export default function MaintenancePlanDetailsPage() {
           <h1>
             <CalendarClock size={34} />
             Plan de maintenance
+            <span className="activity-id-badge">#{plan.id}</span>
             <span className={`status-badge ${detailStatus.className}`}>{detailStatus.label}</span>
           </h1>
         </div>
@@ -1517,4 +1520,3 @@ export default function MaintenancePlanDetailsPage() {
     </main>
   );
 }
-
