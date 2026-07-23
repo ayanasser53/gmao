@@ -36,6 +36,7 @@ import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
+import DocumentAttachmentField from "../../components/admin/DocumentAttachmentField";
 
 import "./task-styles.css";
 
@@ -794,44 +795,7 @@ function TaskCreatePage() {
 
             {/* Documents */}
             <div className="task-form-section">
-              <div className="supplier-drawer-section-title">
-                <span>Documents</span>
-              </div>
-
-              <label className="task-dropzone">
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) =>
-                    setFiles((current) => [
-                      ...current,
-                      ...Array.from(e.target.files ?? []),
-                    ])
-                  }
-                />
-                Déposer un fichier ici ou <span>parcourir</span>
-              </label>
-
-              {files.length > 0 && (
-                <div className="task-chip-list" style={{ marginTop: 12 }}>
-                  {files.map((file, index) => (
-                    <span className="task-chip" key={`${file.name}-${index}`}>
-                      {file.name}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFiles((current) =>
-                            current.filter((_, i) => i !== index),
-                          )
-                        }
-                        aria-label={`Retirer ${file.name}`}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <DocumentAttachmentField files={files} setFiles={setFiles} />
             </div>
           </div>
 

@@ -12,7 +12,27 @@ function normalizeActivity(activity: Activity): Activity {
     intervenants: activity.intervenants ?? [],
     additionalCosts: activity.additionalCosts ?? [],
     measureReadings: activity.measureReadings ?? [],
+    documents: activity.documents ?? [],
   };
+}
+
+function buildActivityFormData(data: ActivityRequest, files: File[]) {
+  const formData = new FormData();
+
+  formData.append(
+    "activity",
+    new Blob([JSON.stringify(data)], { type: "application/json" }),
+  );
+
+  files.forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  return formData;
+}
+
+function getActivityBody(data: ActivityRequest, files: File[] = []) {
+  return files.length > 0 ? buildActivityFormData(data, files) : data;
 }
 
 export async function getActivities(): Promise<Activity[]> {
@@ -42,18 +62,20 @@ export async function getActivitiesByTask(taskId: number): Promise<Activity[]> {
 
 export async function createActivity(
   data: ActivityRequest,
+  files: File[] = [],
 ): Promise<Activity> {
-  const response = await api.post<Activity>("/activities", data);
+  const response = await api.post<Activity>("/activities", getActivityBody(data, files));
   return response.data;
 }
 
 export async function createActivityForTask(
   taskId: number,
   data: ActivityRequest,
+  files: File[] = [],
 ): Promise<Activity> {
   const response = await api.post<Activity>(
     `/tasks/${taskId}/activities`,
-    data,
+    getActivityBody(data, files),
   );
   return response.data;
 }
@@ -61,10 +83,11 @@ export async function createActivityForTask(
 export async function createActivityAndFinishTask(
   taskId: number,
   data: ActivityRequest,
+  files: File[] = [],
 ): Promise<Activity> {
   const response = await api.post<Activity>(
     `/tasks/${taskId}/activities/finish`,
-    data,
+    getActivityBody(data, files),
   );
   return response.data;
 }
@@ -72,8 +95,12 @@ export async function createActivityAndFinishTask(
 export async function updateActivity(
   id: number,
   data: ActivityRequest,
+  files: File[] = [],
 ): Promise<Activity> {
-  const response = await api.put<Activity>(`/activities/${id}`, data);
+  const response = await api.put<Activity>(
+    `/activities/${id}`,
+    getActivityBody(data, files),
+  );
   return response.data;
 }
 

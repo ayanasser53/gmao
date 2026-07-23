@@ -16,9 +16,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -34,6 +36,7 @@ public class ActivityService {
     private final ActivityIntervenantRepository activityIntervenantRepository;
     private final ActivityAdditionalCostRepository activityAdditionalCostRepository;
     private final ActivityMeasureReadingRepository activityMeasureReadingRepository;
+    private final ActivityDocumentStorageService activityDocumentStorageService;
     private final MeasureRepository measureRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
 
@@ -73,6 +76,10 @@ public class ActivityService {
     }
 
     public ActivityResponse create(ActivityRequest request) {
+        return create(request, null);
+    }
+
+    public ActivityResponse create(ActivityRequest request, List<MultipartFile> documents) {
         Task task = findTask(request.taskId());
 
         Activity activity = Activity.builder()
@@ -87,11 +94,16 @@ public class ActivityService {
 
         Activity savedActivity = activityRepository.save(activity);
         saveActivityDetails(savedActivity, request);
+        saveDocuments(savedActivity, documents);
 
         return toResponse(savedActivity);
     }
 
     public ActivityResponse createForTask(Long taskId, ActivityRequest request) {
+        return createForTask(taskId, request, null);
+    }
+
+    public ActivityResponse createForTask(Long taskId, ActivityRequest request, List<MultipartFile> documents) {
         ActivityRequest normalizedRequest = new ActivityRequest(
                 taskId,
                 request.description(),
@@ -106,11 +118,15 @@ public class ActivityService {
                 request.measureReadings()
         );
 
-        return create(normalizedRequest);
+        return create(normalizedRequest, documents);
     }
 
     public ActivityResponse createForTaskAndFinish(Long taskId, ActivityRequest request) {
-        ActivityResponse response = createForTask(taskId, request);
+        return createForTaskAndFinish(taskId, request, null);
+    }
+
+    public ActivityResponse createForTaskAndFinish(Long taskId, ActivityRequest request, List<MultipartFile> documents) {
+        ActivityResponse response = createForTask(taskId, request, documents);
 
         Task task = findTask(taskId);
         task.setStatus(TaskStatus.DONE);
@@ -120,6 +136,10 @@ public class ActivityService {
     }
 
     public ActivityResponse update(Long id, ActivityRequest request) {
+        return update(id, request, null);
+    }
+
+    public ActivityResponse update(Long id, ActivityRequest request, List<MultipartFile> documents) {
         Activity activity = findActivity(id);
         Task task = findTask(request.taskId());
 
@@ -141,6 +161,7 @@ public class ActivityService {
         activityMeasureReadingRepository.deleteByActivityId(savedActivity.getId());
 
         saveActivityDetails(savedActivity, request);
+        saveDocuments(savedActivity, documents);
 
         return toResponse(savedActivity);
     }
@@ -200,8 +221,10 @@ public class ActivityService {
     }
 
     public void delete(Long id) {
+        Activity activity = findActivity(id);
         restoreSpareParts(id);
-        activityRepository.delete(findActivity(id));
+        deleteDocuments(activity);
+        activityRepository.delete(activity);
     }
 
     private void saveActivityDetails(Activity activity, ActivityRequest request) {
@@ -209,6 +232,45 @@ public class ActivityService {
         saveIntervenants(activity, request.intervenantIds());
         saveAdditionalCosts(activity, request.additionalCosts());
         saveMeasureReadings(activity, request.measureReadings());
+    }
+
+    private void saveDocuments(Activity activity, List<MultipartFile> documents) {
+        if (documents == null) {
+            return;
+        }
+
+        for (MultipartFile file : documents) {
+            String path = activityDocumentStorageService.save(file);
+
+            if (path == null) {
+                continue;
+            }
+
+            String fileName = file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()
+                    ? "document"
+                    : file.getOriginalFilename();
+
+            activity.getDocuments().add(
+                    ActivityDocument.builder()
+                            .activity(activity)
+                            .fileName(fileName)
+                            .filePath(path)
+                            .fileType(file.getContentType())
+                            .build()
+            );
+        }
+
+        activityRepository.save(activity);
+    }
+
+    private void deleteDocuments(Activity activity) {
+        if (activity.getDocuments() == null) {
+            return;
+        }
+
+        activity.getDocuments().forEach(
+                document -> activityDocumentStorageService.delete(document.getFilePath())
+        );
     }
 
     private void saveSpareParts(Activity activity, List<ActivitySparePartRequest> spareParts) {
@@ -372,9 +434,31 @@ public class ActivityService {
                 getIntervenantResponses(activity.getId()),
                 getAdditionalCostResponses(activity.getId()),
                 getMeasureReadingResponses(activity.getId()),
+                getDocumentResponses(activity),
                 activity.getCreatedAt(),
                 activity.getUpdatedAt()
         );
+    }
+
+    private List<ActivityDocumentResponse> getDocumentResponses(Activity activity) {
+        if (activity.getDocuments() == null) {
+            return List.of();
+        }
+
+        return activity.getDocuments()
+                .stream()
+                .sorted(Comparator.comparing(
+                        ActivityDocument::getUploadedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ))
+                .map(document -> new ActivityDocumentResponse(
+                        document.getId(),
+                        document.getFileName(),
+                        document.getFilePath(),
+                        document.getFileType(),
+                        document.getUploadedAt()
+                ))
+                .toList();
     }
 
     private List<ActivitySparePartResponse> getSparePartResponses(Long activityId) {

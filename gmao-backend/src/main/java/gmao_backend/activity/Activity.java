@@ -9,6 +9,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,6 +56,10 @@ public class Activity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ActivityStatus status = ActivityStatus.IN_PROGRESS;
+
+    @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<ActivityDocument> documents = new LinkedHashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

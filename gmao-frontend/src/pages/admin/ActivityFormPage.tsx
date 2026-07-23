@@ -25,6 +25,8 @@ import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { TaskListItem } from "../../types/task";
 
+import DocumentAttachmentField from "../../components/admin/DocumentAttachmentField";
+
 import "./task-styles.css";
 
 function today() {
@@ -64,6 +66,7 @@ function ActivityFormPage() {
   const [measureValue, setMeasureValue] = useState("");
   const [measureDate, setMeasureDate] = useState(today());
   const [measureHour, setMeasureHour] = useState(currentTime());
+  const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -210,9 +213,9 @@ function ActivityFormPage() {
       setError("");
 
       if (finishTask) {
-        await createActivityAndFinishTask(Number(taskId), payload);
+        await createActivityAndFinishTask(Number(taskId), payload, files);
       } else {
-        await createActivity(payload);
+        await createActivity(payload, files);
       }
 
       navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
@@ -597,6 +600,11 @@ function ActivityFormPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="task-form-section">
+            <DocumentAttachmentField files={files} setFiles={setFiles} />
+
           </div>
 
           <div className="measure-drawer-footer activity-drawer-footer">

@@ -298,6 +298,7 @@ public class TaskMapper {
                         Collections.emptyList(),
                         Collections.emptyList(),
                         Collections.emptyList(),
+                        Collections.emptyList(),
                         activity.getCreatedAt(),
                         activity.getUpdatedAt()
                 ))

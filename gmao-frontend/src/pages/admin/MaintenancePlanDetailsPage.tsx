@@ -171,7 +171,8 @@ async function inflateZipEntry(data: Uint8Array, compressionMethod: number) {
     throw new Error("La previsualisation Word n'est pas supportee par ce navigateur.");
   }
 
-  const stream = new Blob([data]).stream().pipeThrough(new DecompressionStreamCtor("deflate-raw"));
+  const dataBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+  const stream = new Blob([dataBuffer]).stream().pipeThrough(new DecompressionStreamCtor("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -242,9 +243,6 @@ function getDetailStatus(plan: MaintenancePlan) {
   if (plan.status === "IN_PROGRESS") {
     return { className: "in_progress", label: "En cours" };
   }
-  if (plan.status === "PLANNED") {
-    return { className: "planned", label: "Planifié" };
-  }
 
   const due = plan.nextDueDate
     ? new Date(`${plan.nextDueDate.slice(0, 10)}T00:00:00`)
@@ -252,7 +250,12 @@ function getDetailStatus(plan: MaintenancePlan) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  if (due && due < today) return { className: "late", label: "En retard" };
+  if (plan.status === "PLANNED") {
+    if (due && due <= today) return { className: "late", label: "En retard" };
+    return { className: "planned", label: "Planifié" };
+  }
+
+  if (due && due <= today) return { className: "late", label: "En retard" };
   if (due && due > today) return { className: "planned", label: "Planifié" };
 
   return { className: "in_progress", label: "En cours" };
@@ -314,6 +317,7 @@ export default function MaintenancePlanDetailsPage() {
   const [documentPreviewError, setDocumentPreviewError] = useState("");
   const [isDocumentPreviewLoading, setIsDocumentPreviewLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -689,6 +693,7 @@ export default function MaintenancePlanDetailsPage() {
 
   async function validateRealization() {
     if (!plan) return;
+    setSuccessMessage("");
 
     if (!realizationDescription.trim()) {
       setError("La description de la réalisation est obligatoire.");
@@ -705,6 +710,7 @@ export default function MaintenancePlanDetailsPage() {
       saveRealizationDraft(plan.id);
       const updated = await updateMaintenancePlanStatus(plan.id, "DONE");
       setPlan({ ...updated, spareParts: updated.spareParts || plan.spareParts });
+      setSuccessMessage("Votre plan est validé.");
     } catch {
       setError("Impossible de valider cette réalisation.");
     }
@@ -1376,6 +1382,10 @@ export default function MaintenancePlanDetailsPage() {
               </span>
             ))}
           </div>
+        )}
+
+        {successMessage && (
+          <div className="maintenance-realization-success">{successMessage}</div>
         )}
 
         <div className="maintenance-realization-footer">

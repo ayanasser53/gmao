@@ -115,6 +115,12 @@ public class MaintenancePlanService {
             consumeSpareParts(savedPlan);
         }
 
+        if (nextStatus == MaintenancePlanStatus.IN_PROGRESS
+                || nextStatus == MaintenancePlanStatus.DONE
+                || nextStatus == MaintenancePlanStatus.LATE) {
+            createNextOccurrenceIfMissing(savedPlan, LocalDate.now());
+        }
+
         return toResponse(savedPlan);
     }
 
@@ -264,6 +270,7 @@ public class MaintenancePlanService {
                         .toList()
         );
         List<MaintenancePlan> plansToCreate = new ArrayList<>();
+        List<MaintenancePlan> plansToUpdate = new ArrayList<>();
         LocalDate today = LocalDate.now();
 
         for (MaintenancePlan source : existingPlans) {
@@ -275,35 +282,23 @@ public class MaintenancePlanService {
                 continue;
             }
 
-            LocalDate nextDate = addInterval(
-                    source.getNextDueDate(),
-                    source.getFrequencyValue(),
-                    source.getFrequencyUnit()
-            );
-            int guard = 0;
-
-            while (!nextDate.isAfter(today) && guard < 366) {
-                MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
-                String key = getOccurrenceKey(nextPlan);
-
-                if (!existingKeys.contains(key)) {
-                    existingKeys.add(key);
-                    plansToCreate.add(nextPlan);
-                }
-
-                nextDate = addInterval(nextDate, source.getFrequencyValue(), source.getFrequencyUnit());
-                guard++;
+            if (source.getStatus() == MaintenancePlanStatus.PLANNED) {
+                source.setStatus(MaintenancePlanStatus.LATE);
+                plansToUpdate.add(source);
             }
 
-            if (guard < 366) {
-                MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
-                String key = getOccurrenceKey(nextPlan);
+            LocalDate nextDate = getFirstNextDueDate(source, today);
+            MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
+            String key = getOccurrenceKey(nextPlan);
 
-                if (!existingKeys.contains(key)) {
-                    existingKeys.add(key);
-                    plansToCreate.add(nextPlan);
-                }
+            if (!existingKeys.contains(key)) {
+                existingKeys.add(key);
+                plansToCreate.add(nextPlan);
             }
+        }
+
+        if (!plansToUpdate.isEmpty()) {
+            maintenancePlanRepository.saveAll(plansToUpdate);
         }
 
         if (!plansToCreate.isEmpty()) {
@@ -311,20 +306,27 @@ public class MaintenancePlanService {
         }
     }
 
+    private void createNextOccurrenceIfMissing(MaintenancePlan source, LocalDate today) {
+        if (!isRecurringPlan(source) || source.getNextDueDate() == null) {
+            return;
+        }
+
+        LocalDate nextDate = getFirstNextDueDate(source, today);
+        MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
+        String nextKey = getOccurrenceKey(nextPlan);
+
+        boolean alreadyExists = maintenancePlanRepository.findAll()
+                .stream()
+                .map(this::getOccurrenceKey)
+                .anyMatch(nextKey::equals);
+
+        if (!alreadyExists) {
+            maintenancePlanRepository.save(nextPlan);
+        }
+    }
+
     private boolean shouldGenerateNextOccurrence(MaintenancePlan plan, LocalDate today) {
-        if (plan.getNextDueDate().isBefore(today)) {
-            return true;
-        }
-
-        if (plan.getNextDueDate().isAfter(today)) {
-            return false;
-        }
-
-        return Set.of(
-                MaintenancePlanStatus.IN_PROGRESS,
-                MaintenancePlanStatus.DONE,
-                MaintenancePlanStatus.LATE
-        ).contains(plan.getStatus());
+        return !plan.getNextDueDate().isAfter(today);
     }
 
     private boolean isRecurringPlan(MaintenancePlan plan) {
@@ -340,6 +342,22 @@ public class MaintenancePlanService {
             case "YEARS" -> date.plusYears(value);
             default -> date;
         };
+    }
+
+    private LocalDate getFirstNextDueDate(MaintenancePlan source, LocalDate today) {
+        LocalDate nextDate = addInterval(
+                source.getNextDueDate(),
+                source.getFrequencyValue(),
+                source.getFrequencyUnit()
+        );
+        int guard = 0;
+
+        while (!nextDate.isAfter(today) && guard < 366) {
+            nextDate = addInterval(nextDate, source.getFrequencyValue(), source.getFrequencyUnit());
+            guard++;
+        }
+
+        return nextDate;
     }
 
     private MaintenancePlan copyForOccurrence(MaintenancePlan source, LocalDate dueDate) {

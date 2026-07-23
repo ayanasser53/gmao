@@ -187,7 +187,7 @@ function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
 
   const referenceDate = getPlanDateKey(plan);
 
-  if (referenceDate && referenceDate < getTodayKey()) return "late";
+  if (referenceDate && referenceDate <= getTodayKey()) return "late";
 
   return "planned";
 }
@@ -361,13 +361,8 @@ export default function MaintenancePlansPage() {
     try {
       setError("");
       setUpdatingStatusId(plan.id);
-      const updatedPlan = await updateMaintenancePlanStatus(plan.id, status);
-
-      setPlans((current) =>
-        current.map((item) =>
-          item.id === updatedPlan.id ? { ...updatedPlan, status } : item,
-        ),
-      );
+      await updateMaintenancePlanStatus(plan.id, status);
+      await loadPlans();
     } catch {
       setError("Impossible de modifier le statut du plan de maintenance.");
     } finally {

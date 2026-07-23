@@ -175,12 +175,21 @@ function getUnitLabel(unit: MaintenanceFrequencyUnit) {
   return "années";
 }
 
+function formatFrenchDate(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 export default function MaintenancePlanFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState<MaintenancePlanPayload>(defaultPayload);
+  const [previewEndDate, setPreviewEndDate] = useState("");
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [users, setUsers] = useState<UserDetail[]>([]);
@@ -371,6 +380,14 @@ export default function MaintenancePlanFormPage() {
       startDate: value,
       nextDueDate: addInterval(value, current.frequencyValue, current.frequencyUnit),
     }));
+
+    if (previewEndDate && value && previewEndDate < value) {
+      setPreviewEndDate("");
+    }
+  }
+
+  function updatePreviewEndDate(value: string) {
+    setPreviewEndDate(value);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -415,13 +432,14 @@ export default function MaintenancePlanFormPage() {
 
     for (let index = 0; index < 10; index += 1) {
       if (!current) break;
+      if (previewEndDate && current > previewEndDate) break;
 
       dates.push(current);
       current = addInterval(current, form.frequencyValue, form.frequencyUnit);
     }
 
     return dates;
-  }, [form.startDate, form.frequencyValue, form.frequencyUnit]);
+  }, [form.startDate, form.frequencyValue, form.frequencyUnit, previewEndDate]);
 
   const filteredAssigneeUsers = useMemo(() => {
     const value = assigneeSearch.trim().toLowerCase();
@@ -938,6 +956,16 @@ export default function MaintenancePlanFormPage() {
                   onChange={(event) => updateStartDate(event.target.value)}
                 />
               </label>
+
+              <label className="form-field">
+                <span>Date de fin</span>
+                <input
+                  type="date"
+                  min={form.startDate || undefined}
+                  value={previewEndDate}
+                  onChange={(event) => updatePreviewEndDate(event.target.value)}
+                />
+              </label>
             </div>
 
             <aside className="form-card maintenance-preview">
@@ -948,26 +976,24 @@ export default function MaintenancePlanFormPage() {
               </strong>
 
               <span>
-                ì partir du{" "}
-                {new Intl.DateTimeFormat("fr-FR", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }).format(new Date(`${form.startDate || today()}T00:00:00`))}
+                Du {formatFrenchDate(form.startDate || today())}
+                {previewEndDate ? ` au ${formatFrenchDate(previewEndDate)}` : ""}
               </span>
 
-              <ol>
-                {previewDates.map((date, index) => (
-                  <li key={`${date}-${index}`}>
-                    <span>{index + 1}</span>
-                    {new Intl.DateTimeFormat("fr-FR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    }).format(new Date(`${date}T00:00:00`))}
-                  </li>
-                ))}
-              </ol>
+              {previewDates.length > 0 ? (
+                <ol>
+                  {previewDates.map((date, index) => (
+                    <li key={`${date}-${index}`}>
+                      <span>{index + 1}</span>
+                      {formatFrenchDate(date)}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="maintenance-preview-empty">
+                  Aucune échéance dans cet intervalle.
+                </p>
+              )}
             </aside>
 
             <div className="form-actions wide">

@@ -6752,6 +6752,12 @@ button.linked-compact-row:hover {
   font-weight: 800;
 }
 
+.maintenance-preview-empty {
+  margin: 0;
+  color: #5c7189;
+  font-weight: 700;
+}
+
 .form-actions.wide {
   grid-column: 1 / -1;
 }
@@ -7394,6 +7400,16 @@ button.linked-compact-row:hover {
 
 .maintenance-photo-preview-nav.next {
   right: 16px;
+}
+
+.maintenance-realization-success {
+  margin-top: 18px;
+  padding: 14px 18px;
+  color: #047857;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  font-weight: 800;
 }
 
 .maintenance-realization-footer {
@@ -10148,4 +10164,14 @@ button.linked-compact-row:hover {
   padding: 8px 2px;
   color: #71839a;
   font-weight: 700;
+}
+
+.form-success {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  color: #047857;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  font-weight: 800;
 }

@@ -18,8 +18,17 @@ export interface Activity {
   intervenants: ActivityIntervenant[];
   additionalCosts: ActivityAdditionalCost[];
   measureReadings: ActivityMeasureReading[];
+  documents: ActivityDocument[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ActivityDocument {
+  id: number;
+  fileName: string;
+  filePath: string;
+  fileType: string | null;
+  uploadedAt: string;
 }
 
 export interface ActivitySparePart {

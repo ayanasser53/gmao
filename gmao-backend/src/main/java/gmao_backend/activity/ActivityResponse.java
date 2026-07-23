@@ -20,6 +20,7 @@ public record ActivityResponse(
         List<ActivityIntervenantResponse> intervenants,
         List<ActivityAdditionalCostResponse> additionalCosts,
         List<ActivityMeasureReadingResponse> measureReadings,
+        List<ActivityDocumentResponse> documents,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

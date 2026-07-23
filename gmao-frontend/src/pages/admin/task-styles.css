@@ -561,40 +561,60 @@
 .task-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 12px;
 
-  min-height: 28px;
-  padding: 0 11px;
-
+  min-width: 118px;
+  min-height: 42px;
+  padding: 0 18px;
   border-radius: 999px;
 
-  font-size: 12px;
+  border: 0;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1;
 }
 
 .task-status-editable {
-  border: 1px solid transparent;
+  cursor: pointer;
   background-clip: padding-box;
   font-family: inherit;
 }
 
+.task-status-editable::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
 .task-status-editable:hover {
-  border-color: currentColor;
+  filter: brightness(0.98);
 }
 
 .task-status-select {
-  min-height: 32px;
-  padding: 0 10px;
+  min-width: 118px;
+  min-height: 42px;
+  padding: 0 34px 0 18px;
 
   color: #173454;
-  background: #ffffff;
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 19px) 18px, calc(100% - 13px) 18px;
+  background-repeat: no-repeat;
+  background-size: 6px 6px, 6px 6px;
 
-  border: 1px solid #cbd7e3;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 
-  font-size: 12.5px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .task-status-done {
@@ -604,8 +624,7 @@
 
 .task-status-select.task-status-done {
   color: #198754;
-  background: #ddf6e9;
-  border-color: #9ed8b4;
+  background-color: #ddf6e9;
 }
 
 .task-status-planned {
@@ -615,13 +634,17 @@
 
 .task-status-select.task-status-planned {
   color: #a3660f;
-  background: #fdf1dc;
-  border-color: #f0d29a;
+  background-color: #fdf1dc;
 }
 
 .task-status-late {
-  color: #b42318;
-  background: #fff1f0;
+  color: #d52828;
+  background: #ffe4e4;
+}
+
+.task-status-select.task-status-late {
+  color: #d52828;
+  background-color: #ffe4e4;
 }
 
 .task-status-progress {
@@ -631,8 +654,7 @@
 
 .task-status-select.task-status-progress {
   color: #087fbd;
-  background: #e7f5fb;
-  border-color: #bfe0f0;
+  background-color: #e7f5fb;
 }
 
 /* ---------- Cellules du tableau ---------- */
@@ -1568,6 +1590,24 @@
 a.task-linked-row:hover {
   border-color: #087fbd;
   background: #f5fafd;
+}
+
+button.task-linked-row {
+  width: 100%;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+button.task-linked-row:hover {
+  border-color: #087fbd;
+  background: #f5fafd;
+}
+
+button.task-linked-row:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .task-linked-row strong,
