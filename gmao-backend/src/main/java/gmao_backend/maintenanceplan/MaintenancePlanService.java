@@ -204,6 +204,10 @@ public class MaintenancePlanService {
                 continue;
             }
 
+            if (!shouldGenerateNextOccurrence(source, today)) {
+                continue;
+            }
+
             LocalDate nextDate = addInterval(
                     source.getNextDueDate(),
                     source.getFrequencyValue(),
@@ -223,11 +227,37 @@ public class MaintenancePlanService {
                 nextDate = addInterval(nextDate, source.getFrequencyValue(), source.getFrequencyUnit());
                 guard++;
             }
+
+            if (guard < 366) {
+                MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
+                String key = getOccurrenceKey(nextPlan);
+
+                if (!existingKeys.contains(key)) {
+                    existingKeys.add(key);
+                    plansToCreate.add(nextPlan);
+                }
+            }
         }
 
         if (!plansToCreate.isEmpty()) {
             maintenancePlanRepository.saveAll(plansToCreate);
         }
+    }
+
+    private boolean shouldGenerateNextOccurrence(MaintenancePlan plan, LocalDate today) {
+        if (plan.getNextDueDate().isBefore(today)) {
+            return true;
+        }
+
+        if (plan.getNextDueDate().isAfter(today)) {
+            return false;
+        }
+
+        return Set.of(
+                MaintenancePlanStatus.IN_PROGRESS,
+                MaintenancePlanStatus.DONE,
+                MaintenancePlanStatus.LATE
+        ).contains(plan.getStatus());
     }
 
     private boolean isRecurringPlan(MaintenancePlan plan) {
