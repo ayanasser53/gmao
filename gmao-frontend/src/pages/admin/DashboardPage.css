@@ -1,0 +1,430 @@
+/* Dashboard inspiré du modèle fourni : tableau Top 10 + aire + barres */
+
+.admin-dashboard {
+  padding: 26px;
+  background: #f3f5f7;
+}
+
+.admin-dashboard .admin-page-heading {
+  margin-bottom: 22px;
+}
+
+.dashboard-reference-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.dashboard-reference-panel {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e0e4e8;
+  border-radius: 4px;
+  box-shadow: 0 3px 14px rgba(20, 48, 76, 0.07);
+}
+
+.dashboard-reference-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e8ebee;
+}
+
+.dashboard-reference-title span {
+  display: block;
+  margin-bottom: 4px;
+  color: #8b96a2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-reference-title h2 {
+  margin: 0;
+  color: #263746;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.dashboard-reference-title > svg {
+  color: #087fbd;
+}
+
+/* Tableau Top 10 */
+.dashboard-top-tasks-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-top-tasks-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  color: #44515e;
+  font-size: 13px;
+}
+
+.dashboard-top-tasks-table thead {
+  background: #d9d9d9;
+}
+
+.dashboard-top-tasks-table th {
+  padding: 15px 18px;
+  color: #59616a;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.dashboard-top-tasks-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #eceff1;
+}
+
+.dashboard-top-tasks-table tbody tr:nth-child(even) {
+  background: #f4f4f4;
+}
+
+.dashboard-top-tasks-table tbody tr:hover {
+  background: #eaf6fc;
+}
+
+.dashboard-task-id {
+  padding: 0;
+  color: #178ab5;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-task-description {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 240px;
+  color: #35414d;
+  font-weight: 600;
+}
+
+.dashboard-task-color {
+  display: block;
+  width: 34px;
+  height: 12px;
+}
+
+/* Graphique aire */
+.dashboard-reference-trend-panel .dashboard-trend-chart {
+  padding: 18px 22px 24px;
+  overflow-x: auto;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-toggle {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 16px;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-toggle button {
+  padding: 7px 12px;
+  color: #65717d;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-toggle button.active {
+  color: #087fbd;
+  border-bottom-color: #087fbd;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-svg {
+  width: 100%;
+  min-width: 720px;
+  min-height: 330px;
+  background-image:
+    linear-gradient(#e9edf0 1px, transparent 1px),
+    linear-gradient(90deg, #e9edf0 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-area {
+  fill: rgba(0, 137, 190, 0.88);
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-line {
+  fill: none;
+  stroke: #0089be;
+  stroke-width: 2.5;
+}
+
+.dashboard-reference-trend-panel .dashboard-trend-dot {
+  fill: #ffffff;
+  stroke: #0089be;
+  stroke-width: 2;
+}
+
+/* Barres utilisateurs */
+.dashboard-reference-users-panel {
+  padding-bottom: 24px;
+}
+
+.dashboard-reference-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 22px 6px;
+}
+
+.dashboard-reference-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  color: #ffffff;
+  background: #6c757d;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dashboard-reference-users-panel .dashboard-stacked-chart {
+  padding: 14px 28px 4px;
+}
+
+.dashboard-reference-users-panel .dashboard-stacked-row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 14px;
+  min-height: 42px;
+}
+
+.dashboard-reference-users-panel .dashboard-stacked-track {
+  height: 30px;
+  background: #f1f2f3;
+  border-radius: 0;
+}
+
+.dashboard-reference-users-panel .dashboard-stacked-fill,
+.dashboard-reference-users-panel .dashboard-stacked-segment {
+  height: 100%;
+  border-radius: 0;
+}
+
+.dashboard-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.dashboard-secondary-grid .dashboard-chart-card {
+  background: #ffffff;
+  border: 1px solid #e0e4e8;
+  border-radius: 4px;
+  box-shadow: 0 3px 14px rgba(20, 48, 76, 0.06);
+}
+
+.dashboard-secondary-grid .dashboard-chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard {
+    padding: 16px;
+  }
+
+  .dashboard-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-secondary-grid .dashboard-chart-card-wide {
+    grid-column: auto;
+  }
+
+  .dashboard-reference-users-panel .dashboard-stacked-row {
+    grid-template-columns: 110px minmax(0, 1fr) 34px;
+  }
+}
+
+/* =====================================================
+   TABLEAUX TOP 10 — style identique aux captures
+   ===================================================== */
+
+.dashboard-ranking-wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.dashboard-ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px;
+  width: 100%;
+}
+
+.dashboard-ranking-grid .dashboard-ranking-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.dashboard-ranking-card {
+  min-width: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dashboard-ranking-card h2 {
+  padding: 18px 16px;
+  margin: 0;
+  color: #102b4c;
+  background: #ffffff;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.dashboard-ranking-table-wrapper {
+  width: 100%;
+  padding: 12px 16px 18px;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+.dashboard-ranking-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  color: #102b4c;
+  font-size: 15px;
+}
+
+.dashboard-ranking-table th {
+  height: 60px;
+  padding: 0 16px;
+  color: #49525c;
+  background: #dedede;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dashboard-ranking-table td {
+  height: 66px;
+  padding: 0 16px;
+  border: 0;
+  vertical-align: middle;
+}
+
+.dashboard-ranking-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+.dashboard-ranking-table tbody tr:nth-child(even) {
+  background: #f1f1f1;
+}
+
+.dashboard-ranking-table tbody tr:hover {
+  background: #eaf6fc;
+}
+
+.dashboard-ranking-table th:last-child,
+.dashboard-ranking-table td:last-child {
+  width: 74px;
+  text-align: center;
+}
+
+.dashboard-ranking-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 180px;
+  font-weight: 500;
+}
+
+.dashboard-ranking-trophy {
+  flex-shrink: 0;
+}
+
+.dashboard-ranking-trophy-1 {
+  color: #ffd000;
+}
+
+.dashboard-ranking-trophy-2 {
+  color: #bfc1c3;
+}
+
+.dashboard-ranking-trophy-3 {
+  color: #cf6f20;
+}
+
+.dashboard-ranking-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  color: #007fbd;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dashboard-ranking-link:disabled {
+  color: #007fbd;
+  cursor: default;
+}
+
+.dashboard-ranking-link:not(:disabled):hover {
+  color: #005f91;
+  text-decoration: underline;
+}
+
+.dashboard-ranking-link span {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dashboard-ranking-color {
+  display: inline-block;
+  width: 51px;
+  height: 19px;
+}
+
+.dashboard-ranking-empty {
+  padding: 30px;
+  margin: 0;
+  color: #7b8794;
+  text-align: center;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-ranking-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-ranking-grid .dashboard-ranking-card:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-ranking-card h2 {
+    font-size: 17px;
+  }
+
+  .dashboard-ranking-table-wrapper {
+    padding: 10px;
+  }
+}
