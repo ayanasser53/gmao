@@ -1,12 +1,207 @@
-/* Dashboard inspiré du modèle fourni : tableau Top 10 + aire + barres */
+/* Dashboard inspiré du modèle fourni : tableau Top 10 + aire + barres
+   ————————————————————————————————————————————————————————————————
+   v2 : cartes KPI héros, jauge demi-cercle, puces de statut, finitions. */
 
 .admin-dashboard {
-  padding: 26px;
-  background: #f3f5f7;
+  padding: 28px 30px 40px;
+  background: #f2f5f8;
 }
 
 .admin-dashboard .admin-page-heading {
   margin-bottom: 22px;
+}
+
+.admin-dashboard .admin-page-heading h1 {
+  letter-spacing: -0.01em;
+}
+
+/* =====================================================
+   KPI HÉROS — grandes cartes colorées (style capture 1)
+   ===================================================== */
+
+.dashboard-hero-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.dashboard-hero-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 108px;
+  padding: 22px 24px;
+  overflow: hidden;
+  color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px -12px rgba(15, 35, 60, 0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dashboard-hero-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px -14px rgba(15, 35, 60, 0.45);
+}
+
+.dashboard-hero-card::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  top: -30px;
+  width: 130px;
+  height: 130px;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
+}
+
+.dashboard-hero-card::before {
+  content: "";
+  position: absolute;
+  right: 20px;
+  bottom: -46px;
+  width: 90px;
+  height: 90px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+}
+
+.dashboard-hero-card-tasks {
+  background: linear-gradient(135deg, #0d84c6 0%, #0a5f94 100%);
+}
+
+.dashboard-hero-card-activities {
+  background: linear-gradient(135deg, #f2954d 0%, #d9711f 100%);
+}
+
+.dashboard-hero-card-time {
+  background: linear-gradient(135deg, #1cc4a3 0%, #0f8f76 100%);
+}
+
+.dashboard-hero-card-avg {
+  background: linear-gradient(135deg, #74828f 0%, #4d5762 100%);
+}
+
+.dashboard-hero-card-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-hero-card-body span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-hero-card-body strong {
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-hero-card-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-hero-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-hero-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   BANDEAU DE RESSOURCES — mini cartes secondaires
+   ===================================================== */
+
+.dashboard-resource-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.dashboard-resource-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e7ec;
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-resource-card:hover {
+  border-color: #b9d8e9;
+  box-shadow: 0 6px 16px -10px rgba(8, 127, 189, 0.35);
+}
+
+.dashboard-resource-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  color: #087fbd;
+  background: #eaf6fc;
+  border-radius: 9px;
+}
+
+.dashboard-resource-card div {
+  min-width: 0;
+}
+
+.dashboard-resource-card span {
+  display: block;
+  margin-bottom: 3px;
+  overflow: hidden;
+  color: #7c8a99;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.dashboard-resource-card strong {
+  color: #12365c;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-resource-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-resource-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .dashboard-reference-layout {
@@ -20,7 +215,7 @@
   overflow: hidden;
   background: #ffffff;
   border: 1px solid #e0e4e8;
-  border-radius: 4px;
+  border-radius: 10px;
   box-shadow: 0 3px 14px rgba(20, 48, 76, 0.07);
 }
 
@@ -52,6 +247,83 @@
 
 .dashboard-reference-title > svg {
   color: #087fbd;
+}
+
+/* =====================================================
+   JAUGE DEMI-CERCLE — statut des tâches (style capture 1)
+   ===================================================== */
+
+.dashboard-gauge-card {
+  padding: 22px 24px 26px;
+  background: #ffffff;
+  border: 1px solid #cddceb;
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(20, 48, 76, 0.06);
+}
+
+.dashboard-gauge-card h2 {
+  margin: 0 0 16px;
+  color: #12365c;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.dashboard-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.dashboard-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 13px;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dashboard-gauge-svg {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.dashboard-gauge-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  fill: #ffffff;
+}
+
+.dashboard-gauge-total {
+  margin-top: -6px;
+  text-align: center;
+}
+
+.dashboard-gauge-total strong {
+  display: block;
+  color: #12365c;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-gauge-total span {
+  color: #8b96a2;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 /* Tableau Top 10 */
@@ -230,7 +502,7 @@
 .dashboard-secondary-grid .dashboard-chart-card {
   background: #ffffff;
   border: 1px solid #e0e4e8;
-  border-radius: 4px;
+  border-radius: 10px;
   box-shadow: 0 3px 14px rgba(20, 48, 76, 0.06);
 }
 
@@ -272,17 +544,13 @@
   width: 100%;
 }
 
-.dashboard-ranking-grid .dashboard-ranking-card:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
 .dashboard-ranking-card {
   min-width: 0;
   overflow: hidden;
   background: #ffffff;
   border: 1px solid #d9d9d9;
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(20, 48, 76, 0.05);
 }
 
 .dashboard-ranking-card h2 {
@@ -290,7 +558,8 @@
   margin: 0;
   color: #102b4c;
   background: #ffffff;
-  font-size: 19px;
+  border-bottom: 1px solid #eef1f4;
+  font-size: 17px;
   font-weight: 800;
 }
 
@@ -303,25 +572,25 @@
 
 .dashboard-ranking-table {
   width: 100%;
-  min-width: 640px;
+  min-width: 560px;
   border-collapse: collapse;
   color: #102b4c;
-  font-size: 15px;
+  font-size: 14.5px;
 }
 
 .dashboard-ranking-table th {
-  height: 60px;
+  height: 52px;
   padding: 0 16px;
   color: #49525c;
-  background: #dedede;
-  font-size: 13px;
+  background: #eceef0;
+  font-size: 12.5px;
   font-weight: 800;
   text-align: left;
   white-space: nowrap;
 }
 
 .dashboard-ranking-table td {
-  height: 66px;
+  height: 58px;
   padding: 0 16px;
   border: 0;
   vertical-align: middle;
@@ -332,7 +601,7 @@
 }
 
 .dashboard-ranking-table tbody tr:nth-child(even) {
-  background: #f1f1f1;
+  background: #f7f8f9;
 }
 
 .dashboard-ranking-table tbody tr:hover {
@@ -341,7 +610,7 @@
 
 .dashboard-ranking-table th:last-child,
 .dashboard-ranking-table td:last-child {
-  width: 74px;
+  width: 60px;
   text-align: center;
 }
 
@@ -349,7 +618,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  min-width: 180px;
+  min-width: 160px;
   font-weight: 500;
 }
 
@@ -398,8 +667,9 @@
 
 .dashboard-ranking-color {
   display: inline-block;
-  width: 51px;
-  height: 19px;
+  width: 40px;
+  height: 15px;
+  border-radius: 3px;
 }
 
 .dashboard-ranking-empty {
@@ -413,10 +683,6 @@
   .dashboard-ranking-grid {
     grid-template-columns: 1fr;
   }
-
-  .dashboard-ranking-grid .dashboard-ranking-card:last-child:nth-child(odd) {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 700px) {
@@ -426,5 +692,281 @@
 
   .dashboard-ranking-table-wrapper {
     padding: 10px;
+  }
+}
+
+/* =====================================================
+   TASK ANALYSIS — BARRES EMPILÉES VERTICALES
+   ===================================================== */
+
+.task-analysis-card {
+  overflow: hidden;
+  padding: 0 0 24px;
+  background: #ffffff;
+  border: 1px solid #dce4eb;
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(18, 54, 92, 0.06);
+}
+
+.task-analysis-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 20px 20px;
+}
+
+.task-analysis-dimension-tabs {
+  display: flex;
+  align-items: stretch;
+  min-height: 50px;
+  overflow: hidden;
+  border: 1px solid #e3e5e7;
+  border-radius: 8px;
+}
+
+.task-analysis-by {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px 0 0;
+  color: #5d4631;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.task-analysis-dimension-tabs button {
+  min-height: 48px;
+  padding: 0 20px;
+  color: #263b50;
+  background: #f5f5f6;
+  border: 0;
+  border-right: 1px solid #e3e5e7;
+  font: inherit;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.task-analysis-dimension-tabs button:last-child {
+  border-right: 0;
+}
+
+.task-analysis-dimension-tabs button.active {
+  color: #0077b6;
+  background: #d8effb;
+}
+
+.task-analysis-print {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 22px;
+  color: #ffffff;
+  background: #087fbd;
+  border: 1px solid #087fbd;
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(8, 127, 189, 0.25);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.task-analysis-print:hover {
+  background: #066a9e;
+}
+
+.task-analysis-more-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 40px);
+  min-height: 54px;
+  padding: 0 24px;
+  margin: 0 20px;
+  color: #172c43;
+  background: #eef7fb;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-analysis-more-filters svg {
+  transition: transform 0.2s ease;
+}
+
+.task-analysis-more-filters.open svg {
+  transform: rotate(180deg);
+}
+
+.task-analysis-filter-content {
+  padding: 16px 24px;
+  margin: 8px 20px 0;
+  color: #66788a;
+  background: #f8fbfd;
+  border: 1px solid #e1ebf2;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.task-analysis-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 20px 20px 12px;
+}
+
+.task-analysis-legend > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  color: #ffffff;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-analysis-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.task-analysis-chart {
+  position: relative;
+  height: 420px;
+  padding: 14px 18px 54px 44px;
+  border-bottom: 1px solid #d8dde2;
+  box-sizing: border-box;
+}
+
+.task-analysis-grid-lines {
+  position: absolute;
+  inset: 14px 18px 54px 44px;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(93, 108, 123, 0.2) 0,
+      rgba(93, 108, 123, 0.2) 1px,
+      transparent 1px,
+      transparent 38px
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(93, 108, 123, 0.13) 0,
+      rgba(93, 108, 123, 0.13) 1px,
+      transparent 1px,
+      transparent 106px
+    );
+  border-left: 1px solid #cfd6dc;
+  pointer-events: none;
+}
+
+.task-analysis-bars {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 24px;
+  height: 100%;
+}
+
+.task-analysis-column {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 48px;
+  flex: 1 0 115px;
+  min-width: 105px;
+  max-width: 170px;
+}
+
+.task-analysis-bar-zone {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+}
+
+.task-analysis-stacked-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  width: min(76%, 118px);
+  min-height: 3px;
+  overflow: visible;
+  border-radius: 4px 4px 0 0;
+}
+
+.task-analysis-segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2px;
+  opacity: 0.88;
+}
+
+.task-analysis-segment strong {
+  position: relative;
+  z-index: 2;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.task-analysis-axis-label {
+  display: block;
+  align-self: start;
+  padding-top: 12px;
+  overflow: hidden;
+  color: #66717b;
+  font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .task-analysis-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .task-analysis-dimension-tabs {
+    overflow-x: auto;
+  }
+
+  .task-analysis-print {
+    align-self: flex-end;
+  }
+}
+
+@media print {
+  .admin-dashboard > *:not(.dashboard-charts-grid),
+  .dashboard-charts-grid > *:not(.task-analysis-card),
+  .task-analysis-print,
+  .task-analysis-more-filters,
+  .task-analysis-filter-content {
+    display: none !important;
+  }
+
+  .dashboard-charts-grid,
+  .task-analysis-card {
+    display: block !important;
+    width: 100% !important;
+    border: 0;
+    box-shadow: none;
   }
 }

@@ -11,9 +11,13 @@ import {
   ClipboardList,
   Gauge,
   MapPin,
+  PackageSearch,
   PiggyBank,
+  Printer,
+  ChevronDown,
   ShoppingCart,
   Tag as TagIcon,
+  Timer,
   TrendingUp,
   Trophy,
   Users,
@@ -185,6 +189,90 @@ function DonutChart({ segments }: { segments: DonutSegment[] }) {
   );
 }
 
+/**
+ * Jauge en demi-cercle avec un arc par statut et son pourcentage
+ * affiché le long de l'arc — inspirée du tableau de bord de référence.
+ * Puces de statut au-dessus, total sous la jauge.
+ */
+function StatusGauge({ segments }: { segments: DonutSegment[] }) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  const cx = 110;
+  const cy = 110;
+  const radius = 88;
+  const strokeWidth = 30;
+  const pathLength = Math.PI * radius; // demi-circonférence
+
+  let cumulative = 0;
+
+  const arcs = segments.map((segment) => {
+    if (segment.value === 0 || total === 0) {
+      return { ...segment, dash: 0, offset: pathLength, midAngle: 0, fraction: 0 };
+    }
+
+    const fraction = segment.value / total;
+    const dash = fraction * pathLength;
+    const offset = pathLength - (cumulative / total) * pathLength;
+    const midAngleDeg = 180 - ((cumulative + segment.value / 2) / total) * 180;
+
+    cumulative += segment.value;
+
+    return { ...segment, dash, offset, midAngle: midAngleDeg, fraction };
+  });
+
+  return (
+    <div className="dashboard-gauge-wrap">
+      <svg viewBox="0 0 220 150" className="dashboard-gauge-svg">
+        <path
+          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+          fill="none"
+          stroke="#eef2f6"
+          strokeWidth={strokeWidth}
+        />
+        {arcs.map((arc) =>
+          arc.dash > 0 ? (
+            <path
+              key={arc.label}
+              d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+              fill="none"
+              stroke={arc.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${arc.dash} ${pathLength - arc.dash}`}
+              strokeDashoffset={arc.offset}
+              strokeLinecap="butt"
+            />
+          ) : null,
+        )}
+        {arcs.map((arc) => {
+          if (arc.fraction < 0.04) return null;
+
+          const angleRad = (arc.midAngle * Math.PI) / 180;
+          const labelRadius = radius;
+          const x = cx + labelRadius * Math.cos(angleRad);
+          const y = cy - labelRadius * Math.sin(angleRad);
+
+          return (
+            <text
+              key={`${arc.label}-label`}
+              x={x}
+              y={y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className="dashboard-gauge-label"
+            >
+              {(arc.fraction * 100).toFixed(1)}%
+            </text>
+          );
+        })}
+      </svg>
+
+      <div className="dashboard-gauge-total">
+        <strong>{total}</strong>
+        <span>Tâches au total</span>
+      </div>
+    </div>
+  );
+}
+
 interface BarItem {
   label: string;
   value: number;
@@ -276,6 +364,80 @@ function StackedBarChart({ items }: { items: StackedBarItem[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+
+type AnalysisDimension = "users" | "tags" | "costCenters" | "equipment";
+
+const ANALYSIS_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
+  PLANNED: { label: "Planifiée", color: "#4d5358" },
+  IN_PROGRESS: { label: "En cours", color: "#9633c8" },
+  LATE: { label: "En retard", color: "#ef3027" },
+  DONE: { label: "Terminée", color: "#17bea6" },
+};
+
+function TaskAnalysisChart({ items }: { items: StackedBarItem[] }) {
+  const statuses = Object.keys(ANALYSIS_STATUS_META) as TaskStatus[];
+  const maxTotal = Math.max(
+    ...items.map((item) => item.segments.reduce((sum, segment) => sum + segment.value, 0)),
+    1,
+  );
+
+  if (items.length === 0) {
+    return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
+  }
+
+  return (
+    <div className="task-analysis-chart-scroll">
+      <div className="task-analysis-chart" style={{ minWidth: `${Math.max(900, items.length * 150)}px` }}>
+        <div className="task-analysis-grid-lines" aria-hidden="true" />
+
+        <div className="task-analysis-bars">
+          {items.map((item) => {
+            const total = item.segments.reduce((sum, segment) => sum + segment.value, 0);
+            const totalHeight = Math.max(2, (total / maxTotal) * 100);
+
+            return (
+              <div className="task-analysis-column" key={item.label}>
+                <div className="task-analysis-bar-zone">
+                  <div
+                    className="task-analysis-stacked-bar"
+                    style={{ height: `${totalHeight}%` }}
+                    title={`${item.label}: ${total}`}
+                  >
+                    {item.segments.map((segment, index) => {
+                      const status = statuses[index];
+                      const height = total > 0 ? (segment.value / total) * 100 : 0;
+
+                      if (segment.value === 0) return null;
+
+                      return (
+                        <span
+                          key={status}
+                          className="task-analysis-segment"
+                          style={{
+                            height: `${height}%`,
+                            backgroundColor: ANALYSIS_STATUS_META[status].color,
+                          }}
+                          title={`${ANALYSIS_STATUS_META[status].label}: ${segment.value}`}
+                        >
+                          <strong>{segment.value}</strong>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <span className="task-analysis-axis-label" title={item.label}>
+                  {item.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -533,6 +695,8 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>("day");
+  const [analysisDimension, setAnalysisDimension] = useState<AnalysisDimension>("users");
+  const [analysisFiltersOpen, setAnalysisFiltersOpen] = useState(false);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -712,6 +876,15 @@ function DashboardPage() {
     }));
   }, [byEquipment]);
 
+  // --- Top 10 équipements (par temps passé) ---
+
+  const topEquipmentRanking = useMemo<RankingItem[]>(() => {
+    return Array.from(byEquipment.entries())
+      .map(([name, data]) => ({ label: name, value: data.minutes / 60 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [byEquipment]);
+
   // --- Top 10 tâches par temps passé (via leurs activités) ---
 
   const topTaskRanking = useMemo<RankingItem[]>(() => {
@@ -797,6 +970,15 @@ function DashboardPage() {
     [tasks],
   );
 
+  const equipmentStatusMap = useMemo(
+    () =>
+      statusCountsFor(tasks, (task) => [
+        (task as unknown as { equipmentName?: string }).equipmentName?.trim() ||
+          "Sans équipement",
+      ]),
+    [tasks],
+  );
+
   function toStackedItems(
     map: Map<string, Record<TaskStatus, number>>,
     limit = 10,
@@ -821,6 +1003,27 @@ function DashboardPage() {
   );
   const userStacked = useMemo(() => toStackedItems(userMap), [userMap]);
   const tagStacked = useMemo(() => toStackedItems(tagMap), [tagMap]);
+  const equipmentStacked = useMemo(
+    () => toStackedItems(equipmentStatusMap),
+    [equipmentStatusMap],
+  );
+
+  const analysisItems = useMemo(() => {
+    if (analysisDimension === "tags") {
+      return tagStacked;
+    }
+
+    if (analysisDimension === "costCenters") {
+      return costCenterStacked;
+    }
+
+    if (analysisDimension === "equipment") {
+      return equipmentStacked;
+    }
+
+    return userStacked;
+  }, [analysisDimension, costCenterStacked, equipmentStacked, tagStacked, userStacked]);
+
 
   // --- Top 10 centres de coût / utilisateurs / tags (par nombre de tâches) ---
 
@@ -894,6 +1097,11 @@ function DashboardPage() {
     return totalActivityCost / activities.length;
   }, [activities.length, totalActivityCost]);
 
+  const averageMinutesPerActivity = useMemo(() => {
+    if (activities.length === 0) return 0;
+    return totalSpentMinutes / activities.length;
+  }, [activities.length, totalSpentMinutes]);
+
   const stockValue = useMemo(
     () => spareParts.reduce((total, part) => total + part.quantity * part.unitPrice, 0),
     [spareParts],
@@ -918,14 +1126,14 @@ function DashboardPage() {
 
   const advancedKpis: AdvancedKpi[] = [
     {
-      title: "Temps total passé",
-      displayValue: formatHoursMinutes(totalSpentMinutes),
-      icon: <Clock size={26} />,
-    },
-    {
       title: "Coût moyen / activité",
       displayValue: `${formatMoney(averageCostPerActivity)} EUR`,
       icon: <TrendingUp size={26} />,
+    },
+    {
+      title: "Temps moyen / intervention",
+      displayValue: formatHoursMinutes(averageMinutesPerActivity),
+      icon: <Timer size={26} />,
     },
     {
       title: "Valeur du stock",
@@ -942,20 +1150,46 @@ function DashboardPage() {
       displayValue: `${completionRate}%`,
       icon: <Gauge size={26} />,
     },
+    {
+      title: "Pièces en stock bas",
+      displayValue: String(lowStockItems.length),
+      icon: <PackageSearch size={26} />,
+    },
   ];
 
-  const cards: DashboardCard[] = [
-    { title: "Équipements", value: equipmentCount, icon: <Wrench size={30} /> },
+  const heroKpis = [
     {
-      title: "Tâches en cours",
-      value: tasks.filter((t) => t.status === "IN_PROGRESS").length,
-      icon: <ClipboardList size={30} />,
+      title: "Tâches",
+      value: loading ? "…" : String(tasks.length),
+      icon: <Wrench size={28} />,
+      className: "dashboard-hero-card-tasks",
     },
-    { title: "Activités", value: activities.length, icon: <ActivityIcon size={30} /> },
-    { title: "Pièces de rechange", value: spareParts.length, icon: <Boxes size={30} /> },
-    { title: "Équipes", value: teamsCount, icon: <Users size={30} /> },
-    { title: "Plans de maintenance", value: plans.length, icon: <CalendarCheck size={30} /> },
-    { title: "Commandes d'achat", value: purchaseOrdersCount, icon: <ShoppingCart size={30} /> },
+    {
+      title: "Activités",
+      value: loading ? "…" : String(activities.length),
+      icon: <ActivityIcon size={28} />,
+      className: "dashboard-hero-card-activities",
+    },
+    {
+      title: "Temps passé",
+      value: loading ? "…" : formatHoursMinutes(totalSpentMinutes),
+      icon: <Clock size={28} />,
+      className: "dashboard-hero-card-time",
+    },
+    {
+      title: "Temps moyen d'intervention",
+      value: loading ? "…" : formatHoursMinutes(averageMinutesPerActivity),
+      icon: <Gauge size={28} />,
+      className: "dashboard-hero-card-avg",
+    },
+  ];
+
+  const resourceCards: DashboardCard[] = [
+    { title: "Équipements", value: equipmentCount, icon: <Wrench size={22} /> },
+    { title: "Pièces de rechange", value: spareParts.length, icon: <Boxes size={22} /> },
+    { title: "Équipes", value: teamsCount, icon: <Users size={22} /> },
+    { title: "Plans de maintenance", value: plans.length, icon: <CalendarCheck size={22} /> },
+    { title: "Commandes d'achat", value: purchaseOrdersCount, icon: <ShoppingCart size={22} /> },
   ];
 
   return (
@@ -972,12 +1206,26 @@ function DashboardPage() {
 
       {error && <div className="resource-error-message">{error}</div>}
 
-      <div className="dashboard-cards">
-        {cards.map((card) => (
-          <article className="dashboard-card" key={card.title}>
-            <div className="dashboard-card-icon">{card.icon}</div>
-            <span>{card.title}</span>
-            <strong>{loading ? "…" : card.value}</strong>
+      <div className="dashboard-hero-kpis">
+        {heroKpis.map((kpi) => (
+          <article className={`dashboard-hero-card ${kpi.className}`} key={kpi.title}>
+            <div className="dashboard-hero-card-body">
+              <span>{kpi.title}</span>
+              <strong>{kpi.value}</strong>
+            </div>
+            <div className="dashboard-hero-card-icon">{kpi.icon}</div>
+          </article>
+        ))}
+      </div>
+
+      <div className="dashboard-resource-strip">
+        {resourceCards.map((card) => (
+          <article className="dashboard-resource-card" key={card.title}>
+            <div className="dashboard-resource-icon">{card.icon}</div>
+            <div>
+              <span>{card.title}</span>
+              <strong>{loading ? "…" : card.value}</strong>
+            </div>
           </article>
         ))}
       </div>
@@ -998,9 +1246,22 @@ function DashboardPage() {
 
       {!loading && (
         <div className="dashboard-charts-grid">
-          <article className="dashboard-chart-card">
+          <article className="dashboard-gauge-card">
             <h2>Tâches par statut</h2>
-            <DonutChart segments={taskStatusSegments} />
+
+            <div className="dashboard-status-chips">
+              {taskStatusSegments.map((segment) => (
+                <span
+                  key={segment.label}
+                  className="dashboard-status-chip"
+                  style={{ background: segment.color }}
+                >
+                  {segment.label}
+                </span>
+              ))}
+            </div>
+
+            <StatusGauge segments={taskStatusSegments} />
           </article>
 
           <article className="dashboard-chart-card">
@@ -1059,7 +1320,7 @@ function DashboardPage() {
             <SimpleBarChart items={topCostActivities} />
           </article>
 
-          <div className="dashboard-ranking-wide">
+          <div className="dashboard-ranking-wide dashboard-ranking-grid">
             <RankingTable
               title="Top 10 tâches"
               items={topTaskRanking}
@@ -1071,6 +1332,13 @@ function DashboardPage() {
                   navigate(`/admin/tasks/${item.id}`);
                 }
               }}
+            />
+
+            <RankingTable
+              title="Top 10 équipements"
+              items={topEquipmentRanking}
+              firstColumnTitle="Équipement"
+              valueType="hours"
             />
           </div>
 
@@ -1084,6 +1352,86 @@ function DashboardPage() {
               period={trendPeriod}
               onPeriodChange={setTrendPeriod}
             />
+          </article>
+
+
+          <article className="task-analysis-card dashboard-chart-card-wide">
+            <div className="task-analysis-toolbar">
+              <div className="task-analysis-dimension-tabs">
+                <span className="task-analysis-by">Par</span>
+
+                <button
+                  type="button"
+                  className={analysisDimension === "users" ? "active" : ""}
+                  onClick={() => setAnalysisDimension("users")}
+                >
+                  Utilisateurs
+                </button>
+
+                <button
+                  type="button"
+                  className={analysisDimension === "tags" ? "active" : ""}
+                  onClick={() => setAnalysisDimension("tags")}
+                >
+                  Tags
+                </button>
+
+                <button
+                  type="button"
+                  className={analysisDimension === "costCenters" ? "active" : ""}
+                  onClick={() => setAnalysisDimension("costCenters")}
+                >
+                  Centres de coût
+                </button>
+
+                <button
+                  type="button"
+                  className={analysisDimension === "equipment" ? "active" : ""}
+                  onClick={() => setAnalysisDimension("equipment")}
+                >
+                  Équipements
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="task-analysis-print"
+                onClick={() => window.print()}
+              >
+                <Printer size={19} />
+                Imprimer
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className={`task-analysis-more-filters ${analysisFiltersOpen ? "open" : ""}`}
+              onClick={() => setAnalysisFiltersOpen((current) => !current)}
+            >
+              <span>Afficher plus de filtres</span>
+              <ChevronDown size={20} />
+            </button>
+
+            {analysisFiltersOpen && (
+              <div className="task-analysis-filter-content">
+                <span>
+                  L’analyse utilise actuellement toutes les tâches chargées dans le tableau de bord.
+                </span>
+              </div>
+            )}
+
+            <div className="task-analysis-legend">
+              {(Object.keys(ANALYSIS_STATUS_META) as TaskStatus[]).map((status) => (
+                <span
+                  key={status}
+                  style={{ backgroundColor: ANALYSIS_STATUS_META[status].color }}
+                >
+                  {ANALYSIS_STATUS_META[status].label}
+                </span>
+              ))}
+            </div>
+
+            <TaskAnalysisChart items={analysisItems} />
           </article>
 
           <article className="dashboard-chart-card dashboard-chart-card-wide">
