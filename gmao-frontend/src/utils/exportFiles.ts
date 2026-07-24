@@ -20,8 +20,12 @@ function escapePdfText(value: string | number | null | undefined): string {
   return sanitizePdfText(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-function escapeCsvCell(value: string | number | null | undefined): string {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+function escapeHtmlCell(value: string | number | null | undefined): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function downloadBlob(content: BlobPart, type: string, fileName: string) {
@@ -44,10 +48,96 @@ function shorten(value: string | number | null | undefined, maxLength: number) {
 }
 
 export function exportTableCsv(options: ExportTableOptions) {
-  const rows = [options.headers, ...options.rows];
-  const csv = rows.map((row) => row.map(escapeCsvCell).join(";")).join("\r\n");
+  const generatedAt = new Intl.DateTimeFormat("fr-FR").format(new Date());
+  const columnCount = Math.max(1, options.headers.length);
+  const headerCells = options.headers
+    .map((header) => `<th>${escapeHtmlCell(header)}</th>`)
+    .join("");
+  const bodyRows =
+    options.rows.length > 0
+      ? options.rows
+          .map(
+            (row, rowIndex) => `
+              <tr class="${rowIndex % 2 === 0 ? "row-even" : "row-odd"}">
+                ${options.headers
+                  .map((_, columnIndex) => `<td>${escapeHtmlCell(row[columnIndex])}</td>`)
+                  .join("")}
+              </tr>`,
+          )
+          .join("")
+      : `<tr><td colspan="${columnCount}" class="empty-row">Aucune donnee a exporter.</td></tr>`;
 
-  downloadBlob(`\uFEFF${csv}`, "text/csv;charset=utf-8", `${options.fileName}.csv`);
+  const excelHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: #082f5f;
+      }
+      .brand {
+        color: #0787c8;
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+      h1 {
+        color: #082f5f;
+        font-size: 28px;
+        margin: 0 0 8px;
+      }
+      .meta {
+        color: #617089;
+        margin-bottom: 18px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th {
+        background: #0787c8;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 11px 12px;
+        border: 1px solid #0787c8;
+        text-align: left;
+      }
+      td {
+        padding: 11px 12px;
+        border: 1px solid #c6d9ea;
+        vertical-align: top;
+      }
+      .row-even td {
+        background: #ffffff;
+      }
+      .row-odd td {
+        background: #eaf6fc;
+      }
+      .empty-row {
+        text-align: center;
+        color: #617089;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">SmartMaint</div>
+    <h1>${escapeHtmlCell(options.title)}</h1>
+    <div class="meta">Export du ${generatedAt} - ${options.rows.length} ligne(s)</div>
+    <table>
+      <thead>
+        <tr>${headerCells}</tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  </body>
+</html>`;
+
+  downloadBlob(
+    `\uFEFF${excelHtml}`,
+    "application/vnd.ms-excel;charset=utf-8",
+    `${options.fileName}.xls`,
+  );
 }
 
 export function exportTablePdf(options: ExportTableOptions) {

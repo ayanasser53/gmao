@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  Download,
   History,
   Package,
   RefreshCw,
@@ -30,6 +31,7 @@ import { getUsersDetailed } from "../../services/userService";
 import { getTasks } from "../../services/taskService";
 import { getActivities } from "../../services/activityService";
 import { getMaintenancePlans } from "../../services/maintenancePlanService";
+import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import type { SparePart } from "../../types/sparePart";
 import type { UserDetail } from "../../types/user";
@@ -258,26 +260,109 @@ function MovementHistoryPage() {
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
-    );
+      );
   })();
+
+  function getMovementPlanLabel(movement: StockMovementHistory): string {
+    if (!movement.maintenancePlanId) {
+      return "-";
+    }
+
+    const description = movement.maintenancePlanDescription?.trim();
+    return description
+      ? `#${movement.maintenancePlanId} - ${description}`
+      : `#${movement.maintenancePlanId}`;
+  }
+
+  function getMovementDescription(movement: StockMovementHistory): string {
+    return (
+      movement.activityDescription ||
+      movement.taskDescription ||
+      movement.maintenancePlanDescription ||
+      "-"
+    );
+  }
+
+  function getExportOptions() {
+    return {
+      title: "Historique des mouvements",
+      fileName: "historique-mouvements",
+      headers: [
+        "Piece detachee",
+        "Source",
+        "ID tache",
+        "ID activite",
+        "Plan de maintenance",
+        "Description",
+        "Utilisateur",
+        "Quantite",
+        "Date",
+      ],
+      rows: filteredMovements.map((movement) => [
+        movement.sparePartName || "-",
+        movement.source || "-",
+        movement.taskId ? `#${movement.taskId}` : "-",
+        movement.activityId ? `#${movement.activityId}` : "-",
+        getMovementPlanLabel(movement),
+        getMovementDescription(movement),
+        movement.userName || "-",
+        movement.quantity ?? "-",
+        formatDateTime(movement.movementDate),
+      ]),
+    };
+  }
+
+  function exportCsv() {
+    exportTableCsv(getExportOptions());
+  }
+
+  function exportPdf() {
+    exportTablePdf(getExportOptions());
+  }
 
   return (
     <section className="admin-page">
       <div className="suppliers-page-heading">
-        <History size={26} />
-        <h1>Historique des mouvements</h1>
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <History size={26} />
+            <h1>Historique des mouvements</h1>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          className="external-stock-check-btn movement-check-all-btn"
-          onClick={() => void handleCheckAllStock()}
-          disabled={checkingAll}
-        >
-          <RefreshCw size={15} />
-          {checkingAll
-            ? "Vérification en cours..."
-            : "Vérifier le stock réel (toutes les pièces)"}
-        </button>
+        <div className="resource-header-actions">
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportPdf}
+            disabled={filteredMovements.length === 0}
+          >
+            <Download size={16} />
+            PDF
+          </button>
+
+          <button
+            type="button"
+            className="resource-secondary-button"
+            onClick={exportCsv}
+            disabled={filteredMovements.length === 0}
+          >
+            <Download size={16} />
+            CSV
+          </button>
+
+          <button
+            type="button"
+            className="external-stock-check-btn movement-check-all-btn"
+            onClick={() => void handleCheckAllStock()}
+            disabled={checkingAll}
+          >
+            <RefreshCw size={15} />
+            {checkingAll
+              ? "Vérification en cours..."
+              : "Vérifier le stock réel (toutes les pièces)"}
+          </button>
+        </div>
       </div>
 
       <div className="resource-toolbar">
