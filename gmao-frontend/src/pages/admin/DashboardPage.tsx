@@ -194,67 +194,89 @@ function DonutChart({ segments }: { segments: DonutSegment[] }) {
  * affiché le long de l'arc — inspirée du tableau de bord de référence.
  * Puces de statut au-dessus, total sous la jauge.
  */
+function polarPoint(cx: number, cy: number, r: number, angleDeg: number) {
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(angleRad), y: cy - r * Math.sin(angleRad) };
+}
+
+/**
+ * Chemin SVG d'un secteur d'anneau (donut slice) entre deux rayons et
+ * deux angles. On dessine des secteurs remplis plutôt qu'un trait
+ * épais en pointillés : ça évite tout artefact de rendu aux
+ * extrémités (les "butt caps" d'un trait épais sur une courbe créent
+ * des évasements visuels near les bords).
+ */
+function donutSectorPath(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  angleStart: number,
+  angleEnd: number,
+) {
+  const largeArc = angleStart - angleEnd > 180 ? 1 : 0;
+  const outerStart = polarPoint(cx, cy, outerR, angleStart);
+  const outerEnd = polarPoint(cx, cy, outerR, angleEnd);
+  const innerEnd = polarPoint(cx, cy, innerR, angleEnd);
+  const innerStart = polarPoint(cx, cy, innerR, angleStart);
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z",
+  ].join(" ");
+}
+
 function StatusGauge({ segments }: { segments: DonutSegment[] }) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   const cx = 110;
-  const cy = 110;
-  const radius = 88;
-  const strokeWidth = 30;
-  const pathLength = Math.PI * radius; // demi-circonférence
+  const cy = 112;
+  const outerR = 100;
+  const innerR = 68;
 
-  let cumulative = 0;
+  let cumulativeAngle = 180;
 
   const arcs = segments.map((segment) => {
     if (segment.value === 0 || total === 0) {
-      return { ...segment, dash: 0, offset: pathLength, midAngle: 0, fraction: 0 };
+      return { ...segment, angleStart: cumulativeAngle, angleEnd: cumulativeAngle, fraction: 0 };
     }
 
     const fraction = segment.value / total;
-    const dash = fraction * pathLength;
-    const offset = pathLength - (cumulative / total) * pathLength;
-    const midAngleDeg = 180 - ((cumulative + segment.value / 2) / total) * 180;
+    const angleStart = cumulativeAngle;
+    const angleEnd = cumulativeAngle - fraction * 180;
+    cumulativeAngle = angleEnd;
 
-    cumulative += segment.value;
-
-    return { ...segment, dash, offset, midAngle: midAngleDeg, fraction };
+    return { ...segment, angleStart, angleEnd, fraction };
   });
 
   return (
     <div className="dashboard-gauge-wrap">
-      <svg viewBox="0 0 220 150" className="dashboard-gauge-svg">
-        <path
-          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
-          fill="none"
-          stroke="#eef2f6"
-          strokeWidth={strokeWidth}
-        />
+      <svg viewBox="0 0 220 128" className="dashboard-gauge-svg">
+        <path d={donutSectorPath(cx, cy, innerR, outerR, 180, 0)} fill="#eef2f6" />
+
         {arcs.map((arc) =>
-          arc.dash > 0 ? (
+          arc.fraction > 0 ? (
             <path
               key={arc.label}
-              d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
-              fill="none"
-              stroke={arc.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${arc.dash} ${pathLength - arc.dash}`}
-              strokeDashoffset={arc.offset}
-              strokeLinecap="butt"
+              d={donutSectorPath(cx, cy, innerR, outerR, arc.angleStart, arc.angleEnd)}
+              fill={arc.color}
             />
           ) : null,
         )}
+
         {arcs.map((arc) => {
           if (arc.fraction < 0.04) return null;
 
-          const angleRad = (arc.midAngle * Math.PI) / 180;
-          const labelRadius = radius;
-          const x = cx + labelRadius * Math.cos(angleRad);
-          const y = cy - labelRadius * Math.sin(angleRad);
+          const midAngle = (arc.angleStart + arc.angleEnd) / 2;
+          const labelPoint = polarPoint(cx, cy, (innerR + outerR) / 2, midAngle);
 
           return (
             <text
               key={`${arc.label}-label`}
-              x={x}
-              y={y}
+              x={labelPoint.x}
+              y={labelPoint.y}
               textAnchor="middle"
               dominantBaseline="middle"
               className="dashboard-gauge-label"
@@ -311,56 +333,29 @@ function SimpleBarChart({ items }: { items: BarItem[] }) {
     return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
   }
 
-  const width = Math.max(620, items.length * 86);
-  const height = 220;
-  const padding = 34;
-  const maxValue = Math.max(...items.map((item) => item.value), 1);
-  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
-  const lineColor = items[0]?.color ?? "#4da6ff";
-
-  const coords = items.map((item, index) => ({
-    x: items.length > 1 ? padding + index * stepX : width / 2,
-    y: height - padding - (item.value / maxValue) * (height - padding * 1.7),
-    item,
-  }));
-
-  const linePath = buildSmoothPath(coords);
-  const areaPath =
-    coords.length > 0
-      ? `${linePath} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
-      : "";
-
   return (
-    <div className="curve-chart-scroll">
-      <svg viewBox={`0 0 ${width} ${height}`} className="curve-chart-svg" style={{ minWidth: width }}>
-        {areaPath && <path d={areaPath} fill={lineColor} opacity={0.16} stroke="none" />}
-        {linePath && <path d={linePath} fill="none" stroke={lineColor} strokeWidth={2.5} />}
+    <div className="dashboard-bar-chart">
+      {items.map((item) => {
+        const percent = item.max > 0 ? Math.min(100, (item.value / item.max) * 100) : 0;
 
-        {coords.map((coord, index) => (
-          <circle
-            key={`dot-${index}`}
-            cx={coord.x}
-            cy={coord.y}
-            r={4}
-            fill="#ffffff"
-            stroke={lineColor}
-            strokeWidth={2}
-          />
-        ))}
-
-        {coords.map((coord, index) => (
-          <text key={`val-${index}`} x={coord.x} y={coord.y - 12} textAnchor="middle" className="curve-chart-value">
-            {coord.item.value}
-            {coord.item.suffix ?? ""}
-          </text>
-        ))}
-
-        {coords.map((coord, index) => (
-          <text key={`lbl-${index}`} x={coord.x} y={height - 10} textAnchor="middle" className="curve-chart-axis-label">
-            {coord.item.label.length > 14 ? `${coord.item.label.slice(0, 13)}…` : coord.item.label}
-          </text>
-        ))}
-      </svg>
+        return (
+          <div className="dashboard-bar-row" key={item.label}>
+            <span className="dashboard-bar-label" title={item.label}>
+              {item.label}
+            </span>
+            <div className="dashboard-bar-track">
+              <div
+                className="dashboard-bar-fill"
+                style={{ width: `${percent}%`, background: item.color }}
+              />
+            </div>
+            <span className="dashboard-bar-value">
+              {item.value}
+              {item.suffix ?? ""}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -380,58 +375,43 @@ function StackedBarChart({ items }: { items: StackedBarItem[] }) {
     return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
   }
 
-  const width = Math.max(680, items.length * 92);
-  const height = 260;
-  const padding = 36;
-  const segmentCount = items[0]?.segments.length ?? 0;
-  const maxTotal = Math.max(
+  const globalMax = Math.max(
     ...items.map((item) => item.segments.reduce((sum, s) => sum + s.value, 0)),
     1,
   );
-  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
-
-  const xFor = (index: number) => (items.length > 1 ? padding + index * stepX : width / 2);
-  const yFor = (value: number) => height - padding - (value / maxTotal) * (height - padding * 1.6);
-
-  // cumulative[s][i] = somme des segments 0..s pour l'item i
-  const cumulative: number[][] = Array.from({ length: segmentCount }, () => []);
-  items.forEach((item, i) => {
-    let running = 0;
-    item.segments.forEach((segment, s) => {
-      running += segment.value;
-      cumulative[s][i] = running;
-    });
-  });
 
   return (
-    <div className="stacked-area-scroll">
-      <svg viewBox={`0 0 ${width} ${height}`} className="stacked-area-svg" style={{ minWidth: width }}>
-        {Array.from({ length: segmentCount }).map((_, s) => {
-          const color = items[0]?.segments[s]?.color ?? "#4da6ff";
+    <div className="dashboard-stacked-chart">
+      {items.map((item) => {
+        const total = item.segments.reduce((sum, s) => sum + s.value, 0);
+        const widthPercent = (total / globalMax) * 100;
 
-          const topPoints = items.map((_, i) => ({ x: xFor(i), y: yFor(cumulative[s][i]) }));
-          const bottomPoints = items
-            .map((_, i) => ({ x: xFor(i), y: yFor(s === 0 ? 0 : cumulative[s - 1][i]) }))
-            .reverse();
-
-          const topPath = buildSmoothPath(topPoints);
-          const bottomPath = buildSmoothPath(bottomPoints).replace("M", "L");
-          const areaPath = `${topPath} ${bottomPath} Z`;
-
-          return (
-            <g key={s}>
-              <path d={areaPath} fill={color} opacity={0.5} stroke="none" />
-              <path d={topPath} fill="none" stroke={color} strokeWidth={2} />
-            </g>
-          );
-        })}
-
-        {items.map((item, i) => (
-          <text key={item.label} x={xFor(i)} y={height - 10} textAnchor="middle" className="stacked-area-axis-label">
-            {item.label.length > 14 ? `${item.label.slice(0, 13)}…` : item.label}
-          </text>
-        ))}
-      </svg>
+        return (
+          <div className="dashboard-stacked-row" key={item.label}>
+            <span className="dashboard-bar-label" title={item.label}>
+              {item.label}
+            </span>
+            <div className="dashboard-stacked-track">
+              <div className="dashboard-stacked-fill" style={{ width: `${widthPercent}%` }}>
+                {item.segments.map((segment, index) =>
+                  segment.value > 0 ? (
+                    <span
+                      key={index}
+                      className="dashboard-stacked-segment"
+                      style={{
+                        flexGrow: segment.value,
+                        background: segment.color,
+                      }}
+                      title={String(segment.value)}
+                    />
+                  ) : null,
+                )}
+              </div>
+            </div>
+            <span className="dashboard-bar-value">{total}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -439,83 +419,80 @@ function StackedBarChart({ items }: { items: StackedBarItem[] }) {
 
 type AnalysisDimension = "users" | "tags" | "costCenters" | "equipment";
 
-const ANALYSIS_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
-  PLANNED: { label: "Planifiée", color: "#9fb0c3" },
-  IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
-  LATE: { label: "En retard", color: "#ff6b6b" },
-  DONE: { label: "Terminée", color: "#34d1b3" },
-};
+type DashboardSection = "apercu" | "temps" | "classements" | "repartition";
+
+const DASHBOARD_SECTIONS: { key: DashboardSection; label: string }[] = [
+  { key: "apercu", label: "Aperçu" },
+  { key: "temps", label: "Temps & coûts" },
+  { key: "classements", label: "Classements" },
+  { key: "repartition", label: "Répartition" },
+];
 
 /**
- * Aire empilée en courbes lissées pour l'analyse par dimension
- * (utilisateurs / tags / centres de coût / équipements) — remplace
- * les anciennes barres empilées verticales.
+ * Barres empilées verticales pour l'analyse par dimension
+ * (utilisateurs / tags / centres de coût / équipements). Utilise la
+ * même palette que le reste du dashboard (TASK_STATUS_META) pour que
+ * chaque statut ait toujours la même couleur partout.
  */
 function TaskAnalysisChart({ items }: { items: StackedBarItem[] }) {
-  if (items.length === 0) {
-    return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
-  }
-
-  const width = Math.max(900, items.length * 130);
-  const height = 380;
-  const padding = 42;
-  const segmentCount = items[0]?.segments.length ?? 0;
+  const statuses = Object.keys(TASK_STATUS_META) as TaskStatus[];
   const maxTotal = Math.max(
     ...items.map((item) => item.segments.reduce((sum, segment) => sum + segment.value, 0)),
     1,
   );
-  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
 
-  const xFor = (index: number) => (items.length > 1 ? padding + index * stepX : width / 2);
-  const yFor = (value: number) => height - padding - (value / maxTotal) * (height - padding * 1.5);
-
-  const cumulative: number[][] = Array.from({ length: segmentCount }, () => []);
-  items.forEach((item, i) => {
-    let running = 0;
-    item.segments.forEach((segment, s) => {
-      running += segment.value;
-      cumulative[s][i] = running;
-    });
-  });
+  if (items.length === 0) {
+    return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
+  }
 
   return (
     <div className="task-analysis-chart-scroll">
-      <div className="task-analysis-chart" style={{ minWidth: `${width}px` }}>
+      <div className="task-analysis-chart" style={{ minWidth: `${Math.max(900, items.length * 150)}px` }}>
         <div className="task-analysis-grid-lines" aria-hidden="true" />
 
-        <svg viewBox={`0 0 ${width} ${height}`} className="task-analysis-svg" style={{ minWidth: width }}>
-          {Array.from({ length: segmentCount }).map((_, s) => {
-            const color = items[0]?.segments[s]?.color ?? "#4da6ff";
-
-            const topPoints = items.map((_, i) => ({ x: xFor(i), y: yFor(cumulative[s][i]) }));
-            const bottomPoints = items
-              .map((_, i) => ({ x: xFor(i), y: yFor(s === 0 ? 0 : cumulative[s - 1][i]) }))
-              .reverse();
-
-            const topPath = buildSmoothPath(topPoints);
-            const bottomPath = buildSmoothPath(bottomPoints).replace("M", "L");
-            const areaPath = `${topPath} ${bottomPath} Z`;
+        <div className="task-analysis-bars">
+          {items.map((item) => {
+            const total = item.segments.reduce((sum, segment) => sum + segment.value, 0);
+            const totalHeight = Math.max(2, (total / maxTotal) * 100);
 
             return (
-              <g key={s}>
-                <path d={areaPath} fill={color} opacity={0.5} stroke="none" />
-                <path d={topPath} fill="none" stroke={color} strokeWidth={2.2} />
-              </g>
+              <div className="task-analysis-column" key={item.label}>
+                <div className="task-analysis-bar-zone">
+                  <div
+                    className="task-analysis-stacked-bar"
+                    style={{ height: `${totalHeight}%` }}
+                    title={`${item.label}: ${total}`}
+                  >
+                    {item.segments.map((segment, index) => {
+                      const status = statuses[index];
+                      const height = total > 0 ? (segment.value / total) * 100 : 0;
+
+                      if (segment.value === 0) return null;
+
+                      return (
+                        <span
+                          key={status}
+                          className="task-analysis-segment"
+                          style={{
+                            height: `${height}%`,
+                            backgroundColor: TASK_STATUS_META[status].color,
+                          }}
+                          title={`${TASK_STATUS_META[status].label}: ${segment.value}`}
+                        >
+                          <strong>{segment.value}</strong>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <span className="task-analysis-axis-label" title={item.label}>
+                  {item.label}
+                </span>
+              </div>
             );
           })}
-
-          {items.map((item, i) => (
-            <text
-              key={item.label}
-              x={xFor(i)}
-              y={height - 14}
-              textAnchor="middle"
-              className="task-analysis-axis-label-svg"
-            >
-              {item.label.length > 16 ? `${item.label.slice(0, 15)}…` : item.label}
-            </text>
-          ))}
-        </svg>
+        </div>
       </div>
     </div>
   );
@@ -549,9 +526,7 @@ function TrendChart({
     return { x, y, point };
   });
 
-  const linePath = coordinates
-    .map((coord, index) => `${index === 0 ? "M" : "L"} ${coord.x} ${coord.y}`)
-    .join(" ");
+  const linePath = buildSmoothPath(coordinates);
 
   const areaPath =
     coordinates.length > 0
@@ -635,6 +610,7 @@ interface RankingItem {
 
 interface RankingTableProps {
   title: string;
+  subtitle?: string;
   items: RankingItem[];
   firstColumnTitle?: string;
   showId?: boolean;
@@ -683,6 +659,7 @@ function RankingTrophy({ index }: { index: number }) {
 
 function RankingTable({
   title,
+  subtitle,
   items,
   firstColumnTitle = "Nom",
   showId = false,
@@ -693,7 +670,10 @@ function RankingTable({
 
   return (
     <article className="dashboard-ranking-card">
-      <h2>{title}</h2>
+      <div className="dashboard-ranking-card-header">
+        <h2>{title}</h2>
+        {subtitle && <span className="dashboard-ranking-subtitle">{subtitle}</span>}
+      </div>
 
       {items.length === 0 ? (
         <p className="dashboard-ranking-empty">Aucune donnée disponible.</p>
@@ -776,6 +756,7 @@ function DashboardPage() {
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>("day");
   const [analysisDimension, setAnalysisDimension] = useState<AnalysisDimension>("users");
   const [analysisFiltersOpen, setAnalysisFiltersOpen] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState<DashboardSection>("apercu");
 
   useEffect(() => {
     async function loadDashboard() {
@@ -1324,253 +1305,298 @@ function DashboardPage() {
       )}
 
       {!loading && (
-        <div className="dashboard-charts-grid">
-          <article className="dashboard-gauge-card">
-            <h2>Tâches par statut</h2>
-
-            <div className="dashboard-status-chips">
-              {taskStatusSegments.map((segment) => (
-                <span
-                  key={segment.label}
-                  className="dashboard-status-chip"
-                  style={{ background: segment.color }}
-                >
-                  {segment.label}
-                </span>
-              ))}
-            </div>
-
-            <StatusGauge segments={taskStatusSegments} />
-          </article>
-
-          <article className="dashboard-chart-card">
-            <h2>Plans de maintenance par statut</h2>
-            <DonutChart segments={planStatusSegments} />
-          </article>
-
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <Clock size={18} />
-              Temps passé par machine
-            </h2>
-            <SimpleBarChart items={timePerMachine} />
-          </article>
-
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <PiggyBank size={18} />
-              Coût par machine
-            </h2>
-            <SimpleBarChart items={costPerMachine} />
-          </article>
-
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <div className="dashboard-chart-card-header">
-              <h2>
-                <AlertTriangle size={18} />
-                Pièces en stock bas
-              </h2>
+        <>
+          <div className="dashboard-section-tabs">
+            {DASHBOARD_SECTIONS.map((section) => (
               <button
+                key={section.key}
                 type="button"
-                className="dashboard-chart-link"
-                onClick={() => navigate("/admin/spare-parts")}
+                className={dashboardSection === section.key ? "active" : ""}
+                onClick={() => setDashboardSection(section.key)}
               >
-                Voir tout
+                {section.label}
               </button>
-            </div>
-
-            {lowStockItems.length === 0 ? (
-              <p className="dashboard-empty-hint">
-                Aucune pièce en dessous du stock minimum. 👍
-              </p>
-            ) : (
-              <SimpleBarChart items={lowStockBars} />
-            )}
-          </article>
-
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <div className="dashboard-chart-card-header">
-              <h2>Coût des activités (top 10)</h2>
-              <span className="dashboard-total-cost">
-                Total : <strong>{formatMoney(totalActivityCost)} EUR</strong>
-              </span>
-            </div>
-
-            <SimpleBarChart items={topCostActivities} />
-          </article>
-
-          <div className="dashboard-ranking-wide dashboard-ranking-grid">
-            <RankingTable
-              title="Top 10 tâches"
-              items={topTaskRanking}
-              firstColumnTitle="Description de la tâche"
-              showId
-              valueType="hours"
-              onOpen={(item) => {
-                if (item.id !== undefined) {
-                  navigate(`/admin/tasks/${item.id}`);
-                }
-              }}
-            />
-
-            <RankingTable
-              title="Top 10 équipements"
-              items={topEquipmentRanking}
-              firstColumnTitle="Équipement"
-              valueType="hours"
-            />
+            ))}
           </div>
 
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <TrendingUp size={18} />
-              Évolution des activités
-            </h2>
-            <TrendChart
-              points={activityTrend}
-              period={trendPeriod}
-              onPeriodChange={setTrendPeriod}
-            />
-          </article>
+          <div className="dashboard-charts-grid">
+            {dashboardSection === "apercu" && (
+              <>
+                <article className="dashboard-gauge-card">
+                  <h2>Tâches par statut</h2>
 
+                  <div className="dashboard-status-chips">
+                    {taskStatusSegments.map((segment) => (
+                      <span
+                        key={segment.label}
+                        className="dashboard-status-chip"
+                        style={{ background: segment.color }}
+                      >
+                        {segment.label}
+                      </span>
+                    ))}
+                  </div>
 
-          <article className="task-analysis-card dashboard-chart-card-wide">
-            <div className="task-analysis-toolbar">
-              <div className="task-analysis-dimension-tabs">
-                <span className="task-analysis-by">Par</span>
+                  <StatusGauge segments={taskStatusSegments} />
+                </article>
 
-                <button
-                  type="button"
-                  className={analysisDimension === "users" ? "active" : ""}
-                  onClick={() => setAnalysisDimension("users")}
-                >
-                  Utilisateurs
-                </button>
+                <article className="dashboard-chart-card dashboard-donut-card">
+                  <h2>Plans de maintenance par statut</h2>
+                  <DonutChart segments={planStatusSegments} />
+                </article>
 
-                <button
-                  type="button"
-                  className={analysisDimension === "tags" ? "active" : ""}
-                  onClick={() => setAnalysisDimension("tags")}
-                >
-                  Tags
-                </button>
-
-                <button
-                  type="button"
-                  className={analysisDimension === "costCenters" ? "active" : ""}
-                  onClick={() => setAnalysisDimension("costCenters")}
-                >
-                  Centres de coût
-                </button>
-
-                <button
-                  type="button"
-                  className={analysisDimension === "equipment" ? "active" : ""}
-                  onClick={() => setAnalysisDimension("equipment")}
-                >
-                  Équipements
-                </button>
-              </div>
-
-              <button
-                type="button"
-                className="task-analysis-print"
-                onClick={() => window.print()}
-              >
-                <Printer size={19} />
-                Imprimer
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className={`task-analysis-more-filters ${analysisFiltersOpen ? "open" : ""}`}
-              onClick={() => setAnalysisFiltersOpen((current) => !current)}
-            >
-              <span>Afficher plus de filtres</span>
-              <ChevronDown size={20} />
-            </button>
-
-            {analysisFiltersOpen && (
-              <div className="task-analysis-filter-content">
-                <span>
-                  L’analyse utilise actuellement toutes les tâches chargées dans le tableau de bord.
-                </span>
-              </div>
-            )}
-
-            <div className="task-analysis-legend">
-              {(Object.keys(ANALYSIS_STATUS_META) as TaskStatus[]).map((status) => (
-                <span
-                  key={status}
-                  style={{ backgroundColor: ANALYSIS_STATUS_META[status].color }}
-                >
-                  {ANALYSIS_STATUS_META[status].label}
-                </span>
-              ))}
-            </div>
-
-            <TaskAnalysisChart items={analysisItems} />
-          </article>
-
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <Users size={18} />
-              Tâches par utilisateur / équipe (par statut)
-            </h2>
-            <div className="dashboard-status-legend">
-              {(Object.keys(TASK_STATUS_META) as TaskStatus[]).map((status) => (
-                <span key={status}>
-                  <span
-                    className="dashboard-donut-legend-dot"
-                    style={{ background: TASK_STATUS_META[status].color }}
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <h2>
+                    <TrendingUp size={18} />
+                    Évolution des activités
+                  </h2>
+                  <TrendChart
+                    points={activityTrend}
+                    period={trendPeriod}
+                    onPeriodChange={setTrendPeriod}
                   />
-                  {TASK_STATUS_META[status].label}
-                </span>
-              ))}
-            </div>
-            <StackedBarChart items={userStacked} />
-          </article>
+                </article>
+              </>
+            )}
 
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <MapPin size={18} />
-              Tâches par centre de coût (par statut)
-            </h2>
-            <StackedBarChart items={costCenterStacked} />
-          </article>
+            {dashboardSection === "temps" && (
+              <>
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>
+                      <Clock size={18} />
+                      Temps passé par machine
+                    </h2>
+                    <span className="dashboard-total-cost">
+                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> équipements
+                    </span>
+                  </div>
+                  <SimpleBarChart items={timePerMachine} />
+                </article>
 
-          <article className="dashboard-chart-card dashboard-chart-card-wide">
-            <h2>
-              <TagIcon size={18} />
-              Tâches par tag (par statut)
-            </h2>
-            <StackedBarChart items={tagStacked} />
-          </article>
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>
+                      <PiggyBank size={18} />
+                      Coût par machine
+                    </h2>
+                    <span className="dashboard-total-cost">
+                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> équipements
+                    </span>
+                  </div>
+                  <SimpleBarChart items={costPerMachine} />
+                </article>
 
-          <div className="dashboard-ranking-wide dashboard-ranking-grid">
-            <RankingTable
-              title="Top 10 centres de coût"
-              items={topCostCenters}
-              firstColumnTitle="Centre de coût"
-              valueType="number"
-            />
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>
+                      <AlertTriangle size={18} />
+                      Pièces en stock bas
+                    </h2>
+                    <button
+                      type="button"
+                      className="dashboard-chart-link"
+                      onClick={() => navigate("/admin/spare-parts")}
+                    >
+                      Voir tout
+                    </button>
+                  </div>
 
-            <RankingTable
-              title="Top 10 utilisateurs"
-              items={topUsers}
-              firstColumnTitle="Utilisateur"
-              valueType="number"
-            />
+                  {lowStockItems.length === 0 ? (
+                    <p className="dashboard-empty-hint">
+                      Aucune pièce en dessous du stock minimum. 👍
+                    </p>
+                  ) : (
+                    <SimpleBarChart items={lowStockBars} />
+                  )}
+                </article>
 
-            <RankingTable
-              title="Top 10 tags"
-              items={topTags}
-              firstColumnTitle="Tag"
-              valueType="number"
-            />
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>Coût des activités (top 10)</h2>
+                    <span className="dashboard-total-cost">
+                      Total : <strong>{formatMoney(totalActivityCost)} EUR</strong>
+                    </span>
+                  </div>
+
+                  <SimpleBarChart items={topCostActivities} />
+                </article>
+              </>
+            )}
+
+            {dashboardSection === "classements" && (
+              <>
+                <div className="dashboard-ranking-wide dashboard-ranking-grid">
+                  <RankingTable
+                    title="Top 10 tâches"
+                    subtitle={`sur ${tasks.length.toLocaleString("fr-FR")} tâches`}
+                    items={topTaskRanking}
+                    firstColumnTitle="Description de la tâche"
+                    showId
+                    valueType="hours"
+                    onOpen={(item) => {
+                      if (item.id !== undefined) {
+                        navigate(`/admin/tasks/${item.id}`);
+                      }
+                    }}
+                  />
+
+                  <RankingTable
+                    title="Top 10 équipements"
+                    subtitle={`sur ${byEquipment.size.toLocaleString("fr-FR")} équipements`}
+                    items={topEquipmentRanking}
+                    firstColumnTitle="Équipement"
+                    valueType="hours"
+                  />
+                </div>
+
+                <div className="dashboard-ranking-wide dashboard-ranking-grid">
+                  <RankingTable
+                    title="Top 10 centres de coût"
+                    subtitle={`sur ${costCenterMap.size.toLocaleString("fr-FR")}`}
+                    items={topCostCenters}
+                    firstColumnTitle="Centre de coût"
+                    valueType="number"
+                  />
+
+                  <RankingTable
+                    title="Top 10 utilisateurs"
+                    subtitle={`sur ${userMap.size.toLocaleString("fr-FR")}`}
+                    items={topUsers}
+                    firstColumnTitle="Utilisateur"
+                    valueType="number"
+                  />
+
+                  <RankingTable
+                    title="Top 10 tags"
+                    subtitle={`sur ${tagMap.size.toLocaleString("fr-FR")}`}
+                    items={topTags}
+                    firstColumnTitle="Tag"
+                    valueType="number"
+                  />
+                </div>
+              </>
+            )}
+
+            {dashboardSection === "repartition" && (
+              <>
+                <article className="task-analysis-card dashboard-chart-card-wide">
+                  <div className="task-analysis-toolbar">
+                    <div className="task-analysis-dimension-tabs">
+                      <span className="task-analysis-by">Par</span>
+
+                      <button
+                        type="button"
+                        className={analysisDimension === "users" ? "active" : ""}
+                        onClick={() => setAnalysisDimension("users")}
+                      >
+                        Utilisateurs
+                      </button>
+
+                      <button
+                        type="button"
+                        className={analysisDimension === "tags" ? "active" : ""}
+                        onClick={() => setAnalysisDimension("tags")}
+                      >
+                        Tags
+                      </button>
+
+                      <button
+                        type="button"
+                        className={analysisDimension === "costCenters" ? "active" : ""}
+                        onClick={() => setAnalysisDimension("costCenters")}
+                      >
+                        Centres de coût
+                      </button>
+
+                      <button
+                        type="button"
+                        className={analysisDimension === "equipment" ? "active" : ""}
+                        onClick={() => setAnalysisDimension("equipment")}
+                      >
+                        Équipements
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="task-analysis-print"
+                      onClick={() => window.print()}
+                    >
+                      <Printer size={19} />
+                      Imprimer
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`task-analysis-more-filters ${analysisFiltersOpen ? "open" : ""}`}
+                    onClick={() => setAnalysisFiltersOpen((current) => !current)}
+                  >
+                    <span>Afficher plus de filtres</span>
+                    <ChevronDown size={20} />
+                  </button>
+
+                  {analysisFiltersOpen && (
+                    <div className="task-analysis-filter-content">
+                      <span>
+                        L’analyse utilise actuellement toutes les tâches chargées dans le tableau de bord.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="task-analysis-legend">
+                    {(Object.keys(TASK_STATUS_META) as TaskStatus[]).map((status) => (
+                      <span
+                        key={status}
+                        style={{ backgroundColor: TASK_STATUS_META[status].color }}
+                      >
+                        {TASK_STATUS_META[status].label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <TaskAnalysisChart items={analysisItems} />
+                </article>
+
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <h2>
+                    <Users size={18} />
+                    Tâches par utilisateur / équipe (par statut)
+                  </h2>
+                  <div className="dashboard-status-legend">
+                    {(Object.keys(TASK_STATUS_META) as TaskStatus[]).map((status) => (
+                      <span key={status}>
+                        <span
+                          className="dashboard-donut-legend-dot"
+                          style={{ background: TASK_STATUS_META[status].color }}
+                        />
+                        {TASK_STATUS_META[status].label}
+                      </span>
+                    ))}
+                  </div>
+                  <StackedBarChart items={userStacked} />
+                </article>
+
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <h2>
+                    <MapPin size={18} />
+                    Tâches par centre de coût (par statut)
+                  </h2>
+                  <StackedBarChart items={costCenterStacked} />
+                </article>
+
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <h2>
+                    <TagIcon size={18} />
+                    Tâches par tag (par statut)
+                  </h2>
+                  <StackedBarChart items={tagStacked} />
+                </article>
+              </>
+            )}
           </div>
-        </div>
+        </>
       )}
     </section>
   );

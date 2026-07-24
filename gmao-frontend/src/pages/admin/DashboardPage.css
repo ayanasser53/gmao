@@ -204,6 +204,60 @@
   }
 }
 
+/* =====================================================
+   ONGLETS DE SECTIONS — regroupement du contenu du dashboard
+   ===================================================== */
+
+.dashboard-section-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  margin: 22px 0 20px;
+  background: #ffffff;
+  border: 1px solid #e2e7ec;
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(20, 48, 76, 0.06);
+}
+
+.dashboard-section-tabs button {
+  min-height: 42px;
+  padding: 0 20px;
+  color: #56636f;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dashboard-section-tabs button:hover {
+  background: #f2f6fa;
+  color: #12365c;
+}
+
+.dashboard-section-tabs button.active {
+  color: #ffffff;
+  background: #4da6ff;
+  box-shadow: 0 4px 12px -4px rgba(77, 166, 255, 0.55);
+}
+
+@media (max-width: 700px) {
+  .dashboard-section-tabs {
+    position: static;
+  }
+
+  .dashboard-section-tabs button {
+    flex: 1 1 calc(50% - 6px);
+  }
+}
+
 .dashboard-reference-layout {
   display: flex;
   flex-direction: column;
@@ -300,7 +354,7 @@
 }
 
 .dashboard-gauge-label {
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 800;
   fill: #ffffff;
 }
@@ -326,44 +380,41 @@
   letter-spacing: 0.05em;
 }
 
-/* =====================================================
-   GRAPHIQUES EN COURBES — remplacent les anciennes barres
-   ===================================================== */
-
-.curve-chart-scroll {
-  width: 100%;
-  overflow-x: auto;
+/* Donut "Plans de maintenance par statut" — centré et agrandi,
+   cohérent avec la jauge de statut des tâches. */
+/* Carte donut : centrée verticalement pour combler l'espace vide
+   en bas quand la carte s'étire pour matcher la hauteur voisine. */
+.dashboard-donut-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.curve-chart-svg {
-  width: 100%;
-  height: 220px;
+.dashboard-donut-card .dashboard-donut {
+  flex: 1;
 }
 
-.curve-chart-value {
-  fill: #12365c;
-  font-size: 11px;
-  font-weight: 800;
+.dashboard-chart-card .dashboard-donut {
+  justify-content: center;
+  min-height: 240px;
+  padding: 10px 0;
 }
 
-.curve-chart-axis-label {
-  fill: #7c8a99;
-  font-size: 11px;
+.dashboard-chart-card .dashboard-donut-svg {
+  width: 200px;
+  height: 200px;
 }
 
-.stacked-area-scroll {
-  width: 100%;
-  overflow-x: auto;
+.dashboard-chart-card .dashboard-donut-total {
+  font-size: 32px;
 }
 
-.stacked-area-svg {
-  width: 100%;
-  height: 260px;
+.dashboard-chart-card .dashboard-donut-total-label {
+  font-size: 12px;
 }
 
-.stacked-area-axis-label {
-  fill: #66717b;
-  font-size: 11.5px;
+.dashboard-chart-card .dashboard-donut-legend-item {
+  font-size: 14px;
 }
 
 /* Tableau Top 10 */
@@ -593,14 +644,32 @@
   box-shadow: 0 3px 14px rgba(20, 48, 76, 0.05);
 }
 
-.dashboard-ranking-card h2 {
+.dashboard-ranking-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   padding: 18px 16px;
-  margin: 0;
-  color: #102b4c;
   background: #ffffff;
   border-bottom: 1px solid #eef1f4;
+}
+
+.dashboard-ranking-card-header h2 {
+  margin: 0;
+  color: #102b4c;
   font-size: 17px;
   font-weight: 800;
+}
+
+.dashboard-ranking-subtitle {
+  flex-shrink: 0;
+  color: #8b96a2;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.dashboard-ranking-subtitle strong {
+  color: #56636f;
 }
 
 .dashboard-ranking-table-wrapper {
@@ -726,7 +795,13 @@
 }
 
 @media (max-width: 700px) {
-  .dashboard-ranking-card h2 {
+  .dashboard-ranking-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .dashboard-ranking-card-header h2 {
     font-size: 17px;
   }
 
@@ -884,15 +959,15 @@
 
 .task-analysis-chart {
   position: relative;
-  height: 380px;
-  padding: 14px 18px 10px 44px;
+  height: 420px;
+  padding: 14px 18px 54px 44px;
   border-bottom: 1px solid #d8dde2;
   box-sizing: border-box;
 }
 
 .task-analysis-grid-lines {
   position: absolute;
-  inset: 14px 18px 10px 44px;
+  inset: 14px 18px 54px 44px;
   background-image:
     repeating-linear-gradient(
       to bottom,
@@ -912,16 +987,70 @@
   pointer-events: none;
 }
 
-.task-analysis-svg {
+.task-analysis-bars {
   position: relative;
   z-index: 1;
-  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 24px;
   height: 100%;
 }
 
-.task-analysis-axis-label-svg {
-  fill: #66717b;
+.task-analysis-column {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 48px;
+  flex: 1 0 115px;
+  min-width: 105px;
+  max-width: 170px;
+}
+
+.task-analysis-bar-zone {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+}
+
+.task-analysis-stacked-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  width: min(76%, 118px);
+  min-height: 3px;
+  overflow: visible;
+  border-radius: 4px 4px 0 0;
+}
+
+.task-analysis-segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2px;
+  opacity: 0.88;
+}
+
+.task-analysis-segment strong {
+  position: relative;
+  z-index: 2;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.task-analysis-axis-label {
+  display: block;
+  align-self: start;
+  padding-top: 12px;
+  overflow: hidden;
+  color: #66717b;
   font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 760px) {
