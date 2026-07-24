@@ -76,6 +76,7 @@ protected boolean shouldNotFilter(
             || path.matches("/api/equipment/[^/]+/image")
             || path.matches("/api/spare-parts/[^/]+/image")
             || path.matches("/api/suppliers/[^/]+/logo")
+            || path.matches("/api/supplier-catalog/items/[^/]+/image")
             || path.matches("/api/tasks/documents/[^/]+")
             || path.matches("/api/tasks/documents/[^/]+/preview")
             || path.matches("/api/activities/documents/[^/]+")

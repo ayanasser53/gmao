@@ -18,38 +18,46 @@ import {
   Upload,
 } from "lucide-react";
 
+import {
+  deleteSupplierCatalogItem,
+  getImportedSupplierCatalog,
+  importSupplierCatalog,
+  uploadSupplierCatalogItemImage,
+  type SupplierCatalogItemRequest,
+} from "../../services/supplierCatalogService";
+
 type CatalogItem = {
   id: number;
   equipment: string;
-  category: string;
-  brand: string;
-  manufacturerReference: string;
-  gtin: string;
+  category: string | null;
+  brand: string | null;
+  manufacturerReference: string | null;
+  gtin: string | null;
   supplierId: number;
+  image: string | null;
 };
 
 type CatalogSupplier = {
   id: number;
   name: string;
-  logo: string;
-  siren: string;
-  phone: string;
-  description: string;
+  logo: string | null;
+  siren: string | null;
+  phone: string | null;
+  description: string | null;
   official: boolean;
 };
 
 type StoredCatalog = {
   items: CatalogItem[];
   suppliers: CatalogSupplier[];
-  removedItemIds: number[];
 };
 
-const catalogStorageKey = "gmao-supplier-catalog-imports";
 const catalogItemsPerPage = 5;
+const BACKEND_URL = "http://localhost:8090";
 
 const officialSuppliers: CatalogSupplier[] = [
   {
-    id: 1,
+    id: -1,
     name: "RS Components SAS",
     logo: "RS",
     siren: "334 534 039 00030",
@@ -59,7 +67,7 @@ const officialSuppliers: CatalogSupplier[] = [
     official: true,
   },
   {
-    id: 2,
+    id: -2,
     name: "Rexel France",
     logo: "Rexel",
     siren: "309 304 616 00045",
@@ -69,7 +77,7 @@ const officialSuppliers: CatalogSupplier[] = [
     official: true,
   },
   {
-    id: 3,
+    id: -3,
     name: "Siemens Industry",
     logo: "Siemens",
     siren: "562 016 774 00030",
@@ -82,40 +90,44 @@ const officialSuppliers: CatalogSupplier[] = [
 
 const officialCatalogItems: CatalogItem[] = [
   {
-    id: 1,
+    id: -1,
     equipment: "Alphashield S1BH Small",
     category: "Vetements de protection",
     brand: "Alpha Solway",
     manufacturerReference: "Alphashield S1BH S",
     gtin: "",
-    supplierId: 1,
+    supplierId: -1,
+    image: null,
   },
   {
-    id: 2,
+    id: -2,
     equipment: "Connecteurs pour CI pas < 5mm - Weidmuller",
     category: "PROCESS INDUSTRIEL",
     brand: "Weidmuller",
     manufacturerReference: "",
     gtin: "4050118549942",
-    supplierId: 2,
+    supplierId: -2,
+    image: null,
   },
   {
-    id: 3,
+    id: -3,
     equipment: "500VA VALUE UPS",
     category: "Alimentations interruptibles",
     brand: "OPTI",
     manufacturerReference: "TS500B",
     gtin: "5056070937161",
-    supplierId: 1,
+    supplierId: -1,
+    image: null,
   },
   {
-    id: 4,
+    id: -4,
     equipment: "CABLE DE SIGNAUX PREEQUIPE",
     category: "Automatisme industriel",
     brand: "Siemens",
     manufacturerReference: "6FX50022DC101DB5",
     gtin: "",
-    supplierId: 3,
+    supplierId: -3,
+    image: null,
   },
 ];
 
@@ -196,30 +208,8 @@ function pickField(row: Record<string, unknown>, aliases: string[]) {
   return "";
 }
 
-function readStoredCatalog(): StoredCatalog {
-  try {
-    const storedValue = localStorage.getItem(catalogStorageKey);
-
-    if (!storedValue) {
-      return { items: [], suppliers: [], removedItemIds: [] };
-    }
-
-    const parsedValue = JSON.parse(storedValue) as Partial<StoredCatalog>;
-
-    return {
-      items: Array.isArray(parsedValue.items) ? parsedValue.items : [],
-      suppliers: Array.isArray(parsedValue.suppliers) ? parsedValue.suppliers : [],
-      removedItemIds: Array.isArray(parsedValue.removedItemIds)
-        ? parsedValue.removedItemIds
-        : [],
-    };
-  } catch {
-    return { items: [], suppliers: [], removedItemIds: [] };
-  }
-}
-
-function getLogoClass(logo: string) {
-  return logo.toLowerCase().replace(/[^a-z0-9]/g, "") || "import";
+function getLogoClass(logo: string | null) {
+  return (logo || "import").toLowerCase().replace(/[^a-z0-9]/g, "") || "import";
 }
 
 function getImportedLogo(name: string) {
@@ -235,13 +225,43 @@ function getImportedLogo(name: string) {
 function SupplierLogo({ supplier }: { supplier: CatalogSupplier }) {
   return (
     <div className={`catalog-logo catalog-logo-${getLogoClass(supplier.logo)}`}>
-      {supplier.logo}
+      {supplier.logo || getImportedLogo(supplier.name)}
     </div>
   );
 }
 
-function CatalogItemIcon({ category }: { category: string }) {
-  const lowerCategory = category.toLowerCase();
+function getCatalogImageUrl(image: string | null) {
+  if (!image) {
+    return null;
+  }
+
+  if (
+    image.startsWith("http://") ||
+    image.startsWith("https://") ||
+    image.startsWith("blob:")
+  ) {
+    return image;
+  }
+
+  return `${BACKEND_URL}${image.startsWith("/") ? image : `/${image}`}`;
+}
+
+function CatalogItemVisual({ item }: { item: CatalogItem }) {
+  const imageUrl = getCatalogImageUrl(item.image);
+
+  return (
+    <div className="catalog-item-visual">
+      {imageUrl ? (
+        <img src={imageUrl} alt={item.equipment} />
+      ) : (
+        <CatalogItemIcon category={item.category} />
+      )}
+    </div>
+  );
+}
+
+function CatalogItemIcon({ category }: { category: string | null }) {
+  const lowerCategory = (category || "").toLowerCase();
 
   if (lowerCategory.includes("vetement")) {
     return <Shirt size={38} />;
@@ -262,13 +282,15 @@ function SupplierCatalogPage() {
   const [search, setSearch] = useState("");
   const [selectedOption, setSelectedOption] = useState("all");
   const [selectedSupplier, setSelectedSupplier] = useState<CatalogSupplier | null>(null);
-  const [storedCatalog, setStoredCatalog] = useState<StoredCatalog>(() =>
-    readStoredCatalog(),
-  );
+  const [storedCatalog, setStoredCatalog] = useState<StoredCatalog>({
+    items: [],
+    suppliers: [],
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const suppliers = useMemo(
     () => [...officialSuppliers, ...storedCatalog.suppliers],
@@ -276,11 +298,8 @@ function SupplierCatalogPage() {
   );
 
   const catalogItems = useMemo(
-    () =>
-      [...officialCatalogItems, ...storedCatalog.items].filter(
-        (item) => !storedCatalog.removedItemIds.includes(item.id),
-      ),
-    [storedCatalog.items, storedCatalog.removedItemIds],
+    () => [...officialCatalogItems, ...storedCatalog.items],
+    [storedCatalog.items],
   );
 
   const supplierById = useMemo(() => {
@@ -298,8 +317,17 @@ function SupplierCatalogPage() {
   }, [catalogItems]);
 
   useEffect(() => {
-    localStorage.setItem(catalogStorageKey, JSON.stringify(storedCatalog));
-  }, [storedCatalog]);
+    getImportedSupplierCatalog()
+      .then((catalog) => {
+        setStoredCatalog({
+          items: catalog.items,
+          suppliers: catalog.suppliers,
+        });
+      })
+      .catch(() => {
+        setImportError("Impossible de charger le catalogue importe depuis la base.");
+      });
+  }, []);
 
   const getSupplier = useCallback(
     (id: number) => supplierById.get(id) ?? officialSuppliers[0],
@@ -320,7 +348,7 @@ function SupplierCatalogPage() {
         supplier.name,
       ];
       const matchesSearch =
-        !value || fields.some((field) => field.toLowerCase().includes(value));
+        !value || fields.some((field) => String(field ?? "").toLowerCase().includes(value));
 
       if (selectedOption === "official") {
         return matchesSearch && supplier.official;
@@ -397,15 +425,7 @@ function SupplierCatalogPage() {
         throw new Error("empty");
       }
 
-      const supplierMap = new Map<string, CatalogSupplier>();
-      const nextSuppliers = [...storedCatalog.suppliers];
-      const nextItems: CatalogItem[] = [];
-      let nextSupplierId = Math.max(...suppliers.map((supplier) => supplier.id), 0) + 1;
-      let nextItemId = Math.max(...catalogItems.map((item) => item.id), 0) + 1;
-
-      suppliers.forEach((supplier) => {
-        supplierMap.set(supplier.name.trim().toLowerCase(), supplier);
-      });
+      const importItems: SupplierCatalogItemRequest[] = [];
 
       rows.forEach((rawRow: unknown) => {
         const row = rawRow as Record<string, unknown>;
@@ -424,26 +444,8 @@ function SupplierCatalogPage() {
         const supplierName =
           pickField(row, ["fournisseur", "supplier", "supplierName"]) ||
           "Fournisseur importe";
-        const supplierKey = supplierName.toLowerCase();
-        let supplier = supplierMap.get(supplierKey);
 
-        if (!supplier) {
-          supplier = {
-            id: nextSupplierId,
-            name: supplierName,
-            logo: getImportedLogo(supplierName),
-            siren: pickField(row, ["siren", "siret"]),
-            phone: pickField(row, ["telephone", "phone"]),
-            description: pickField(row, ["description"]),
-            official: false,
-          };
-          nextSupplierId += 1;
-          nextSuppliers.push(supplier);
-          supplierMap.set(supplierKey, supplier);
-        }
-
-        nextItems.push({
-          id: nextItemId,
+        importItems.push({
           equipment,
           category: pickField(row, ["categorie", "category"]),
           brand: pickField(row, ["marque", "brand"]),
@@ -455,23 +457,35 @@ function SupplierCatalogPage() {
             "ref fabricant",
           ]),
           gtin: pickField(row, ["gtin", "ean", "codeGtinEan", "code gtin ean"]),
-          supplierId: supplier.id,
+          supplierName,
+          supplierLogo:
+            pickField(row, [
+              "logoFournisseur",
+              "logo fournisseur",
+              "supplierLogo",
+              "supplier logo",
+              "logo",
+            ]) || getImportedLogo(supplierName),
+          supplierSiren: pickField(row, ["siren", "siret"]),
+          supplierPhone: pickField(row, ["telephone", "phone"]),
+          supplierDescription: pickField(row, ["description"]),
+          image: pickField(row, ["image", "photo", "imageUrl", "image url"]),
         });
-        nextItemId += 1;
       });
 
-      if (nextItems.length === 0) {
+      if (importItems.length === 0) {
         throw new Error("empty");
       }
 
-      setStoredCatalog((currentCatalog) => ({
-        suppliers: nextSuppliers,
-        items: [...currentCatalog.items, ...nextItems],
-        removedItemIds: currentCatalog.removedItemIds,
-      }));
+      const savedCatalog = await importSupplierCatalog(importItems);
+
+      setStoredCatalog({
+        suppliers: savedCatalog.suppliers,
+        items: savedCatalog.items,
+      });
       setSelectedOption("all");
       setImportMessage(
-        `${nextItems.length.toLocaleString("fr-FR")} reference(s) importee(s).`,
+        `${importItems.length.toLocaleString("fr-FR")} reference(s) importee(s) dans MySQL.`,
       );
     } catch {
       setImportError(
@@ -496,22 +510,70 @@ function SupplierCatalogPage() {
     }
   }
 
-  function deleteCatalogItem(item: CatalogItem) {
+  async function deleteCatalogItem(item: CatalogItem) {
+    if (item.id <= 0) {
+      setImportError("Les references officielles ne sont pas supprimees localement.");
+      setImportMessage("");
+      return;
+    }
+
     const confirmed = window.confirm(`Supprimer la reference "${item.equipment}" ?`);
 
     if (!confirmed) {
       return;
     }
 
-    setStoredCatalog((currentCatalog) => ({
-      suppliers: currentCatalog.suppliers,
-      items: currentCatalog.items.filter((currentItem) => currentItem.id !== item.id),
-      removedItemIds: currentCatalog.removedItemIds.includes(item.id)
-        ? currentCatalog.removedItemIds
-        : [...currentCatalog.removedItemIds, item.id],
-    }));
-    setImportMessage("Reference supprimee.");
-    setImportError("");
+    try {
+      await deleteSupplierCatalogItem(item.id);
+
+      setStoredCatalog((currentCatalog) => ({
+        suppliers: currentCatalog.suppliers,
+        items: currentCatalog.items.filter((currentItem) => currentItem.id !== item.id),
+      }));
+      setImportMessage("Reference supprimee.");
+      setImportError("");
+    } catch {
+      setImportError("Suppression impossible dans la base.");
+      setImportMessage("");
+    }
+  }
+
+  async function uploadCatalogImage(item: CatalogItem, file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    if (item.id <= 0) {
+      setImportError("Importez d'abord cette reference dans MySQL avant d'ajouter une photo.");
+      setImportMessage("");
+      return;
+    }
+
+    try {
+      const updatedItem = await uploadSupplierCatalogItemImage(item.id, file);
+
+      setStoredCatalog((currentCatalog) => ({
+        suppliers: currentCatalog.suppliers,
+        items: currentCatalog.items.map((currentItem) =>
+          currentItem.id === updatedItem.id
+            ? {
+                ...currentItem,
+                image: updatedItem.image,
+              }
+            : currentItem,
+        ),
+      }));
+      setImportMessage("Photo catalogue enregistree dans MySQL.");
+      setImportError("");
+    } catch {
+      setImportError("Enregistrement de la photo impossible.");
+      setImportMessage("");
+    } finally {
+      const input = imageInputRefs.current[item.id];
+      if (input) {
+        input.value = "";
+      }
+    }
   }
 
   if (selectedSupplier) {
@@ -657,9 +719,7 @@ function SupplierCatalogPage() {
                 return (
                   <tr key={item.id}>
                     <td>
-                      <div className="catalog-item-visual">
-                        <CatalogItemIcon category={item.category} />
-                      </div>
+                      <CatalogItemVisual item={item} />
                     </td>
                     <td>
                       <button
@@ -702,11 +762,29 @@ function SupplierCatalogPage() {
                         >
                           <Copy size={19} />
                         </button>
+                        <input
+                          ref={(element) => {
+                            imageInputRefs.current[item.id] = element;
+                          }}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="catalog-import-input"
+                          onChange={(event) =>
+                            void uploadCatalogImage(item, event.target.files?.[0] ?? null)
+                          }
+                        />
+                        <button
+                          type="button"
+                          aria-label="Ajouter une photo catalogue"
+                          onClick={() => imageInputRefs.current[item.id]?.click()}
+                        >
+                          <Upload size={19} />
+                        </button>
                         <button
                           type="button"
                           className="catalog-delete-action"
                           aria-label="Supprimer la reference"
-                          onClick={() => deleteCatalogItem(item)}
+                          onClick={() => void deleteCatalogItem(item)}
                         >
                           <Trash2 size={19} />
                         </button>

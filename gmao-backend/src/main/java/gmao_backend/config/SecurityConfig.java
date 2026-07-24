@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/equipment/*/image").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/spare-parts/*/image").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/suppliers/*/logo").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/supplier-catalog/items/*/image").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tasks/documents/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tasks/documents/*/preview").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/activities/documents/*").permitAll()

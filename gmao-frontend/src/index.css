@@ -5305,6 +5305,13 @@ button.linked-compact-row:hover {
   border-radius: 4px;
 }
 
+.catalog-item-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
 .catalog-link-button,
 .catalog-supplier-cell {
   color: #006fb7;
