@@ -37,6 +37,11 @@ public class UserController {
         return ResponseEntity.ok(userService.findAllDetailed());
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<UserDetailResponse> findCurrentUser() {
+        return ResponseEntity.ok(userService.findCurrentUser());
+    }
+
     @PostMapping
     public ResponseEntity<UserDetailResponse> invite(@RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.invite(request));

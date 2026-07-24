@@ -8,10 +8,11 @@ import com.gmao.gmao_backend.tag.TagRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -25,15 +26,26 @@ public class UserService {
     private final TagRepository tagRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String TEMP_PASSWORD_CHARS =
-            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
-
+    @Transactional(readOnly = true)
     public List<UserDetailResponse> findAllDetailed() {
         return userRepository.findAll()
                 .stream()
                 .map(this::toDetailResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UserDetailResponse findCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            throw new ResourceNotFoundException("Utilisateur connecte introuvable.");
+        }
+
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecte introuvable."));
+
+        return toDetailResponse(user);
     }
 
     @Transactional
@@ -44,11 +56,16 @@ public class UserService {
             throw new EmailAlreadyExistsException();
         }
 
+        if (request.password() == null || request.password().length() < 6) {
+            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caracteres.");
+        }
+
         User user = User.builder()
                 .firstName(request.firstName().trim())
                 .lastName(request.lastName().trim())
                 .email(normalizedEmail)
-                .password(passwordEncoder.encode(generateTempPassword()))
+                .phone(normalizeNullable(request.phone()))
+                .password(passwordEncoder.encode(request.password()))
                 .role(request.role() == null ? Role.TECHNICIAN : request.role())
                 .hourlyRate(request.hourlyRate())
                 .active(true)
@@ -73,6 +90,16 @@ public class UserService {
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastName().trim());
         user.setEmail(normalizedEmail);
+        if (request.phone() != null) {
+            user.setPhone(normalizeNullable(request.phone()));
+        }
+        if (request.password() != null && !request.password().isBlank()) {
+            if (request.password().length() < 6) {
+                throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caracteres.");
+            }
+
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
         user.setRole(request.role() == null ? user.getRole() : request.role());
         user.setHourlyRate(request.hourlyRate());
         user.setTags(resolveTags(request.tagIds()));
@@ -96,16 +123,12 @@ public class UserService {
         return new HashSet<>(tagRepository.findAllById(tagIds));
     }
 
-    private String generateTempPassword() {
-        StringBuilder builder = new StringBuilder(12);
-
-        for (int i = 0; i < 12; i++) {
-            builder.append(
-                    TEMP_PASSWORD_CHARS.charAt(RANDOM.nextInt(TEMP_PASSWORD_CHARS.length()))
-            );
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
 
-        return builder.toString();
+        return value.trim();
     }
 
     private UserDetailResponse toDetailResponse(User user) {
@@ -124,6 +147,7 @@ public class UserService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getPhone(),
                 user.getPhoto(),
                 user.getRole(),
                 user.getHourlyRate(),

@@ -29,6 +29,13 @@ public class TaskController {
         );
     }
 
+    @GetMapping("/my-created")
+    public ResponseEntity<List<TaskListItemResponse>> findMyCreatedTasks() {
+        return ResponseEntity.ok(
+                taskService.findMyCreatedTasks()
+        );
+    }
+
     @GetMapping("/summary")
     public ResponseEntity<TaskSummaryResponse> findSummary() {
         return ResponseEntity.ok(

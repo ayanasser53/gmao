@@ -9,6 +9,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
    List<Task> findAllByOrderByCreatedAtDesc();
 
+    List<Task> findAllByCreatedByIdOrderByCreatedAtDesc(Long createdById);
+
     boolean existsByEquipmentId(Long equipmentId);
 
     @Query(

@@ -123,18 +123,8 @@ public class TaskMapper {
      * marked DONE is never considered late or planned.
      */
     private TaskStatus resolveDisplayStatus(Task task) {
-        if (task.getStatus() == TaskStatus.DONE) {
-            return TaskStatus.DONE;
-        }
-
-        LocalTime startTime = task.isAllDay() || task.getStartHour() == null
-                ? LocalTime.of(0, 0)
-                : task.getStartHour();
-
-        LocalDateTime startDateTime = task.getStartDate().atTime(startTime);
-
-        if (startDateTime.isAfter(LocalDateTime.now())) {
-            return TaskStatus.PLANNED;
+        if (task.getStatus() == TaskStatus.PLANNED || task.getStatus() == TaskStatus.DONE) {
+            return task.getStatus();
         }
 
         LocalTime endTime = task.isAllDay() || task.getEndHour() == null

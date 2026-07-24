@@ -18,8 +18,17 @@ import {
 
 import type {
   ApiErrorResponse,
+  AuthResponse,
   LoginRequest,
 } from "../types/auth";
+
+function getStartPath(authData: AuthResponse): string {
+  if (authData.role === "PRODUCTION") {
+    return "/operator";
+  }
+
+  return "/admin/dashboard";
+}
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -53,9 +62,9 @@ function LoginPage() {
 
       saveAuthentication(authData);
 
-      navigate("/admin/dashboard", {
-  replace: true,
-});
+      navigate(getStartPath(authData), {
+        replace: true,
+      });
     } catch (requestError) {
       const axiosError =
         requestError as AxiosError<ApiErrorResponse>;

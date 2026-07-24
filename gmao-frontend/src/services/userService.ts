@@ -11,6 +11,11 @@ export async function getUsersDetailed(): Promise<UserDetail[]> {
   return response.data;
 }
 
+export async function getCurrentUser(): Promise<UserDetail> {
+  const response = await api.get<UserDetail>("/users/me");
+  return response.data;
+}
+
 export async function inviteUser(payload: UserRequest): Promise<UserDetail> {
   const response = await api.post<UserDetail>("/users", payload);
   return response.data;

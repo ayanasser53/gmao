@@ -7,6 +7,7 @@ import {
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./layouts/AdminLayout";
+import OperatorLayout from "./layouts/OperatorLayout";
 import TaskListPage from "./pages/admin/TaskListPage";
 import TaskDetailsPage from "./pages/admin/TaskDetailsPage";
 import TaskCreatePage from "./pages/admin/TaskCreatePage";
@@ -14,10 +15,10 @@ import TaskCreatePage from "./pages/admin/TaskCreatePage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
 
 import DashboardPage from "./pages/admin/DashboardPage";
 import NotificationsPage from "./pages/admin/NotificationsPage";
-import ModulePlaceholderPage from "./pages/admin/ModulePlaceholderPage";
 
 import EquipmentPage from "./pages/admin/EquipmentPage";
 import EquipmentDetailsPage from "./pages/admin/EquipmentDetailsPage";
@@ -52,6 +53,20 @@ import CreateTeamPage from "./pages/admin/CreateTeamPage";
 import PurchaseOrdersPage from "./pages/admin/PurchaseOrdersPage";
 import PurchaseOrderCreatePage from "./pages/admin/PurchaseOrderCreatePage";
 import PurchaseOrderDetailsPage from "./pages/admin/PurchaseOrderDetailsPage";
+import OperatorCreateTaskPage from "./pages/operator/OperatorCreateTaskPage";
+import OperatorDashboardPage from "./pages/operator/OperatorDashboardPage";
+import OperatorTaskDetailsPage from "./pages/operator/OperatorTaskDetailsPage";
+import OperatorTasksPage from "./pages/operator/OperatorTasksPage";
+import { getAuthenticatedRole } from "./services/authService";
+
+function DashboardRedirect() {
+  return (
+    <Navigate
+      to={getAuthenticatedRole() === "PRODUCTION" ? "/operator" : "/admin/dashboard"}
+      replace
+    />
+  );
+}
 
 function App() {
   return (
@@ -74,7 +89,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -265,9 +280,7 @@ function App() {
 
           <Route
             path="profile"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<ProfilePage />}
           />
 
           {/* Route inconnue dans /admin */}
@@ -282,15 +295,26 @@ function App() {
           />
         </Route>
 
+        <Route
+          path="/operator"
+          element={
+            <ProtectedRoute allowedRoles={["PRODUCTION"]}>
+              <OperatorLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<OperatorDashboardPage />} />
+          <Route path="tasks" element={<OperatorTasksPage />} />
+          <Route path="tasks/new" element={<OperatorCreateTaskPage />} />
+          <Route path="tasks/:id" element={<OperatorTaskDetailsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/operator" replace />} />
+        </Route>
+
         {/* Ancienne route dashboard */}
         <Route
           path="/dashboard"
-          element={
-            <Navigate
-              to="/admin/dashboard"
-              replace
-            />
-          }
+          element={<DashboardRedirect />}
         />
 
         {/* Route générale inconnue */}

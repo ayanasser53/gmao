@@ -1,3 +1,4 @@
+import api from "./api";
 import type {
   PurchaseOrder,
   PurchaseOrderRequest,
@@ -5,8 +6,27 @@ import type {
 } from "../types/purchaseOrder";
 
 const STORAGE_KEY = "gmao_purchase_orders";
+const MIGRATION_KEY = "gmao_purchase_orders_migrated_to_mysql";
 
-function readOrders(): PurchaseOrder[] {
+type PurchaseOrderApiResponse = Omit<PurchaseOrder, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+function toPurchaseOrder(order: PurchaseOrderApiResponse): PurchaseOrder {
+  return {
+    ...order,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    lines: order.lines.map((line) => ({
+      ...line,
+      quantity: Number(line.quantity),
+      unitPrice: Number(line.unitPrice),
+    })),
+  };
+}
+
+function readLocalOrders(): PurchaseOrder[] {
   const rawValue = localStorage.getItem(STORAGE_KEY);
 
   if (!rawValue) {
@@ -20,110 +40,86 @@ function readOrders(): PurchaseOrder[] {
   }
 }
 
-function writeOrders(orders: PurchaseOrder[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-}
+async function migrateLocalOrders(remoteOrders: PurchaseOrder[]): Promise<PurchaseOrder[]> {
+  if (localStorage.getItem(MIGRATION_KEY) === "true") {
+    return remoteOrders;
+  }
 
-function nextReference(orders: PurchaseOrder[]): string {
-  const year = new Date().getFullYear();
-  const countForYear = orders.filter((order) =>
-    order.reference.startsWith(`PO-${year}-`),
-  ).length;
+  const localOrders = readLocalOrders();
 
-  return `PO-${year}-${String(countForYear + 1).padStart(4, "0")}`;
+  if (localOrders.length === 0) {
+    localStorage.setItem(MIGRATION_KEY, "true");
+    return remoteOrders;
+  }
+
+  const remoteIds = new Set(remoteOrders.map((order) => order.id));
+  const ordersToMigrate = localOrders.filter((order) => !remoteIds.has(order.id));
+
+  if (ordersToMigrate.length === 0) {
+    localStorage.setItem(MIGRATION_KEY, "true");
+    return remoteOrders;
+  }
+
+  for (const order of ordersToMigrate) {
+    await api.post<PurchaseOrderApiResponse>("/purchase-orders", {
+      id: order.id,
+      reference: order.reference,
+      supplierId: order.supplierId,
+      supplierName: order.supplierName,
+      expectedDeliveryDate: order.expectedDeliveryDate,
+      notes: order.notes,
+      status: order.status,
+      lines: order.lines,
+    });
+  }
+
+  localStorage.setItem(MIGRATION_KEY, "true");
+
+  const response = await api.get<PurchaseOrderApiResponse[]>("/purchase-orders");
+  return response.data.map(toPurchaseOrder);
 }
 
 export async function getPurchaseOrders(): Promise<PurchaseOrder[]> {
-  return readOrders().sort((first, second) =>
-    second.createdAt.localeCompare(first.createdAt),
-  );
+  const response = await api.get<PurchaseOrderApiResponse[]>("/purchase-orders");
+  return migrateLocalOrders(response.data.map(toPurchaseOrder));
 }
 
 export async function getPurchaseOrderById(id: string): Promise<PurchaseOrder> {
-  const order = readOrders().find((item) => item.id === id);
-
-  if (!order) {
-    throw new Error("Commande introuvable.");
-  }
-
-  return order;
+  const response = await api.get<PurchaseOrderApiResponse>(`/purchase-orders/${id}`);
+  return toPurchaseOrder(response.data);
 }
 
 export async function createPurchaseOrder(
   request: PurchaseOrderRequest,
 ): Promise<PurchaseOrder> {
-  const orders = readOrders();
-  const now = new Date().toISOString();
-
-  const order: PurchaseOrder = {
-    id: crypto.randomUUID(),
-    reference: request.reference.trim() || nextReference(orders),
-    supplierId: request.supplierId,
-    supplierName: request.supplierName,
-    expectedDeliveryDate: request.expectedDeliveryDate,
-    notes: request.notes,
-    status: "DRAFT",
-    lines: request.lines,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  writeOrders([order, ...orders]);
-
-  return order;
+  const response = await api.post<PurchaseOrderApiResponse>("/purchase-orders", request);
+  return toPurchaseOrder(response.data);
 }
 
 export async function updatePurchaseOrderStatus(
   id: string,
   status: Exclude<PurchaseOrderStatus, "ALL">,
 ): Promise<PurchaseOrder> {
-  const orders = readOrders();
-  const updatedOrders = orders.map((order) =>
-    order.id === id
-      ? {
-          ...order,
-          status,
-          updatedAt: new Date().toISOString(),
-        }
-      : order,
+  const response = await api.patch<PurchaseOrderApiResponse>(
+    `/purchase-orders/${id}/status`,
+    { status },
   );
-  const updatedOrder = updatedOrders.find((order) => order.id === id);
 
-  if (!updatedOrder) {
-    throw new Error("Commande introuvable.");
-  }
-
-  writeOrders(updatedOrders);
-
-  return updatedOrder;
+  return toPurchaseOrder(response.data);
 }
 
 export async function updatePurchaseOrder(
   id: string,
   data: Partial<PurchaseOrder>,
 ): Promise<PurchaseOrder> {
-  const orders = readOrders();
-  const updatedOrders = orders.map((order) =>
-    order.id === id
-      ? {
-          ...order,
-          ...data,
-          updatedAt: new Date().toISOString(),
-        }
-      : order,
+  const response = await api.put<PurchaseOrderApiResponse>(
+    `/purchase-orders/${id}`,
+    data,
   );
-  const updatedOrder = updatedOrders.find((order) => order.id === id);
 
-  if (!updatedOrder) {
-    throw new Error("Commande introuvable.");
-  }
-
-  writeOrders(updatedOrders);
-
-  return updatedOrder;
+  return toPurchaseOrder(response.data);
 }
 
 export async function deletePurchaseOrder(id: string): Promise<void> {
-  const orders = readOrders();
-  writeOrders(orders.filter((order) => order.id !== id));
+  await api.delete(`/purchase-orders/${id}`);
 }

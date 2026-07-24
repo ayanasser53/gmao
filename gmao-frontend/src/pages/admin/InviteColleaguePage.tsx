@@ -60,6 +60,7 @@ function InviteColleaguePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [tags, setTags] = useState<Tag[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
@@ -118,6 +119,16 @@ function InviteColleaguePage() {
       return;
     }
 
+    if (!isEdit && password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caracteres.");
+      return;
+    }
+
+    if (isEdit && password && password.length < 6) {
+      setError("Le nouveau mot de passe doit contenir au moins 6 caracteres.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -125,6 +136,7 @@ function InviteColleaguePage() {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
+      password: password || undefined,
       role,
       hourlyRate: hourlyRate ? Number(hourlyRate) : null,
       tagIds,
@@ -294,6 +306,22 @@ function InviteColleaguePage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@exemple.com"
+                />
+              </div>
+
+              <div className="measure-form-group">
+                <label>
+                  Mot de passe {!isEdit && <span>*</span>}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={
+                    isEdit
+                      ? "Laisser vide pour ne pas changer"
+                      : "Au moins 6 caracteres"
+                  }
                 />
               </div>
 

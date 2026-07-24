@@ -47,6 +47,13 @@ export async function getTasks(): Promise<TaskListItem[]> {
   return handle<TaskListItem[]>(response);
 }
 
+export async function getMyCreatedTasks(): Promise<TaskListItem[]> {
+  const response = await fetch(`${BACKEND_URL}/api/tasks/my-created`, {
+    headers: authHeaders(),
+  });
+  return handle<TaskListItem[]>(response);
+}
+
 export async function getTaskSummary(): Promise<TaskSummary> {
   const response = await fetch(`${BACKEND_URL}/api/tasks/summary`, {
     headers: authHeaders(),

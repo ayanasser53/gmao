@@ -29,6 +29,7 @@ export interface UserDetail {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string | null;
   photo: string | null;
   role: UserRole;
   hourlyRate: number | null;
@@ -41,6 +42,8 @@ export interface UserRequest {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string | null;
+  password?: string;
   role: UserRole;
   hourlyRate: number | null;
   tagIds: number[];

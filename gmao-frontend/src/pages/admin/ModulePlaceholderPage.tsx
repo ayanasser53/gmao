@@ -18,6 +18,7 @@ const titles: Record<string, string> = {
   "/admin/teams": "Équipes",
   "/admin/notifications": "Notifications",
   "/admin/profile": "Mon profil",
+  "/operator/profile": "Mon profil",
   "/admin/maintenance-plans": "Plans de maintenance",
   "/admin/measures": "Mesures",
 "/admin/tags": "Tags",

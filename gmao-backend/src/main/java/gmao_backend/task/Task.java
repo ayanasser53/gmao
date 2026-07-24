@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.user.User;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,6 +38,10 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "equipment_id", nullable = false)
     private Equipment equipment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
+    private User createdBy;
 
     @Column(columnDefinition = "TEXT")
     private String description;

@@ -23,6 +23,8 @@ import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -60,6 +62,17 @@ public class TaskService {
     public List<TaskListItemResponse> findAll() {
         return taskRepository
                .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(mapper::toListItemResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskListItemResponse> findMyCreatedTasks() {
+        User currentUser = resolveCurrentUser();
+
+        return taskRepository
+                .findAllByCreatedByIdOrderByCreatedAtDesc(currentUser.getId())
                 .stream()
                 .map(mapper::toListItemResponse)
                 .toList();
@@ -128,6 +141,8 @@ public class TaskService {
 
                 .equipment(resolveEquipment(request.equipmentId()))
 
+                .createdBy(resolveCurrentUserOrNull())
+
                 .description(request.description().trim())
 
                 .allDay(request.allDay())
@@ -148,7 +163,7 @@ public class TaskService {
 
                 .plannedStoppedMinutes(request.plannedStoppedMinutes())
 
-                .status(TaskStatus.IN_PROGRESS)
+                .status(TaskStatus.PLANNED)
 
                 .tags(resolveTags(request.tagIds()))
 
@@ -288,6 +303,28 @@ public class TaskService {
                                 "Équipement introuvable."
                         )
                 );
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            throw new ResourceNotFoundException("Utilisateur connecte introuvable.");
+        }
+
+        return userRepository
+                .findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecte introuvable."));
+    }
+
+    private User resolveCurrentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            return null;
+        }
+
+        return userRepository.findByEmail(authentication.getName()).orElse(null);
     }
 
     private Set<Tag> resolveTags(Set<Long> ids) {

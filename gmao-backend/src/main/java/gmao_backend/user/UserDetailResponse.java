@@ -8,6 +8,7 @@ public record UserDetailResponse(
         String firstName,
         String lastName,
         String email,
+        String phone,
         String photo,
         Role role,
         BigDecimal hourlyRate,

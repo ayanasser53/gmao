@@ -69,6 +69,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/activities/documents/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/activities/documents/*/preview").permitAll()
 
+                        // Seuls les roles maintenance pilotent l'avancement des taches
+                        .requestMatchers(HttpMethod.PATCH, "/api/tasks/*/status")
+                        .hasAnyRole("ADMIN", "TECHNICIAN")
+
                         // Toutes les autres routes demandent un JWT
                         .anyRequest().authenticated()
                 )

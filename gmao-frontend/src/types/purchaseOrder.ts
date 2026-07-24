@@ -34,10 +34,12 @@ export interface PurchaseOrder {
 }
 
 export interface PurchaseOrderRequest {
+  id?: string;
   reference: string;
   supplierId: number | null;
   supplierName: string | null;
   expectedDeliveryDate: string | null;
   notes: string;
+  status?: Exclude<PurchaseOrderStatus, "ALL">;
   lines: PurchaseOrderLine[];
 }
