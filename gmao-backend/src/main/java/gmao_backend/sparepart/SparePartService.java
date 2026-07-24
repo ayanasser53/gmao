@@ -4,6 +4,8 @@ import com.gmao.gmao_backend.costcenter.CostCenterRepository;
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
+import com.gmao.gmao_backend.storage.DatabaseFile;
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
 import com.gmao.gmao_backend.tag.Tag;
@@ -73,7 +75,6 @@ public class SparePartService {
                 .code(code)
                 .manufacturerReference(request.manufacturerReference())
                 .brand(request.brand())
-                .image(resolveImage(request.image(), image, null))
                 .unitPrice(defaultDecimal(request.unitPrice()))
                 .currency(defaultCurrency(request.currency()))
                 .quantity(defaultDecimal(request.quantity()))
@@ -90,9 +91,12 @@ public class SparePartService {
                 .linkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), null))
                 .build();
 
+        applyImage(sparePart, request.image(), image);
+
         SparePart savedSparePart = sparePartRepository.save(sparePart);
         syncLinkedEquipment(savedSparePart, request.linkedEquipmentIds());
         SparePart refreshedSparePart = sparePartRepository.save(savedSparePart);
+        updateImageUrl(refreshedSparePart);
 
         return toResponse(refreshedSparePart);
     }
@@ -121,7 +125,7 @@ public class SparePartService {
         sparePart.setDescription(request.description());
         sparePart.setManufacturerReference(request.manufacturerReference());
         sparePart.setBrand(request.brand());
-        sparePart.setImage(resolveImage(request.image(), image, sparePart.getImage()));
+        applyImage(sparePart, request.image(), image);
         sparePart.setUnitPrice(defaultDecimal(request.unitPrice()));
         sparePart.setCurrency(defaultCurrency(request.currency()));
         sparePart.setQuantity(defaultDecimal(request.quantity()));
@@ -139,15 +143,29 @@ public class SparePartService {
 
         syncLinkedEquipment(sparePart, request.linkedEquipmentIds());
         SparePart savedSparePart = sparePartRepository.save(sparePart);
+        updateImageUrl(savedSparePart);
 
         return toResponse(savedSparePart);
     }
 
     public void delete(Long id) {
         SparePart sparePart = getSparePart(id);
-        fileStorageService.delete(sparePart.getImage(), "spare-parts");
         syncLinkedEquipment(sparePart, List.of());
         sparePartRepository.delete(sparePart);
+    }
+
+    public ServedDatabaseFile getImage(Long id) {
+        SparePart sparePart = getSparePart(id);
+
+        if (sparePart.getImageData() == null || sparePart.getImageData().length == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+        }
+
+        return new ServedDatabaseFile(
+                sparePart.getImageName() != null ? sparePart.getImageName() : "spare-part-image",
+                sparePart.getImageContentType(),
+                sparePart.getImageData()
+        );
     }
 
     /**
@@ -280,13 +298,35 @@ public class SparePartService {
                 .toList();
     }
 
-    private String resolveImage(String requestImage, MultipartFile image, String currentImage) {
+    private void applyImage(SparePart sparePart, String requestImage, MultipartFile image) {
         if (image != null && !image.isEmpty()) {
-            fileStorageService.delete(currentImage, "spare-parts");
-            return fileStorageService.save(image, "spare-parts");
+            DatabaseFile databaseFile = fileStorageService.save(image);
+            sparePart.setImage("db-image");
+            sparePart.setImageName(databaseFile.fileName());
+            sparePart.setImageContentType(databaseFile.contentType());
+            sparePart.setImageSize((long) databaseFile.data().length);
+            sparePart.setImageData(databaseFile.data());
+            return;
         }
 
-        return requestImage;
+        if (requestImage == null || requestImage.isBlank()) {
+            sparePart.setImage(null);
+            sparePart.setImageName(null);
+            sparePart.setImageContentType(null);
+            sparePart.setImageSize(null);
+            sparePart.setImageData(null);
+            return;
+        }
+
+        if (sparePart.getImageData() == null) {
+            sparePart.setImage(requestImage);
+        }
+    }
+
+    private void updateImageUrl(SparePart sparePart) {
+        if (sparePart.getImageData() != null && sparePart.getId() != null) {
+            sparePart.setImage("/api/spare-parts/" + sparePart.getId() + "/image");
+        }
     }
 
     private SparePart getSparePart(Long id) {

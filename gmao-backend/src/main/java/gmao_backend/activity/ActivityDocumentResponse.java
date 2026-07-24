@@ -7,6 +7,8 @@ public record ActivityDocumentResponse(
         String fileName,
         String filePath,
         String fileType,
+        String previewPath,
+        String previewType,
         LocalDateTime uploadedAt
 ) {
 }

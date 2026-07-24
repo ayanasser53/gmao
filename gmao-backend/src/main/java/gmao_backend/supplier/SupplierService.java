@@ -3,6 +3,8 @@ package com.gmao.gmao_backend.supplier;
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
+import com.gmao.gmao_backend.storage.DatabaseFile;
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,10 +55,13 @@ public class SupplierService {
                 .city(request.city())
                 .country(request.country())
                 .visibility(request.visibility() != null ? request.visibility() : SupplierVisibility.PRIVATE)
-                .logoUrl(resolveLogo(request.logoUrl(), logo, null))
                 .build();
 
-        return toResponse(supplierRepository.save(supplier));
+        applyLogo(supplier, request.logoUrl(), logo);
+        Supplier savedSupplier = supplierRepository.save(supplier);
+        updateLogoUrl(savedSupplier);
+
+        return toResponse(savedSupplier);
     }
 
     public SupplierResponse update(Long id, SupplierRequest request) {
@@ -85,24 +90,60 @@ public class SupplierService {
         supplier.setCity(request.city());
         supplier.setCountry(request.country());
         supplier.setVisibility(request.visibility() != null ? request.visibility() : SupplierVisibility.PRIVATE);
-        supplier.setLogoUrl(resolveLogo(request.logoUrl(), logo, supplier.getLogoUrl()));
+        applyLogo(supplier, request.logoUrl(), logo);
+        updateLogoUrl(supplier);
 
         return toResponse(supplier);
     }
 
     public void delete(Long id) {
         Supplier supplier = findSupplierById(id);
-        fileStorageService.delete(supplier.getLogoUrl(), "suppliers");
         supplierRepository.delete(supplier);
     }
 
-    private String resolveLogo(String requestLogoUrl, MultipartFile logo, String currentLogoUrl) {
-        if (logo != null && !logo.isEmpty()) {
-            fileStorageService.delete(currentLogoUrl, "suppliers");
-            return fileStorageService.save(logo, "suppliers");
+    public ServedDatabaseFile getLogo(Long id) {
+        Supplier supplier = findSupplierById(id);
+
+        if (supplier.getLogoData() == null || supplier.getLogoData().length == 0) {
+            throw new ResourceNotFoundException("Logo not found");
         }
 
-        return requestLogoUrl;
+        return new ServedDatabaseFile(
+                supplier.getLogoName() != null ? supplier.getLogoName() : "supplier-logo",
+                supplier.getLogoContentType(),
+                supplier.getLogoData()
+        );
+    }
+
+    private void applyLogo(Supplier supplier, String requestLogoUrl, MultipartFile logo) {
+        if (logo != null && !logo.isEmpty()) {
+            DatabaseFile databaseFile = fileStorageService.save(logo);
+            supplier.setLogoUrl("db-logo");
+            supplier.setLogoName(databaseFile.fileName());
+            supplier.setLogoContentType(databaseFile.contentType());
+            supplier.setLogoSize((long) databaseFile.data().length);
+            supplier.setLogoData(databaseFile.data());
+            return;
+        }
+
+        if (requestLogoUrl == null || requestLogoUrl.isBlank()) {
+            supplier.setLogoUrl(null);
+            supplier.setLogoName(null);
+            supplier.setLogoContentType(null);
+            supplier.setLogoSize(null);
+            supplier.setLogoData(null);
+            return;
+        }
+
+        if (supplier.getLogoData() == null) {
+            supplier.setLogoUrl(requestLogoUrl);
+        }
+    }
+
+    private void updateLogoUrl(Supplier supplier) {
+        if (supplier.getLogoData() != null && supplier.getId() != null) {
+            supplier.setLogoUrl("/api/suppliers/" + supplier.getId() + "/logo");
+        }
     }
 
     private Supplier findSupplierById(Long id) {

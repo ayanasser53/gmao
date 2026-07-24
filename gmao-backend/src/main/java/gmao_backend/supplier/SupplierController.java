@@ -1,5 +1,6 @@
 package com.gmao.gmao_backend.supplier;
 
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,15 @@ public class SupplierController {
     @GetMapping("/{id}")
     public ResponseEntity<SupplierResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(supplierService.findById(id));
+    }
+
+    @GetMapping("/{id}/logo")
+    public ResponseEntity<byte[]> getLogo(@PathVariable Long id) {
+        ServedDatabaseFile logo = supplierService.getLogo(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(logo.contentType()))
+                .body(logo.data());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

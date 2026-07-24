@@ -6,6 +6,9 @@ import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovementRepository;
+import com.gmao.gmao_backend.storage.DatabaseFile;
+import com.gmao.gmao_backend.storage.OfficePreviewService;
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import com.gmao.gmao_backend.task.Task;
 import com.gmao.gmao_backend.task.TaskRepository;
 import com.gmao.gmao_backend.task.TaskStatus;
@@ -37,6 +40,8 @@ public class ActivityService {
     private final ActivityAdditionalCostRepository activityAdditionalCostRepository;
     private final ActivityMeasureReadingRepository activityMeasureReadingRepository;
     private final ActivityDocumentStorageService activityDocumentStorageService;
+    private final ActivityDocumentRepository activityDocumentRepository;
+    private final OfficePreviewService officePreviewService;
     private final MeasureRepository measureRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
 
@@ -73,6 +78,38 @@ public class ActivityService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public ServedDatabaseFile getDocument(Long documentId) {
+        ActivityDocument document = activityDocumentRepository
+                .findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document introuvable."));
+
+        if (document.getFileData() == null || document.getFileData().length == 0) {
+            throw new IllegalArgumentException("Fichier introuvable.");
+        }
+
+        return new ServedDatabaseFile(
+                document.getFileName(),
+                document.getFileType(),
+                document.getFileData()
+        );
+    }
+
+    public ServedDatabaseFile getDocumentPreview(Long documentId) {
+        ActivityDocument document = activityDocumentRepository
+                .findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document introuvable."));
+
+        if (document.getPreviewFileData() == null || document.getPreviewFileData().length == 0) {
+            throw new IllegalArgumentException("Apercu introuvable.");
+        }
+
+        return new ServedDatabaseFile(
+                document.getFileName().replaceFirst("\\.[^.]+$", ".pdf"),
+                document.getPreviewFileType(),
+                document.getPreviewFileData()
+        );
     }
 
     public ActivityResponse create(ActivityRequest request) {
@@ -240,24 +277,29 @@ public class ActivityService {
         }
 
         for (MultipartFile file : documents) {
-            String path = activityDocumentStorageService.save(file);
+            DatabaseFile databaseFile = activityDocumentStorageService.save(file);
 
-            if (path == null) {
+            if (databaseFile == null) {
                 continue;
             }
 
-            String fileName = file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()
-                    ? "document"
-                    : file.getOriginalFilename();
+            ActivityDocument document = ActivityDocument.builder()
+                    .activity(activity)
+                    .fileName(databaseFile.fileName())
+                    .filePath("db-file")
+                    .fileType(databaseFile.contentType())
+                    .fileSize((long) databaseFile.data().length)
+                    .fileData(databaseFile.data())
+                    .build();
 
-            activity.getDocuments().add(
-                    ActivityDocument.builder()
-                            .activity(activity)
-                            .fileName(fileName)
-                            .filePath(path)
-                            .fileType(file.getContentType())
-                            .build()
-            );
+            officePreviewService.createPdfPreview(databaseFile)
+                    .ifPresent(preview -> {
+                        document.setPreviewFileType(preview.contentType());
+                        document.setPreviewFileSize((long) preview.data().length);
+                        document.setPreviewFileData(preview.data());
+                    });
+
+            activity.getDocuments().add(document);
         }
 
         activityRepository.save(activity);
@@ -268,9 +310,6 @@ public class ActivityService {
             return;
         }
 
-        activity.getDocuments().forEach(
-                document -> activityDocumentStorageService.delete(document.getFilePath())
-        );
     }
 
     private void saveSpareParts(Activity activity, List<ActivitySparePartRequest> spareParts) {
@@ -454,8 +493,12 @@ public class ActivityService {
                 .map(document -> new ActivityDocumentResponse(
                         document.getId(),
                         document.getFileName(),
-                        document.getFilePath(),
+                        "/api/activities/documents/" + document.getId(),
                         document.getFileType(),
+                        document.getPreviewFileData() != null
+                                ? "/api/activities/documents/" + document.getId() + "/preview"
+                                : null,
+                        document.getPreviewFileType(),
                         document.getUploadedAt()
                 ))
                 .toList();

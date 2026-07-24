@@ -15,6 +15,8 @@ export interface PreviewDocument {
   name: string;
   type: string;
   url: string;
+  previewUrl?: string | null;
+  previewType?: string | null;
 }
 
 interface DocumentAttachmentFieldProps {
@@ -128,7 +130,7 @@ async function readZipEntryText(buffer: ArrayBuffer, entryName: string) {
 }
 
 async function readDocumentPreview(document: PreviewDocument) {
-  const response = await fetch(document.url);
+  const response = await fetch(document.previewUrl || document.url);
 
   if (isWordDocument(document)) {
     const xml = await readZipEntryText(await response.arrayBuffer(), "word/document.xml");
@@ -204,6 +206,9 @@ export function DocumentPreviewModal({
 
   if (!selectedDocument || selectedIndex === null) return null;
 
+  const displayUrl = selectedDocument.previewUrl || selectedDocument.url;
+  const displayType = selectedDocument.previewType || selectedDocument.type;
+
   const showPrevious = () =>
     onSelectIndex(selectedIndex === 0 ? documents.length - 1 : selectedIndex - 1);
   const showNext = () =>
@@ -252,10 +257,10 @@ export function DocumentPreviewModal({
             </button>
           )}
 
-          {selectedDocument.type.startsWith("image/") ? (
-            <img src={selectedDocument.url} alt={selectedDocument.name} />
-          ) : selectedDocument.type === "application/pdf" ? (
-            <iframe src={selectedDocument.url} title={selectedDocument.name} />
+          {displayType.startsWith("image/") ? (
+            <img src={displayUrl} alt={selectedDocument.name} />
+          ) : displayType === "application/pdf" ? (
+            <iframe src={displayUrl} title={selectedDocument.name} />
           ) : isWordDocument(selectedDocument) || isTextDocument(selectedDocument) ? (
             <div className="maintenance-document-text-preview">
               {isDocumentPreviewLoading ? (

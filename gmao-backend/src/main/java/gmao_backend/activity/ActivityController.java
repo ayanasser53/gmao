@@ -1,5 +1,6 @@
 package com.gmao.gmao_backend.activity;
 
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -42,6 +43,30 @@ public class ActivityController {
             @PathVariable Long taskId
     ) {
         return ResponseEntity.ok(activityService.findByTaskId(taskId));
+    }
+
+    @GetMapping("/activities/documents/{documentId}")
+    public ResponseEntity<byte[]> getDocument(
+            @PathVariable Long documentId
+    ) {
+        ServedDatabaseFile document = activityService.getDocument(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header("Content-Disposition", "attachment; filename=\"" + document.fileName() + "\"")
+                .body(document.data());
+    }
+
+    @GetMapping("/activities/documents/{documentId}/preview")
+    public ResponseEntity<byte[]> getDocumentPreview(
+            @PathVariable Long documentId
+    ) {
+        ServedDatabaseFile document = activityService.getDocumentPreview(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header("Content-Disposition", "inline; filename=\"" + document.fileName() + "\"")
+                .body(document.data());
     }
 
     @PostMapping(value = "/activities", consumes = MediaType.APPLICATION_JSON_VALUE)

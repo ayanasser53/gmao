@@ -28,6 +28,8 @@ export interface ActivityDocument {
   fileName: string;
   filePath: string;
   fileType: string | null;
+  previewPath: string | null;
+  previewType: string | null;
   uploadedAt: string;
 }
 

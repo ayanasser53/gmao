@@ -1,5 +1,6 @@
 package com.gmao.gmao_backend.task;
 
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,30 @@ public class TaskController {
         return ResponseEntity.ok(
                 taskService.findById(id)
         );
+    }
+
+    @GetMapping("/documents/{documentId}")
+    public ResponseEntity<byte[]> getDocument(
+            @PathVariable Long documentId
+    ) {
+        ServedDatabaseFile document = taskService.getDocument(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header("Content-Disposition", "attachment; filename=\"" + document.fileName() + "\"")
+                .body(document.data());
+    }
+
+    @GetMapping("/documents/{documentId}/preview")
+    public ResponseEntity<byte[]> getDocumentPreview(
+            @PathVariable Long documentId
+    ) {
+        ServedDatabaseFile document = taskService.getDocumentPreview(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header("Content-Disposition", "inline; filename=\"" + document.fileName() + "\"")
+                .body(document.data());
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

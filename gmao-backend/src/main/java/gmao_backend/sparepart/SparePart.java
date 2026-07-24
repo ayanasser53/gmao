@@ -41,6 +41,16 @@ public class SparePart {
 
     private String image;
 
+    private String imageName;
+
+    private String imageContentType;
+
+    private Long imageSize;
+
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] imageData;
+
     private BigDecimal unitPrice;
 
     private String currency;

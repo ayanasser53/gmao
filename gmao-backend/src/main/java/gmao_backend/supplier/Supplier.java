@@ -73,6 +73,19 @@ public class Supplier {
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
+    @Column(name = "logo_name", length = 255)
+    private String logoName;
+
+    @Column(name = "logo_content_type", length = 100)
+    private String logoContentType;
+
+    @Column(name = "logo_size")
+    private Long logoSize;
+
+    @Lob
+    @Column(name = "logo_data", columnDefinition = "LONGBLOB")
+    private byte[] logoData;
+
     @CreationTimestamp
     @Column(
             name = "created_at",

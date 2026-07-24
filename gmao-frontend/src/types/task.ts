@@ -29,6 +29,8 @@ export interface TaskDocument {
   fileName: string;
   filePath: string;
   fileType: string | null;
+  previewPath: string | null;
+  previewType: string | null;
   isLink: boolean;
   uploadedAt: string;
 }

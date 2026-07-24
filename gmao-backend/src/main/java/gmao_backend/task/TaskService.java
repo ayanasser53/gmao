@@ -7,6 +7,9 @@ import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.storage.DatabaseFile;
+import com.gmao.gmao_backend.storage.OfficePreviewService;
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
@@ -45,9 +48,13 @@ public class TaskService {
 
     private final TaskSparePartRepository taskSparePartRepository;
 
+    private final TaskDocumentRepository taskDocumentRepository;
+
     private final TaskMapper mapper;
 
     private final TaskDocumentStorageService storage;
+
+    private final OfficePreviewService officePreviewService;
 
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findAll() {
@@ -74,6 +81,40 @@ public class TaskService {
     @Transactional(readOnly = true)
     public TaskResponse findById(Long id) {
         return mapper.toResponse(findEntityById(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ServedDatabaseFile getDocument(Long documentId) {
+        TaskDocument document = taskDocumentRepository
+                .findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document introuvable."));
+
+        if (document.isLink() || document.getFileData() == null || document.getFileData().length == 0) {
+            throw new ResourceNotFoundException("Fichier introuvable.");
+        }
+
+        return new ServedDatabaseFile(
+                document.getFileName(),
+                document.getFileType(),
+                document.getFileData()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ServedDatabaseFile getDocumentPreview(Long documentId) {
+        TaskDocument document = taskDocumentRepository
+                .findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document introuvable."));
+
+        if (document.getPreviewFileData() == null || document.getPreviewFileData().length == 0) {
+            throw new ResourceNotFoundException("Apercu introuvable.");
+        }
+
+        return new ServedDatabaseFile(
+                document.getFileName().replaceFirst("\\.[^.]+$", ".pdf"),
+                document.getPreviewFileType(),
+                document.getPreviewFileData()
+        );
     }
 
     @Transactional
@@ -225,12 +266,6 @@ public class TaskService {
     @Transactional
     public void delete(Long id) {
         Task task = findEntityById(id);
-
-        for (TaskDocument document : task.getDocuments()) {
-            if (!document.isLink()) {
-                storage.delete(document.getFilePath());
-            }
-        }
 
         taskRepository.delete(task);
     }
@@ -421,14 +456,29 @@ public class TaskService {
                     continue;
                 }
 
-                documents.add(
-                        TaskDocument.builder()
-                                .task(task)
-                                .fileName(file.getOriginalFilename())
-                                .filePath(storage.save(file))
-                                .fileType(file.getContentType())
-                                .build()
-                );
+                DatabaseFile databaseFile = storage.save(file);
+
+                if (databaseFile == null) {
+                    continue;
+                }
+
+                TaskDocument document = TaskDocument.builder()
+                        .task(task)
+                        .fileName(databaseFile.fileName())
+                        .filePath("db-file")
+                        .fileType(databaseFile.contentType())
+                        .fileSize((long) databaseFile.data().length)
+                        .fileData(databaseFile.data())
+                        .build();
+
+                officePreviewService.createPdfPreview(databaseFile)
+                        .ifPresent(preview -> {
+                            document.setPreviewFileType(preview.contentType());
+                            document.setPreviewFileSize((long) preview.data().length);
+                            document.setPreviewFileData(preview.data());
+                        });
+
+                documents.add(document);
             }
         }
 
@@ -455,10 +505,6 @@ public class TaskService {
 
         task.getDocuments().removeIf(document -> {
             boolean shouldRemove = removeDocumentIds.contains(document.getId());
-
-            if (shouldRemove && !document.isLink()) {
-                storage.delete(document.getFilePath());
-            }
 
             return shouldRemove;
         });

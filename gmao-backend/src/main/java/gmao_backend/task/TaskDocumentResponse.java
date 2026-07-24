@@ -7,6 +7,8 @@ public record TaskDocumentResponse(
         String fileName,
         String filePath,
         String fileType,
+        String previewPath,
+        String previewType,
         boolean isLink,
         LocalDateTime uploadedAt
 ) {

@@ -267,8 +267,14 @@ public class TaskMapper {
                 .map(document -> new TaskDocumentResponse(
                         document.getId(),
                         document.getFileName(),
-                        document.getFilePath(),
+                        document.isLink()
+                                ? document.getFilePath()
+                                : "/api/tasks/documents/" + document.getId(),
                         document.getFileType(),
+                        document.getPreviewFileData() != null
+                                ? "/api/tasks/documents/" + document.getId() + "/preview"
+                                : null,
+                        document.getPreviewFileType(),
                         document.isLink(),
                         document.getUploadedAt()
                 ))

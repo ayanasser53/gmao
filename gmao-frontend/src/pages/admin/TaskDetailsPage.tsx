@@ -384,6 +384,8 @@ function TaskDetailsPage() {
         name: document.fileName,
         type: document.fileType || "",
         url: getFileUrl(document.filePath) || "",
+        previewUrl: getFileUrl(document.previewPath) || null,
+        previewType: document.previewType,
       }))
       .filter((document) => Boolean(document.url));
   }, [task]);

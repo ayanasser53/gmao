@@ -1,5 +1,6 @@
 package com.gmao.gmao_backend.sparepart;
 
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,15 @@ public class SparePartController {
     @GetMapping("/{id}")
     public SparePartResponse findById(@PathVariable Long id) {
         return sparePartService.findById(id);
+    }
+
+    @GetMapping("/{id}/image")
+    public org.springframework.http.ResponseEntity<byte[]> getImage(@PathVariable Long id) {
+        ServedDatabaseFile image = sparePartService.getImage(id);
+
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.contentType()))
+                .body(image.data());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

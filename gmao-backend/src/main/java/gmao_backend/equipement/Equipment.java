@@ -28,6 +28,19 @@ public class Equipment {
     @Column(length = 500)
     private String image;
 
+    @Column(name = "image_name", length = 255)
+    private String imageName;
+
+    @Column(name = "image_content_type", length = 100)
+    private String imageContentType;
+
+    @Column(name = "image_size")
+    private Long imageSize;
+
+    @Lob
+    @Column(name = "image_data", columnDefinition = "LONGBLOB")
+    private byte[] imageData;
+
     @Column(nullable = false, length = 255)
     private String name;
 

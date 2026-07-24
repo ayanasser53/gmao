@@ -8,6 +8,8 @@ import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.storage.DatabaseFile;
+import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
@@ -100,12 +102,14 @@ public class EquipmentService {
                         )
                 )
 
-                .image(storage.save(image))
-
                 .build();
+
+        setImage(equipment, image);
 
         Equipment savedEquipment =
                 equipmentRepository.save(equipment);
+
+        updateImageUrl(savedEquipment);
 
         return mapper.toResponse(savedEquipment);
     }
@@ -159,23 +163,20 @@ public class EquipmentService {
         );
 
         if (request.removeImage()) {
-            storage.delete(equipment.getImage());
-            equipment.setImage(null);
+            clearImage(equipment);
         }
 
         if (
                 image != null &&
                 !image.isEmpty()
         ) {
-            storage.delete(equipment.getImage());
-
-            equipment.setImage(
-                    storage.save(image)
-            );
+            setImage(equipment, image);
         }
 
         Equipment savedEquipment =
                 equipmentRepository.save(equipment);
+
+        updateImageUrl(savedEquipment);
 
         return mapper.toResponse(savedEquipment);
     }
@@ -191,13 +192,52 @@ public class EquipmentService {
                 equipment
         );
 
-        storage.delete(
-                equipment.getImage()
-        );
-
         equipmentRepository.delete(
                 equipment
         );
+    }
+
+    @Transactional(readOnly = true)
+    public ServedDatabaseFile getImage(Long id) {
+        Equipment equipment = findEntityById(id);
+
+        if (equipment.getImageData() == null || equipment.getImageData().length == 0) {
+            throw new ResourceNotFoundException("Image introuvable.");
+        }
+
+        return new ServedDatabaseFile(
+                equipment.getImage() != null ? equipment.getImage() : "equipment-image",
+                equipment.getImageContentType(),
+                equipment.getImageData()
+        );
+    }
+
+    private void setImage(Equipment equipment, MultipartFile image) {
+        DatabaseFile databaseFile = storage.save(image);
+
+        if (databaseFile == null) {
+            return;
+        }
+
+        equipment.setImage("db-image");
+        equipment.setImageName(databaseFile.fileName());
+        equipment.setImageContentType(databaseFile.contentType());
+        equipment.setImageSize((long) databaseFile.data().length);
+        equipment.setImageData(databaseFile.data());
+    }
+
+    private void updateImageUrl(Equipment equipment) {
+        if (equipment.getImageData() != null && equipment.getId() != null) {
+            equipment.setImage("/api/equipment/" + equipment.getId() + "/image");
+        }
+    }
+
+    private void clearImage(Equipment equipment) {
+        equipment.setImage(null);
+        equipment.setImageName(null);
+        equipment.setImageContentType(null);
+        equipment.setImageSize(null);
+        equipment.setImageData(null);
     }
 
     private Equipment findEntityById(

@@ -60,6 +60,13 @@ public class SecurityConfig {
                         // Routes publiques
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/equipment/*/image").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/spare-parts/*/image").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/suppliers/*/logo").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tasks/documents/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tasks/documents/*/preview").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/documents/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/documents/*/preview").permitAll()
 
                         // Toutes les autres routes demandent un JWT
                         .anyRequest().authenticated()

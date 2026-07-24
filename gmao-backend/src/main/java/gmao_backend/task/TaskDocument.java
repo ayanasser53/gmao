@@ -40,6 +40,23 @@ public class TaskDocument {
     @Column(name = "file_type", length = 100)
     private String fileType;
 
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Lob
+    @Column(name = "file_data", columnDefinition = "LONGBLOB")
+    private byte[] fileData;
+
+    @Column(name = "preview_file_type", length = 100)
+    private String previewFileType;
+
+    @Column(name = "preview_file_size")
+    private Long previewFileSize;
+
+    @Lob
+    @Column(name = "preview_file_data", columnDefinition = "LONGBLOB")
+    private byte[] previewFileData;
+
     @CreationTimestamp
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;
