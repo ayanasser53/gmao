@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 
 import {
   ArrowLeft,
@@ -192,6 +193,29 @@ function parseCsv(content: string) {
     return headers.reduce<Record<string, string>>((row, header, index) => {
       row[header] = values[index] ?? "";
       return row;
+    }, {});
+  });
+}
+
+async function parseExcel(file: File) {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+  const firstSheetName = workbook.SheetNames[0];
+
+  if (!firstSheetName) {
+    return [];
+  }
+
+  const worksheet = workbook.Sheets[firstSheetName];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+    defval: "",
+    raw: false,
+  });
+
+  return rows.map((row) => {
+    return Object.entries(row).reduce<Record<string, unknown>>((normalizedRow, [key, value]) => {
+      normalizedRow[normalizeHeader(key)] = value;
+      return normalizedRow;
     }, {});
   });
 }
@@ -411,10 +435,14 @@ function SupplierCatalogPage() {
     setImportMessage("");
 
     try {
-      const content = await file.text();
-      const parsedValue = file.name.toLowerCase().endsWith(".json")
-        ? JSON.parse(content)
-        : parseCsv(content);
+      const fileName = file.name.toLowerCase();
+      const isExcelFile = fileName.endsWith(".xlsx") || fileName.endsWith(".xls");
+      const content = isExcelFile ? "" : await file.text();
+      const parsedValue = isExcelFile
+        ? await parseExcel(file)
+        : fileName.endsWith(".json")
+          ? JSON.parse(content)
+          : parseCsv(content);
       const rows = Array.isArray(parsedValue)
         ? parsedValue
         : Array.isArray(parsedValue.items)
@@ -456,7 +484,14 @@ function SupplierCatalogPage() {
             "manufacturer reference",
             "ref fabricant",
           ]),
-          gtin: pickField(row, ["gtin", "ean", "codeGtinEan", "code gtin ean"]),
+          gtin: pickField(row, [
+            "gtin",
+            "ean",
+            "gtin ean",
+            "gtin / ean",
+            "codeGtinEan",
+            "code gtin ean",
+          ]),
           supplierName,
           supplierLogo:
             pickField(row, [
@@ -466,10 +501,10 @@ function SupplierCatalogPage() {
               "supplier logo",
               "logo",
             ]) || getImportedLogo(supplierName),
-          supplierSiren: pickField(row, ["siren", "siret"]),
+          supplierSiren: pickField(row, ["siren", "siret", "siren siret", "siren / siret"]),
           supplierPhone: pickField(row, ["telephone", "phone"]),
           supplierDescription: pickField(row, ["description"]),
-          image: pickField(row, ["image", "photo", "imageUrl", "image url"]),
+          image: pickField(row, ["image", "photo", "imageProduit", "image produit", "imageUrl", "image url"]),
         });
       });
 
@@ -489,7 +524,7 @@ function SupplierCatalogPage() {
       );
     } catch {
       setImportError(
-        "Import impossible. Utilisez un fichier CSV ou JSON avec une colonne equipement.",
+        "Import impossible. Utilisez un fichier CSV, Excel ou JSON avec une colonne equipement.",
       );
     } finally {
       if (importInputRef.current) {
@@ -661,7 +696,7 @@ function SupplierCatalogPage() {
         <input
           ref={importInputRef}
           type="file"
-          accept=".csv,.json,text/csv,application/json"
+          accept=".csv,.xlsx,.xls,.json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/json"
           className="catalog-import-input"
           onChange={(event) => {
             void handleImportCatalog(event.target.files?.[0] ?? null);
