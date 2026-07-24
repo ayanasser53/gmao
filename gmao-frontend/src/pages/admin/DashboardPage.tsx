@@ -61,20 +61,20 @@ interface DonutSegment {
 }
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
-  PLANNED: { label: "Planifiée", color: "#a3660f" },
-  IN_PROGRESS: { label: "En cours", color: "#087fbd" },
-  LATE: { label: "En retard", color: "#b42318" },
-  DONE: { label: "Terminée", color: "#198754" },
+  PLANNED: { label: "Planifiée", color: "#ffb020" },
+  IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
+  LATE: { label: "En retard", color: "#ff6b6b" },
+  DONE: { label: "Terminée", color: "#34d1b3" },
 };
 
 const PLAN_STATUS_META: Record<
   MaintenancePlanStatus,
   { label: string; color: string }
 > = {
-  PLANNED: { label: "Planifié", color: "#a3660f" },
-  IN_PROGRESS: { label: "En cours", color: "#087fbd" },
-  LATE: { label: "En retard", color: "#b42318" },
-  DONE: { label: "Terminé", color: "#198754" },
+  PLANNED: { label: "Planifié", color: "#ffb020" },
+  IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
+  LATE: { label: "En retard", color: "#ff6b6b" },
+  DONE: { label: "Terminé", color: "#34d1b3" },
 };
 
 function activityCost(activity: Activity): number {
@@ -281,32 +281,86 @@ interface BarItem {
   suffix?: string;
 }
 
+/**
+ * Construit un chemin SVG lissé (courbes de Bézier) à partir d'une
+ * liste de points — utilisé par tous les graphiques en courbe du
+ * tableau de bord.
+ */
+function buildSmoothPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const midX = (prev.x + curr.x) / 2;
+    d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+  }
+
+  return d;
+}
+
+/**
+ * Graphique en courbe (ligne + aire lissée) pour une série simple —
+ * remplace les anciennes barres horizontales.
+ */
 function SimpleBarChart({ items }: { items: BarItem[] }) {
   if (items.length === 0) {
     return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
   }
 
-  return (
-    <div className="dashboard-bar-chart">
-      {items.map((item) => {
-        const percent = item.max > 0 ? Math.min(100, (item.value / item.max) * 100) : 0;
+  const width = Math.max(620, items.length * 86);
+  const height = 220;
+  const padding = 34;
+  const maxValue = Math.max(...items.map((item) => item.value), 1);
+  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
+  const lineColor = items[0]?.color ?? "#4da6ff";
 
-        return (
-          <div className="dashboard-bar-row" key={item.label}>
-            <span className="dashboard-bar-label">{item.label}</span>
-            <div className="dashboard-bar-track">
-              <div
-                className="dashboard-bar-fill"
-                style={{ width: `${percent}%`, background: item.color }}
-              />
-            </div>
-            <span className="dashboard-bar-value">
-              {item.value}
-              {item.suffix ?? ""}
-            </span>
-          </div>
-        );
-      })}
+  const coords = items.map((item, index) => ({
+    x: items.length > 1 ? padding + index * stepX : width / 2,
+    y: height - padding - (item.value / maxValue) * (height - padding * 1.7),
+    item,
+  }));
+
+  const linePath = buildSmoothPath(coords);
+  const areaPath =
+    coords.length > 0
+      ? `${linePath} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
+      : "";
+
+  return (
+    <div className="curve-chart-scroll">
+      <svg viewBox={`0 0 ${width} ${height}`} className="curve-chart-svg" style={{ minWidth: width }}>
+        {areaPath && <path d={areaPath} fill={lineColor} opacity={0.16} stroke="none" />}
+        {linePath && <path d={linePath} fill="none" stroke={lineColor} strokeWidth={2.5} />}
+
+        {coords.map((coord, index) => (
+          <circle
+            key={`dot-${index}`}
+            cx={coord.x}
+            cy={coord.y}
+            r={4}
+            fill="#ffffff"
+            stroke={lineColor}
+            strokeWidth={2}
+          />
+        ))}
+
+        {coords.map((coord, index) => (
+          <text key={`val-${index}`} x={coord.x} y={coord.y - 12} textAnchor="middle" className="curve-chart-value">
+            {coord.item.value}
+            {coord.item.suffix ?? ""}
+          </text>
+        ))}
+
+        {coords.map((coord, index) => (
+          <text key={`lbl-${index}`} x={coord.x} y={height - 10} textAnchor="middle" className="curve-chart-axis-label">
+            {coord.item.label.length > 14 ? `${coord.item.label.slice(0, 13)}…` : coord.item.label}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -317,53 +371,67 @@ interface StackedBarItem {
 }
 
 /**
- * Barres horizontales empilées : une ligne par entité (utilisateur,
- * centre de coût, tag...), chaque segment coloré représentant un
- * statut de tâche.
+ * Aire empilée en courbes lissées : une série par statut, empilée
+ * verticalement le long des entités (utilisateur, centre de coût,
+ * tag...) — remplace les anciennes barres empilées.
  */
 function StackedBarChart({ items }: { items: StackedBarItem[] }) {
   if (items.length === 0) {
     return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
   }
 
-  const globalMax = Math.max(
+  const width = Math.max(680, items.length * 92);
+  const height = 260;
+  const padding = 36;
+  const segmentCount = items[0]?.segments.length ?? 0;
+  const maxTotal = Math.max(
     ...items.map((item) => item.segments.reduce((sum, s) => sum + s.value, 0)),
     1,
   );
+  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
+
+  const xFor = (index: number) => (items.length > 1 ? padding + index * stepX : width / 2);
+  const yFor = (value: number) => height - padding - (value / maxTotal) * (height - padding * 1.6);
+
+  // cumulative[s][i] = somme des segments 0..s pour l'item i
+  const cumulative: number[][] = Array.from({ length: segmentCount }, () => []);
+  items.forEach((item, i) => {
+    let running = 0;
+    item.segments.forEach((segment, s) => {
+      running += segment.value;
+      cumulative[s][i] = running;
+    });
+  });
 
   return (
-    <div className="dashboard-stacked-chart">
-      {items.map((item) => {
-        const total = item.segments.reduce((sum, s) => sum + s.value, 0);
-        const widthPercent = (total / globalMax) * 100;
+    <div className="stacked-area-scroll">
+      <svg viewBox={`0 0 ${width} ${height}`} className="stacked-area-svg" style={{ minWidth: width }}>
+        {Array.from({ length: segmentCount }).map((_, s) => {
+          const color = items[0]?.segments[s]?.color ?? "#4da6ff";
 
-        return (
-          <div className="dashboard-stacked-row" key={item.label}>
-            <span className="dashboard-bar-label">{item.label}</span>
-            <div className="dashboard-stacked-track">
-              <div
-                className="dashboard-stacked-fill"
-                style={{ width: `${widthPercent}%` }}
-              >
-                {item.segments.map((segment, index) =>
-                  segment.value > 0 ? (
-                    <span
-                      key={index}
-                      className="dashboard-stacked-segment"
-                      style={{
-                        flexGrow: segment.value,
-                        background: segment.color,
-                      }}
-                      title={String(segment.value)}
-                    />
-                  ) : null,
-                )}
-              </div>
-            </div>
-            <span className="dashboard-bar-value">{total}</span>
-          </div>
-        );
-      })}
+          const topPoints = items.map((_, i) => ({ x: xFor(i), y: yFor(cumulative[s][i]) }));
+          const bottomPoints = items
+            .map((_, i) => ({ x: xFor(i), y: yFor(s === 0 ? 0 : cumulative[s - 1][i]) }))
+            .reverse();
+
+          const topPath = buildSmoothPath(topPoints);
+          const bottomPath = buildSmoothPath(bottomPoints).replace("M", "L");
+          const areaPath = `${topPath} ${bottomPath} Z`;
+
+          return (
+            <g key={s}>
+              <path d={areaPath} fill={color} opacity={0.5} stroke="none" />
+              <path d={topPath} fill="none" stroke={color} strokeWidth={2} />
+            </g>
+          );
+        })}
+
+        {items.map((item, i) => (
+          <text key={item.label} x={xFor(i)} y={height - 10} textAnchor="middle" className="stacked-area-axis-label">
+            {item.label.length > 14 ? `${item.label.slice(0, 13)}…` : item.label}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -372,71 +440,82 @@ function StackedBarChart({ items }: { items: StackedBarItem[] }) {
 type AnalysisDimension = "users" | "tags" | "costCenters" | "equipment";
 
 const ANALYSIS_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
-  PLANNED: { label: "Planifiée", color: "#4d5358" },
-  IN_PROGRESS: { label: "En cours", color: "#9633c8" },
-  LATE: { label: "En retard", color: "#ef3027" },
-  DONE: { label: "Terminée", color: "#17bea6" },
+  PLANNED: { label: "Planifiée", color: "#9fb0c3" },
+  IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
+  LATE: { label: "En retard", color: "#ff6b6b" },
+  DONE: { label: "Terminée", color: "#34d1b3" },
 };
 
+/**
+ * Aire empilée en courbes lissées pour l'analyse par dimension
+ * (utilisateurs / tags / centres de coût / équipements) — remplace
+ * les anciennes barres empilées verticales.
+ */
 function TaskAnalysisChart({ items }: { items: StackedBarItem[] }) {
-  const statuses = Object.keys(ANALYSIS_STATUS_META) as TaskStatus[];
-  const maxTotal = Math.max(
-    ...items.map((item) => item.segments.reduce((sum, segment) => sum + segment.value, 0)),
-    1,
-  );
-
   if (items.length === 0) {
     return <p className="dashboard-empty-hint">Aucune donnée disponible.</p>;
   }
 
+  const width = Math.max(900, items.length * 130);
+  const height = 380;
+  const padding = 42;
+  const segmentCount = items[0]?.segments.length ?? 0;
+  const maxTotal = Math.max(
+    ...items.map((item) => item.segments.reduce((sum, segment) => sum + segment.value, 0)),
+    1,
+  );
+  const stepX = items.length > 1 ? (width - padding * 2) / (items.length - 1) : 0;
+
+  const xFor = (index: number) => (items.length > 1 ? padding + index * stepX : width / 2);
+  const yFor = (value: number) => height - padding - (value / maxTotal) * (height - padding * 1.5);
+
+  const cumulative: number[][] = Array.from({ length: segmentCount }, () => []);
+  items.forEach((item, i) => {
+    let running = 0;
+    item.segments.forEach((segment, s) => {
+      running += segment.value;
+      cumulative[s][i] = running;
+    });
+  });
+
   return (
     <div className="task-analysis-chart-scroll">
-      <div className="task-analysis-chart" style={{ minWidth: `${Math.max(900, items.length * 150)}px` }}>
+      <div className="task-analysis-chart" style={{ minWidth: `${width}px` }}>
         <div className="task-analysis-grid-lines" aria-hidden="true" />
 
-        <div className="task-analysis-bars">
-          {items.map((item) => {
-            const total = item.segments.reduce((sum, segment) => sum + segment.value, 0);
-            const totalHeight = Math.max(2, (total / maxTotal) * 100);
+        <svg viewBox={`0 0 ${width} ${height}`} className="task-analysis-svg" style={{ minWidth: width }}>
+          {Array.from({ length: segmentCount }).map((_, s) => {
+            const color = items[0]?.segments[s]?.color ?? "#4da6ff";
+
+            const topPoints = items.map((_, i) => ({ x: xFor(i), y: yFor(cumulative[s][i]) }));
+            const bottomPoints = items
+              .map((_, i) => ({ x: xFor(i), y: yFor(s === 0 ? 0 : cumulative[s - 1][i]) }))
+              .reverse();
+
+            const topPath = buildSmoothPath(topPoints);
+            const bottomPath = buildSmoothPath(bottomPoints).replace("M", "L");
+            const areaPath = `${topPath} ${bottomPath} Z`;
 
             return (
-              <div className="task-analysis-column" key={item.label}>
-                <div className="task-analysis-bar-zone">
-                  <div
-                    className="task-analysis-stacked-bar"
-                    style={{ height: `${totalHeight}%` }}
-                    title={`${item.label}: ${total}`}
-                  >
-                    {item.segments.map((segment, index) => {
-                      const status = statuses[index];
-                      const height = total > 0 ? (segment.value / total) * 100 : 0;
-
-                      if (segment.value === 0) return null;
-
-                      return (
-                        <span
-                          key={status}
-                          className="task-analysis-segment"
-                          style={{
-                            height: `${height}%`,
-                            backgroundColor: ANALYSIS_STATUS_META[status].color,
-                          }}
-                          title={`${ANALYSIS_STATUS_META[status].label}: ${segment.value}`}
-                        >
-                          <strong>{segment.value}</strong>
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <span className="task-analysis-axis-label" title={item.label}>
-                  {item.label}
-                </span>
-              </div>
+              <g key={s}>
+                <path d={areaPath} fill={color} opacity={0.5} stroke="none" />
+                <path d={topPath} fill="none" stroke={color} strokeWidth={2.2} />
+              </g>
             );
           })}
-        </div>
+
+          {items.map((item, i) => (
+            <text
+              key={item.label}
+              x={xFor(i)}
+              y={height - 14}
+              textAnchor="middle"
+              className="task-analysis-axis-label-svg"
+            >
+              {item.label.length > 16 ? `${item.label.slice(0, 15)}…` : item.label}
+            </text>
+          ))}
+        </svg>
       </div>
     </div>
   );
@@ -535,16 +614,16 @@ function TrendChart({
 
 
 const RANKING_COLORS = [
-  "#4472c4",
-  "#ffc000",
-  "#70ad47",
-  "#ed7d31",
-  "#666666",
-  "#ff0000",
-  "#a67c00",
-  "#7030a0",
-  "#a5a5a5",
-  "#264478",
+  "#5b9bd5",
+  "#ffc85c",
+  "#7bc97e",
+  "#f3935a",
+  "#9aa5b1",
+  "#ff8a80",
+  "#ffd54f",
+  "#7ea0e8",
+  "#c9ced3",
+  "#5ec8c0",
 ];
 
 interface RankingItem {
@@ -790,7 +869,7 @@ function DashboardPage() {
         label: part.name,
         value: part.quantity,
         max: Math.max(part.minimumStock, part.quantity, 1),
-        color: part.quantity <= 0 ? "#b42318" : "#a3660f",
+        color: part.quantity <= 0 ? "#ff6b6b" : "#ffb020",
       })),
     [lowStockItems],
   );
@@ -813,7 +892,7 @@ function DashboardPage() {
       label: activity.description || `Activité #${activity.id}`,
       value: Math.round(cost),
       max,
-      color: "#087fbd",
+      color: "#4da6ff",
       suffix: " EUR",
     }));
   }, [activities]);
@@ -855,7 +934,7 @@ function DashboardPage() {
       label: name,
       value: Math.round((data.minutes / 60) * 10) / 10,
       max: Math.round((max / 60) * 10) / 10 || 1,
-      color: "#0f766e",
+      color: "#2dd4bf",
       suffix: " h",
     }));
   }, [byEquipment]);
@@ -871,7 +950,7 @@ function DashboardPage() {
       label: name,
       value: Math.round(data.cost),
       max: Math.round(max) || 1,
-      color: "#6b46c1",
+      color: "#f3935a",
       suffix: " EUR",
     }));
   }, [byEquipment]);
@@ -1042,7 +1121,7 @@ function DashboardPage() {
       label,
       value: total,
       max,
-      color: "#a3660f",
+      color: "#ffb020",
     }));
   }
 

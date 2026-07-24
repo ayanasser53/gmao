@@ -69,19 +69,19 @@
 }
 
 .dashboard-hero-card-tasks {
-  background: linear-gradient(135deg, #0d84c6 0%, #0a5f94 100%);
+  background: linear-gradient(135deg, #5eb3ff 0%, #3d8fe0 100%);
 }
 
 .dashboard-hero-card-activities {
-  background: linear-gradient(135deg, #f2954d 0%, #d9711f 100%);
+  background: linear-gradient(135deg, #ffb26b 0%, #f3935a 100%);
 }
 
 .dashboard-hero-card-time {
-  background: linear-gradient(135deg, #1cc4a3 0%, #0f8f76 100%);
+  background: linear-gradient(135deg, #4be3c4 0%, #2dd4b0 100%);
 }
 
 .dashboard-hero-card-avg {
-  background: linear-gradient(135deg, #74828f 0%, #4d5762 100%);
+  background: linear-gradient(135deg, #a7b4c0 0%, #869aad 100%);
 }
 
 .dashboard-hero-card-body {
@@ -324,6 +324,46 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   GRAPHIQUES EN COURBES — remplacent les anciennes barres
+   ===================================================== */
+
+.curve-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.curve-chart-svg {
+  width: 100%;
+  height: 220px;
+}
+
+.curve-chart-value {
+  fill: #12365c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.curve-chart-axis-label {
+  fill: #7c8a99;
+  font-size: 11px;
+}
+
+.stacked-area-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.stacked-area-svg {
+  width: 100%;
+  height: 260px;
+}
+
+.stacked-area-axis-label {
+  fill: #66717b;
+  font-size: 11.5px;
 }
 
 /* Tableau Top 10 */
@@ -844,15 +884,15 @@
 
 .task-analysis-chart {
   position: relative;
-  height: 420px;
-  padding: 14px 18px 54px 44px;
+  height: 380px;
+  padding: 14px 18px 10px 44px;
   border-bottom: 1px solid #d8dde2;
   box-sizing: border-box;
 }
 
 .task-analysis-grid-lines {
   position: absolute;
-  inset: 14px 18px 54px 44px;
+  inset: 14px 18px 10px 44px;
   background-image:
     repeating-linear-gradient(
       to bottom,
@@ -872,70 +912,16 @@
   pointer-events: none;
 }
 
-.task-analysis-bars {
+.task-analysis-svg {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  gap: 24px;
+  width: 100%;
   height: 100%;
 }
 
-.task-analysis-column {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) 48px;
-  flex: 1 0 115px;
-  min-width: 105px;
-  max-width: 170px;
-}
-
-.task-analysis-bar-zone {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 0;
-}
-
-.task-analysis-stacked-bar {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start;
-  width: min(76%, 118px);
-  min-height: 3px;
-  overflow: visible;
-  border-radius: 4px 4px 0 0;
-}
-
-.task-analysis-segment {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2px;
-  opacity: 0.88;
-}
-
-.task-analysis-segment strong {
-  position: relative;
-  z-index: 2;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-.task-analysis-axis-label {
-  display: block;
-  align-self: start;
-  padding-top: 12px;
-  overflow: hidden;
-  color: #66717b;
+.task-analysis-axis-label-svg {
+  fill: #66717b;
   font-size: 12px;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-width: 760px) {
