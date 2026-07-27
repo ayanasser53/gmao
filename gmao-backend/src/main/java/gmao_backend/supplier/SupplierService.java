@@ -115,7 +115,8 @@ public class SupplierService {
     }
 
     public ServedDatabaseFile getLogo(Long id) {
-        Supplier supplier = findVisibleSupplierById(id);
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Logo introuvable."));
 
         if (supplier.getLogoData() == null || supplier.getLogoData().length == 0) {
             throw new ResourceNotFoundException("Logo introuvable.");
@@ -206,9 +207,21 @@ public class SupplierService {
                 supplier.getCity(),
                 supplier.getCountry(),
                 supplier.getVisibility(),
-                supplier.getLogoUrl(),
+                logoUrl(supplier),
                 supplier.getCreatedAt(),
                 supplier.getUpdatedAt()
         );
+    }
+
+    private String logoUrl(Supplier supplier) {
+        if (supplier == null) {
+            return null;
+        }
+
+        if (supplier.getLogoData() != null && supplier.getId() != null) {
+            return "/api/suppliers/" + supplier.getId() + "/logo";
+        }
+
+        return supplier.getLogoUrl();
     }
 }

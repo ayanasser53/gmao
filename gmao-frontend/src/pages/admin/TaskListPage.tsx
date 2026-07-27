@@ -49,6 +49,20 @@ function getFileUrl(path: string | null): string | null {
   return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function getEquipmentImageUrl(
+  equipment: { id?: number | null; image?: string | null } | null | undefined,
+): string | null {
+  if (!equipment) {
+    return null;
+  }
+
+  if (equipment.id) {
+    return `${BACKEND_URL}/api/equipment/${equipment.id}/image`;
+  }
+
+  return getFileUrl(equipment.image ?? null);
+}
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -865,7 +879,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
                       return <span>Tous</span>;
                     }
 
-                    const image = getFileUrl(equipment.image);
+                    const image = getEquipmentImageUrl(equipment);
 
                     return (
                       <>
@@ -901,7 +915,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
                     {equipmentOptions.map((equipment) => {
                       const isSelected =
                         filterEquipmentId === String(equipment.id);
-                      const image = getFileUrl(equipment.image);
+                      const image = getEquipmentImageUrl(equipment);
 
                       return (
                         <button
@@ -1070,9 +1084,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
 
               {filteredTasks.map((task) => {
                 const status = STATUS_META[task.status];
-                const equipmentImage = getFileUrl(
-                  task.equipment?.image ?? null,
-                );
+                const equipmentImage = getEquipmentImageUrl(task.equipment);
                 const selectedStatus =
                   task.status === "LATE" || task.status === "PLANNED"
                     ? "IN_PROGRESS"

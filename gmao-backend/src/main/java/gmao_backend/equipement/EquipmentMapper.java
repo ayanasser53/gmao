@@ -19,7 +19,7 @@ public class EquipmentMapper {
 
                 equipment.getId(),
 
-                equipment.getImage(),
+                imageUrl(equipment),
 
                 equipment.getName(),
 
@@ -88,7 +88,7 @@ public class EquipmentMapper {
                         new LinkedEquipmentResponse(
                                 equipment.getId(),
                                 equipment.getName(),
-                                equipment.getImage(),
+                                imageUrl(equipment),
                                 equipment.getItemCode()
                         )
                 )
@@ -108,10 +108,34 @@ public class EquipmentMapper {
                                 sparePart.getId(),
                                 sparePart.getCode(),
                                 sparePart.getName(),
-                                sparePart.getImage(),
+                                sparePartImageUrl(sparePart),
                                 sparePart.getQuantity()
                         )
                 )
                 .collect(Collectors.toSet());
+    }
+
+    private String imageUrl(Equipment equipment) {
+        if (equipment == null) {
+            return null;
+        }
+
+        if (equipment.getImageData() != null && equipment.getId() != null) {
+            return "/api/equipment/" + equipment.getId() + "/image";
+        }
+
+        return equipment.getImage();
+    }
+
+    private String sparePartImageUrl(SparePart sparePart) {
+        if (sparePart == null) {
+            return null;
+        }
+
+        if (sparePart.getImageData() != null && sparePart.getId() != null) {
+            return "/api/spare-parts/" + sparePart.getId() + "/image";
+        }
+
+        return sparePart.getImage();
     }
 }

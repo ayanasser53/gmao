@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
+import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.user.Role;
 import com.gmao.gmao_backend.activity.Activity;
@@ -177,7 +178,7 @@ public class TaskMapper {
         return new TaskEquipmentResponse(
                 equipment.getId(),
                 equipment.getName(),
-                equipment.getImage(),
+                equipmentImageUrl(equipment),
                 equipment.getItemCode()
         );
     }
@@ -273,10 +274,34 @@ public class TaskMapper {
                         line.getSparePart().getId(),
                         line.getSparePart().getCode(),
                         line.getSparePart().getName(),
-                        line.getSparePart().getImage(),
+                        sparePartImageUrl(line.getSparePart()),
                         line.getQuantity()
                 ))
                 .collect(Collectors.toSet());
+    }
+
+    private String equipmentImageUrl(Equipment equipment) {
+        if (equipment == null) {
+            return null;
+        }
+
+        if (equipment.getImageData() != null && equipment.getId() != null) {
+            return "/api/equipment/" + equipment.getId() + "/image";
+        }
+
+        return equipment.getImage();
+    }
+
+    private String sparePartImageUrl(SparePart sparePart) {
+        if (sparePart == null) {
+            return null;
+        }
+
+        if (sparePart.getImageData() != null && sparePart.getId() != null) {
+            return "/api/spare-parts/" + sparePart.getId() + "/image";
+        }
+
+        return sparePart.getImage();
     }
 
     private Set<TaskDocumentResponse> mapDocuments(Set<TaskDocument> documents) {

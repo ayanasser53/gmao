@@ -165,7 +165,9 @@ public class SparePartService {
     }
 
     public ServedDatabaseFile getImage(Long id) {
-        SparePart sparePart = getSparePart(id);
+        SparePart sparePart = sparePartRepository
+                .findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found"));
 
         if (sparePart.getImageData() == null || sparePart.getImageData().length == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
@@ -504,7 +506,7 @@ public class SparePartService {
                         equipment.getId(),
                         equipment.getName(),
                         equipment.getDescription(),
-                        equipment.getImage()
+                        equipmentImageUrl(equipment)
                 ))
                 .toList();
 
@@ -514,7 +516,7 @@ public class SparePartService {
                         linked.getId(),
                         linked.getName(),
                         linked.getCode(),
-                        linked.getImage()
+                        sparePartImageUrl(linked)
                 ))
                 .toList();
 
@@ -552,7 +554,7 @@ public class SparePartService {
                 sparePart.getCode(),
                 sparePart.getManufacturerReference(),
                 sparePart.getBrand(),
-                sparePart.getImage(),
+                sparePartImageUrl(sparePart),
                 sparePart.getUnitPrice(),
                 sparePart.getCurrency(),
                 sparePart.getQuantity(),
@@ -573,5 +575,29 @@ public class SparePartService {
                 sparePart.getCreatedAt(),
                 sparePart.getUpdatedAt()
         );
+    }
+
+    private String sparePartImageUrl(SparePart sparePart) {
+        if (sparePart == null) {
+            return null;
+        }
+
+        if (sparePart.getImageData() != null && sparePart.getId() != null) {
+            return "/api/spare-parts/" + sparePart.getId() + "/image";
+        }
+
+        return sparePart.getImage();
+    }
+
+    private String equipmentImageUrl(Equipment equipment) {
+        if (equipment == null) {
+            return null;
+        }
+
+        if (equipment.getImageData() != null && equipment.getId() != null) {
+            return "/api/equipment/" + equipment.getId() + "/image";
+        }
+
+        return equipment.getImage();
     }
 }

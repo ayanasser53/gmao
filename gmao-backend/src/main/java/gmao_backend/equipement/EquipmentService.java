@@ -211,7 +211,9 @@ public class EquipmentService {
 
     @Transactional(readOnly = true)
     public ServedDatabaseFile getImage(Long id) {
-        Equipment equipment = findEntityById(id);
+        Equipment equipment = equipmentRepository
+                .findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Image introuvable."));
 
         if (equipment.getImageData() == null || equipment.getImageData().length == 0) {
             throw new ResourceNotFoundException("Image introuvable.");
