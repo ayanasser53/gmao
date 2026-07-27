@@ -1,7 +1,7 @@
 import MaintenancePlansCalendarPage from "../admin/MaintenancePlansCalendarPage";
 
 function TechnicianMaintenancePlansCalendarPage() {
-  return <MaintenancePlansCalendarPage />;
+  return <MaintenancePlansCalendarPage technicianMode />;
 }
 
 export default TechnicianMaintenancePlansCalendarPage;

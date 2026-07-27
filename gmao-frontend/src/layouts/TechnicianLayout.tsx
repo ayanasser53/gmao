@@ -2,6 +2,7 @@ import {
   Activity,
   CalendarCheck,
   ClipboardList,
+  LayoutDashboard,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
@@ -13,10 +14,16 @@ function TechnicianLayout() {
       <AdminNavbar
         workspaceLabel="Espace technicien"
         profileLabel="Technicien"
-        homePath="/technician/tasks"
+        homePath="/technician"
         profilePath="/technician/profile"
         showNotifications={false}
         navigationItems={[
+          {
+            label: "Dashboard",
+            path: "/technician",
+            description: "Vue generale de votre maintenance",
+            icon: <LayoutDashboard size={20} />,
+          },
           {
             label: "Taches",
             path: "/technician/tasks",

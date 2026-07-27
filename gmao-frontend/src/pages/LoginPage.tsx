@@ -33,7 +33,7 @@ function getStartPath(authData: AuthResponse): string {
   }
 
   if (authData.role === "TECHNICIAN") {
-    return "/technician/tasks";
+    return "/technician";
   }
 
   return "/admin/dashboard";

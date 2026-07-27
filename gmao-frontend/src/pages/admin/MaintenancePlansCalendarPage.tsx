@@ -8,8 +8,15 @@ import {
   Clock,
   History,
 } from "lucide-react";
+
 import type { MaintenancePlan } from "../../types/maintenancePlan";
-import { getMaintenancePlans } from "../../services/maintenancePlanService";
+import type { TaskListItem } from "../../types/task";
+import {
+  getMaintenancePlans,
+  getMyMaintenancePlans,
+} from "../../services/maintenancePlanService";
+import { getTasks } from "../../services/taskService";
+import { getAuthenticatedUserId } from "../../services/authService";
 import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
@@ -17,10 +24,23 @@ import "./task-styles.css";
 type DisplayStatus = "planned" | "in_progress" | "late" | "done";
 type AgendaView = "month" | "week" | "day";
 
+type CalendarEntry = {
+  id: number;
+  type: "PLAN" | "TASK";
+  title: string;
+  description: string;
+  status: DisplayStatus;
+  path: string;
+};
+
+interface MaintenancePlansCalendarPageProps {
+  technicianMode?: boolean;
+}
+
 const STATUS_TABS = [
   {
     status: "planned",
-    label: "Planifié",
+    label: "Planifie",
     icon: CalendarClock,
   },
   {
@@ -35,7 +55,7 @@ const STATUS_TABS = [
   },
   {
     status: "done",
-    label: "Terminé",
+    label: "Termine",
     icon: History,
   },
 ] as const;
@@ -120,7 +140,11 @@ function getPlanDateKey(plan: MaintenancePlan) {
   return getDateKey(plan.nextDueDate) ?? getDateKey(plan.startDate);
 }
 
-function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
+function getTaskDateKey(task: TaskListItem) {
+  return getDateKey(task.startDate) ?? getDateKey(task.endDate);
+}
+
+function getPlanDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   if (plan.status === "DONE") return "done";
   if (plan.status === "LATE") return "late";
   if (plan.status === "IN_PROGRESS") return "in_progress";
@@ -132,37 +156,73 @@ function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   return "planned";
 }
 
+function getTaskDisplayStatus(task: TaskListItem): DisplayStatus {
+  if (task.status === "DONE") return "done";
+  if (task.status === "LATE") return "late";
+  if (task.status === "IN_PROGRESS") return "in_progress";
+
+  const referenceDate = getTaskDateKey(task);
+
+  if (referenceDate && referenceDate < getTodayKey()) return "late";
+
+  return "planned";
+}
+
 function getStatusLabel(status: DisplayStatus) {
-  if (status === "done") return "Terminé";
+  if (status === "done") return "Termine";
   if (status === "late") return "En retard";
-  if (status === "planned") return "Planifié";
+  if (status === "planned") return "Planifie";
   return "En cours";
 }
 
-export default function MaintenancePlansCalendarPage() {
+function isAssignedToCurrentUser(task: TaskListItem, userId: number | null): boolean {
+  if (!userId) {
+    return false;
+  }
+
+  return [...(task.assignees ?? []), ...(task.assignedTo ?? [])].some(
+    (assignee) => assignee.userId === userId,
+  );
+}
+
+export default function MaintenancePlansCalendarPage({
+  technicianMode = false,
+}: MaintenancePlansCalendarPageProps) {
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
+  const currentUserId = getAuthenticatedUserId();
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
+  const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [error, setError] = useState("");
   const [agendaDate, setAgendaDate] = useState(() => parseDateKey(getTodayKey()));
   const [agendaView, setAgendaView] = useState<AgendaView>("month");
 
   useEffect(() => {
-    async function loadPlans() {
+    async function loadCalendar() {
       try {
         setError("");
-        const data = await getMaintenancePlans();
-        setPlans(data);
+
+        const [planList, taskList] = await Promise.all([
+          technicianMode ? getMyMaintenancePlans() : getMaintenancePlans(),
+          technicianMode ? getTasks().catch(() => [] as TaskListItem[]) : Promise.resolve([]),
+        ]);
+
+        setPlans(planList);
+        setTasks(
+          technicianMode
+            ? taskList.filter((task) => isAssignedToCurrentUser(task, currentUserId))
+            : [],
+        );
       } catch {
         setError("Impossible de charger le calendrier des plans.");
       }
     }
 
-    void loadPlans();
-  }, []);
+    void loadCalendar();
+  }, [currentUserId, technicianMode]);
 
-  const plansByDate = useMemo(() => {
-    return plans.reduce(
+  const entriesByDate = useMemo(() => {
+    const planEntries = plans.reduce(
       (groups, plan) => {
         const dateKey = getPlanDateKey(plan);
 
@@ -170,14 +230,45 @@ export default function MaintenancePlansCalendarPage() {
           return groups;
         }
 
+        const entry: CalendarEntry = {
+          id: plan.id,
+          type: "PLAN",
+          title: "Plan",
+          description: plan.description,
+          status: getPlanDisplayStatus(plan),
+          path: `${basePath}/maintenance-plans/${plan.id}`,
+        };
+
         return {
           ...groups,
-          [dateKey]: [...(groups[dateKey] ?? []), plan],
+          [dateKey]: [...(groups[dateKey] ?? []), entry],
         };
       },
-      {} as Record<string, MaintenancePlan[]>,
+      {} as Record<string, CalendarEntry[]>,
     );
-  }, [plans]);
+
+    return tasks.reduce((groups, task) => {
+      const dateKey = getTaskDateKey(task);
+
+      if (!dateKey) {
+        return groups;
+      }
+
+      const entry: CalendarEntry = {
+        id: task.id,
+        type: "TASK",
+        title: "Tache",
+        description: task.description,
+        status: getTaskDisplayStatus(task),
+        path: `${basePath}/tasks/${task.id}`,
+      };
+
+      return {
+        ...groups,
+        [dateKey]: [...(groups[dateKey] ?? []), entry],
+      };
+    }, planEntries);
+  }, [basePath, plans, tasks]);
 
   const visibleAgendaDays =
     agendaView === "month"
@@ -194,19 +285,22 @@ export default function MaintenancePlansCalendarPage() {
     });
   }
 
-  function renderPlanChip(plan: MaintenancePlan) {
-    const status = getDisplayStatus(plan);
-
+  function renderEntryChip(entry: CalendarEntry) {
     return (
       <button
         type="button"
-        key={plan.id}
-        className={`maintenance-agenda-plan ${status}`}
-        onClick={() => navigate(`${basePath}/maintenance-plans/${plan.id}`)}
-        title={plan.description}
+        key={`${entry.type}-${entry.id}`}
+        className={`maintenance-agenda-plan ${entry.status}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          navigate(entry.path);
+        }}
+        title={entry.description}
       >
-        <strong>{getStatusLabel(status)}</strong>
-        <span>{plan.description}</span>
+        <strong>
+          {entry.title} - {getStatusLabel(entry.status)}
+        </strong>
+        <span>{entry.description}</span>
       </button>
     );
   }
@@ -240,7 +334,7 @@ export default function MaintenancePlansCalendarPage() {
             type="button"
             className="maintenance-agenda-nav"
             onClick={() => navigateAgenda(-1)}
-            aria-label="Période précédente"
+            aria-label="Periode precedente"
           >
             <ChevronLeft size={18} />
           </button>
@@ -257,7 +351,7 @@ export default function MaintenancePlansCalendarPage() {
             type="button"
             className="maintenance-agenda-nav"
             onClick={() => navigateAgenda(1)}
-            aria-label="Période suivante"
+            aria-label="Periode suivante"
           >
             <ChevronRight size={18} />
           </button>
@@ -311,7 +405,7 @@ export default function MaintenancePlansCalendarPage() {
 
           {visibleAgendaDays.map((date) => {
             const dateKey = toDateKey(date);
-            const dayPlans = plansByDate[dateKey] ?? [];
+            const dayEntries = entriesByDate[dateKey] ?? [];
             const isOutsideMonth =
               agendaView === "month" && date.getMonth() !== agendaDate.getMonth();
 
@@ -330,17 +424,15 @@ export default function MaintenancePlansCalendarPage() {
                   if (agendaView === "month") setAgendaView("day");
                 }}
               >
-                <span className="maintenance-agenda-day-number">
-                  {date.getDate()}
-                </span>
+                <span className="maintenance-agenda-day-number">{date.getDate()}</span>
 
                 <div className="maintenance-agenda-plan-list">
-                  {dayPlans.length > 0 ? (
-                    dayPlans.map(renderPlanChip)
+                  {dayEntries.length > 0 ? (
+                    dayEntries.map(renderEntryChip)
                   ) : (
                     agendaView === "day" && (
                       <span className="maintenance-agenda-empty">
-                        Aucun plan prévu.
+                        Aucun element prevu.
                       </span>
                     )
                   )}

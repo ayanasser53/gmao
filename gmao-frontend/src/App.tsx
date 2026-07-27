@@ -62,6 +62,7 @@ import OperatorTaskDetailsPage from "./pages/operator/OperatorTaskDetailsPage";
 import OperatorTasksPage from "./pages/operator/OperatorTasksPage";
 import TechnicianActivitiesPage from "./pages/technician/TechnicianActivitiesPage";
 import TechnicianActivityFormPage from "./pages/technician/TechnicianActivityFormPage";
+import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage";
 import TechnicianMaintenancePlanDetailsPage from "./pages/technician/TechnicianMaintenancePlanDetailsPage";
 import TechnicianMaintenancePlansCalendarPage from "./pages/technician/TechnicianMaintenancePlansCalendarPage";
 import TechnicianMaintenancePlansPage from "./pages/technician/TechnicianMaintenancePlansPage";
@@ -338,7 +339,8 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="tasks" replace />} />
+          <Route index element={<TechnicianDashboardPage />} />
+          <Route path="dashboard" element={<TechnicianDashboardPage />} />
           <Route path="tasks" element={<TechnicianTasksPage />} />
           <Route path="tasks/new" element={<Navigate to="/technician/tasks" replace />} />
           <Route path="tasks/:id" element={<TechnicianTaskDetailsPage />} />
