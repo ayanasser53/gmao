@@ -26,6 +26,7 @@ public record MaintenancePlanResponse(
         int plannedStoppedMinutes,
         MaintenancePlanStatus status,
         List<MaintenancePlanSparePartResponse> spareParts,
+        List<MaintenancePlanAssigneeResponse> assignees,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

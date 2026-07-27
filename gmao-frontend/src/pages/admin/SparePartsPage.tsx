@@ -35,6 +35,7 @@ import { getTaskById, getTasks } from "../../services/taskService";
 import type { SparePart } from "../../types/sparePart";
 import type { Tag } from "../../types/tag";
 import type { Task } from "../../types/task";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
@@ -62,6 +63,7 @@ function getImageUrl(imagePath: string | null | undefined): string | null {
 
 function SparePartsPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [search, setSearch] = useState("");
@@ -409,7 +411,7 @@ function getStockDotClass(part: SparePart): string {
           <button
             type="button"
             className="supplier-primary-button"
-            onClick={() => navigate("/admin/spare-parts/create")}
+            onClick={() => navigate(`${basePath}/spare-parts/create`)}
           >
             <CirclePlus size={19} />
             Ajouter une pièce détachée
@@ -602,11 +604,11 @@ function getStockDotClass(part: SparePart): string {
                   className="supplier-clickable-row"
                   tabIndex={0}
                   onClick={() =>
-                    navigate(`/admin/spare-parts/${part.id}`)
+                    navigate(`${basePath}/spare-parts/${part.id}`)
                   }
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      navigate(`/admin/spare-parts/${part.id}`);
+                      navigate(`${basePath}/spare-parts/${part.id}`);
                     }
                   }}
                 >
@@ -682,7 +684,7 @@ function getStockDotClass(part: SparePart): string {
                         className="supplier-edit-button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/admin/spare-parts/${part.id}/edit`);
+                          navigate(`${basePath}/spare-parts/${part.id}/edit`);
                         }}
                         title="Modifier"
                       >

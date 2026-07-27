@@ -33,6 +33,7 @@ import {
 } from "../../utils/equipmentDocuments";
 
 import type { Equipment } from "../../types/equipment";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 const BACKEND_URL = "http://localhost:8090";
 
@@ -89,15 +90,19 @@ function EquipmentDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const basePath = useWorkspaceBasePath();
   const source = searchParams.get("from");
   const backTarget =
     source === "activities"
-      ? { label: "Retour aux activités", path: "/admin/activities" }
+      ? { label: "Retour aux activités", path: `${basePath}/activities` }
       : source === "tasks"
-      ? { label: "Retour aux tâches", path: "/admin/tasks" }
+      ? { label: "Retour aux tâches", path: `${basePath}/tasks` }
       : source === "spare-parts"
-      ? { label: "Retour aux pièces détachées", path: "/admin/spare-parts" }
-      : { label: "Retour aux équipements", path: "/admin/equipment" };
+      ? { label: "Retour aux pièces détachées", path: `${basePath}/spare-parts` }
+      : {
+          label: basePath === "/technician" ? "Retour aux tâches" : "Retour aux équipements",
+          path: basePath === "/technician" ? `${basePath}/tasks` : `${basePath}/equipment`,
+        };
 
   const [equipment, setEquipment] =
     useState<Equipment | null>(null);
@@ -426,7 +431,7 @@ function EquipmentDetailsPage() {
                   type="button"
                   key={linked.id}
                   className="linked-compact-row"
-                  onClick={() => navigate(`/admin/equipment/${linked.id}`)}
+                  onClick={() => navigate(`${basePath}/equipment/${linked.id}`)}
                 >
                   <div className="linked-compact-icon">
                     {getFileUrl(linked.image, "equipment") ? (
@@ -474,7 +479,7 @@ function EquipmentDetailsPage() {
                   key={part.id}
                   className="linked-compact-row"
                   onClick={() =>
-                    navigate(`/admin/spare-parts/${part.id}?from=equipment&equipmentId=${equipment.id}`)
+                    navigate(`${basePath}/spare-parts/${part.id}?from=equipment&equipmentId=${equipment.id}`)
                   }
                 >
                   <div className="linked-compact-icon">

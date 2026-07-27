@@ -13,11 +13,10 @@ import com.gmao.gmao_backend.storage.ServedDatabaseFile;
 import com.gmao.gmao_backend.task.Task;
 import com.gmao.gmao_backend.task.TaskRepository;
 import com.gmao.gmao_backend.task.TaskStatus;
+import com.gmao.gmao_backend.user.Role;
 import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +48,16 @@ public class ActivityService {
 
     public List<ActivityResponse> findAll() {
         return activityRepository.findAllByUsineIdOrderByPerformedDateDesc(currentUserProvider.requireUsineId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public List<ActivityResponse> findMine() {
+        Long usineId = currentUserProvider.requireUsineId();
+        User currentUser = currentUserProvider.getUser();
+
+        return activityRepository.findMineByIntervenantIdAndUsineId(currentUser.getId(), usineId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -374,12 +383,29 @@ public class ActivityService {
         }
     }
 
+    private User currentUserOrNull() {
+        try {
+            return currentUserProvider.getUser();
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
     private void saveIntervenants(Activity activity, List<Long> intervenantIds) {
-        if (intervenantIds == null) {
+        List<Long> resolvedIntervenantIds = intervenantIds;
+        User currentUser = currentUserOrNull();
+
+        if ((resolvedIntervenantIds == null || resolvedIntervenantIds.isEmpty())
+                && currentUser != null
+                && currentUser.getRole() == Role.TECHNICIAN) {
+            resolvedIntervenantIds = List.of(currentUser.getId());
+        }
+
+        if (resolvedIntervenantIds == null) {
             return;
         }
 
-        for (Long userId : intervenantIds) {
+        for (Long userId : resolvedIntervenantIds) {
             if (userId == null) {
                 continue;
             }

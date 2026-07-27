@@ -40,6 +40,7 @@ import type { Equipment } from "../../types/equipment";
 import type { SparePart } from "../../types/sparePart";
 import type { Tag as TagItem } from "../../types/tag";
 import type { UserDetail } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
@@ -93,6 +94,7 @@ const defaultPayload: MaintenancePlanPayload = {
   plannedStoppedMinutes: 0,
   status: "PLANNED",
   spareParts: [],
+  assigneeIds: [],
 };
 
 type MaintenanceSchedulePreset =
@@ -135,6 +137,9 @@ function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
       sparePartId: part.sparePartId,
       quantity: part.quantity,
     })),
+    assigneeIds: (plan.assignees ?? [])
+      .map((assignee) => assignee.userId)
+      .filter((userId): userId is number => userId != null),
   };
 }
 
@@ -185,6 +190,7 @@ function formatFrenchDate(value: string) {
 
 export default function MaintenancePlanFormPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
@@ -229,6 +235,11 @@ export default function MaintenancePlanFormPage() {
       if (id) {
         const plan = await getMaintenancePlanById(Number(id));
         setForm(toPayload(plan));
+        setAssigneeIds(
+          (plan.assignees ?? [])
+            .map((assignee) => assignee.userId)
+            .filter((userId): userId is number => userId != null),
+        );
       }
     } catch {
       setError("Impossible de charger les données.");
@@ -403,16 +414,20 @@ export default function MaintenancePlanFormPage() {
       setError("");
 
       if (isEdit && id) {
-        await updateMaintenancePlan(Number(id), form);
+        await updateMaintenancePlan(Number(id), {
+          ...form,
+          assigneeIds,
+        });
       } else {
         const creationPayload: MaintenancePlanPayload = {
           ...form,
           status: "PLANNED",
+          assigneeIds,
         };
         await createMaintenancePlan(creationPayload);
       }
 
-      navigate("/admin/maintenance-plans");
+      navigate(`${basePath}/maintenance-plans`);
     } catch {
       setError(
         isEdit
@@ -471,7 +486,7 @@ export default function MaintenancePlanFormPage() {
         <button
           type="button"
           className="maintenance-form-back-button"
-          onClick={() => navigate("/admin/maintenance-plans")}
+          onClick={() => navigate(`${basePath}/maintenance-plans`)}
         >
           <ArrowLeft size={19} />
           Retour aux plans de maintenance
@@ -905,7 +920,7 @@ export default function MaintenancePlanFormPage() {
               <button
                 type="button"
                 className="secondary-action"
-                onClick={() => navigate("/admin/maintenance-plans")}
+                onClick={() => navigate(`${basePath}/maintenance-plans`)}
               >
                 Annuler
               </button>

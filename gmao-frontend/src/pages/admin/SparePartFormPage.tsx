@@ -37,6 +37,7 @@ import type {
   SparePartRequest,
 } from "../../types/sparePart";
 import type { Tag } from "../../types/tag";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 type SparePartFormState = Omit<SparePartRequest, "costCenterId"> & {
   costCenterId: string;
@@ -68,6 +69,7 @@ const emptyForm: SparePartFormState = {
 
 function SparePartFormPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
@@ -283,7 +285,7 @@ function SparePartFormPage() {
         ? await updateSparePart(Number(id), request, imageFile)
         : await createSparePart(request, imageFile);
 
-      navigate(`/admin/spare-parts/${savedSparePart.id}`, {
+      navigate(`${basePath}/spare-parts/${savedSparePart.id}`, {
         replace: true,
       });
     } catch {
@@ -303,7 +305,7 @@ function SparePartFormPage() {
         type="button"
         className="supplier-form-backdrop"
         aria-label="Retour aux pièces détachées"
-        onClick={() => navigate("/admin/spare-parts")}
+        onClick={() => navigate(`${basePath}/spare-parts`)}
       />
 
       <aside className="supplier-form-drawer">
@@ -320,7 +322,7 @@ function SparePartFormPage() {
               <button
                 type="button"
                 className="measure-drawer-back"
-                onClick={() => navigate("/admin/spare-parts")}
+                onClick={() => navigate(`${basePath}/spare-parts`)}
                 aria-label="Retour aux pièces détachées"
               >
                 <ArrowLeft size={22} />
@@ -335,7 +337,7 @@ function SparePartFormPage() {
               <button
                 type="button"
                 className="measure-drawer-close"
-                onClick={() => navigate("/admin/spare-parts")}
+                onClick={() => navigate(`${basePath}/spare-parts`)}
                 aria-label="Fermer"
               >
                 <X size={21} />
@@ -674,7 +676,7 @@ function SparePartFormPage() {
               <button
                 type="button"
                 className="measure-cancel-button"
-                onClick={() => navigate("/admin/spare-parts")}
+                onClick={() => navigate(`${basePath}/spare-parts`)}
                 disabled={loading}
               >
                 Annuler

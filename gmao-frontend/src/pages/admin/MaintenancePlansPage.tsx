@@ -23,6 +23,7 @@ import type {
 import {
   deleteMaintenancePlan,
   getMaintenancePlans,
+  getMyMaintenancePlans,
   updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
 import { getCostCenters } from "../../services/costCenterService";
@@ -33,6 +34,7 @@ import type { CostCenter } from "../../types/costCenter";
 import type { Equipment } from "../../types/equipment";
 import type { Tag } from "../../types/tag";
 import type { UserSummary } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
@@ -48,11 +50,6 @@ type MaintenanceFilterDropdown =
   | "label"
   | "costCenter"
   | null;
-
-interface MaintenancePlanWithAssignees extends MaintenancePlan {
-  assignees?: { userId?: number | null; id?: number | null }[];
-  assignedTo?: { userId?: number | null; id?: number | null }[];
-}
 
 type MaintenanceFilterOption = {
   value: string;
@@ -284,16 +281,21 @@ function getScheduleFilterValue(plan: MaintenancePlan) {
 }
 
 function planHasAssignee(plan: MaintenancePlan, userId: string) {
-  const fullPlan = plan as MaintenancePlanWithAssignees;
-
-  return [...(fullPlan.assignees ?? []), ...(fullPlan.assignedTo ?? [])].some(
+  return (plan.assignees ?? []).some(
     (assignee) =>
       String(assignee.userId ?? assignee.id ?? "") === userId,
   );
 }
 
-export default function MaintenancePlansPage() {
+interface MaintenancePlansPageProps {
+  technicianMode?: boolean;
+}
+
+export default function MaintenancePlansPage({
+  technicianMode = false,
+}: MaintenancePlansPageProps) {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
@@ -314,7 +316,7 @@ export default function MaintenancePlansPage() {
 
   useEffect(() => {
     loadPlans();
-  }, []);
+  }, [technicianMode]);
 
   async function loadPlans() {
     try {
@@ -326,7 +328,7 @@ export default function MaintenancePlansPage() {
         tagsData,
         costCentersData,
       ] = await Promise.all([
-        getMaintenancePlans(),
+        technicianMode ? getMyMaintenancePlans() : getMaintenancePlans(),
         getEquipment(),
         getUsers(),
         getTags(),
@@ -371,15 +373,17 @@ export default function MaintenancePlansPage() {
   }
 
   const statusCounts = useMemo(() => {
+    const visiblePlans = plans;
+
     const counts: Record<MaintenanceTab, number> = {
-      all: plans.length,
+      all: visiblePlans.length,
       planned: 0,
       in_progress: 0,
       late: 0,
       done: 0,
     };
 
-    plans.forEach((plan) => {
+    visiblePlans.forEach((plan) => {
       counts[getDisplayStatus(plan)] += 1;
     });
 
@@ -653,20 +657,24 @@ export default function MaintenancePlansPage() {
           <button
             type="button"
             className="resource-secondary-button"
-            onClick={() => navigate("/admin/maintenance-plans/calendar")}
+            onClick={() => navigate(`${basePath}/maintenance-plans/calendar`)}
           >
             <CalendarClock size={17} />
             Calendrier
           </button>
 
-          <button
-            type="button"
-            className="resource-primary-button"
-            onClick={() => navigate("/admin/maintenance-plans/new")}
-          >
-            <Plus size={17} />
-            Créer un plan
-          </button>
+
+
+          {!technicianMode && (
+            <button
+              type="button"
+              className="resource-primary-button"
+              onClick={() => navigate(`${basePath}/maintenance-plans/new`)}
+            >
+              <Plus size={17} />
+              Creer un plan
+            </button>
+          )}
         </div>
       </div>
 
@@ -855,14 +863,19 @@ export default function MaintenancePlansPage() {
               <th>Déclencheur</th>
               <th>Prochaine échéance</th>
               <th>Statut</th>
-              <th className="table-actions-column">Actions</th>
+              {!technicianMode && (
+                <th className="table-actions-column">Actions</th>
+              )}
             </tr>
           </thead>
 
           <tbody>
             {filteredPlans.length === 0 ? (
               <tr>
-                <td colSpan={7} className="resource-table-empty">
+                <td
+                  colSpan={technicianMode ? 6 : 7}
+                  className="resource-table-empty"
+                >
                   {activeTab === "all"
                     ? "Aucun plan de maintenance."
                     : `Aucun plan de maintenance avec le statut "${getStatusLabel(activeTab)}".`}
@@ -876,7 +889,7 @@ export default function MaintenancePlansPage() {
                   <tr
                     key={plan.id}
                     className="clickable-table-row"
-                    onClick={() => navigate(`/admin/maintenance-plans/${plan.id}`)}
+                    onClick={() => navigate(`${basePath}/maintenance-plans/${plan.id}`)}
                   >
                     <td className="resource-table-id-cell">#{plan.id}</td>
                     <td>
@@ -886,7 +899,7 @@ export default function MaintenancePlansPage() {
                           className="maintenance-plan-link"
                           onClick={(event) => {
                             event.stopPropagation();
-                            navigate(`/admin/maintenance-plans/${plan.id}`);
+                            navigate(`${basePath}/maintenance-plans/${plan.id}`);
                           }}
                         >
                           {plan.description}
@@ -937,32 +950,34 @@ export default function MaintenancePlansPage() {
                       </select>
                     </td>
 
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          type="button"
-                          title="Modifier"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/admin/maintenance-plans/${plan.id}/edit`);
-                          }}
-                        >
-                          <Pencil size={18} />
-                        </button>
+                    {!technicianMode && (
+                      <td>
+                        <div className="table-actions">
+                          <button
+                            type="button"
+                            title="Modifier"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`${basePath}/maintenance-plans/${plan.id}/edit`);
+                            }}
+                          >
+                            <Pencil size={18} />
+                          </button>
 
-                        <button
-                          type="button"
-                          className="danger-action"
-                          title="Supprimer"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDelete(plan.id);
-                          }}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+                          <button
+                            type="button"
+                            className="danger-action"
+                            title="Supprimer"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDelete(plan.id);
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })
@@ -973,3 +988,4 @@ export default function MaintenancePlansPage() {
     </section>
   );
 }
+

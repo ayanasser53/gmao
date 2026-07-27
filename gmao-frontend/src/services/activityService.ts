@@ -40,6 +40,11 @@ export async function getActivities(): Promise<Activity[]> {
   return response.data.map(normalizeActivity);
 }
 
+export async function getMyActivities(): Promise<Activity[]> {
+  const response = await api.get<Activity[]>("/activities/my");
+  return response.data.map(normalizeActivity);
+}
+
 export async function getInProgressActivities(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities/in-progress");
   return response.data.map(normalizeActivity);

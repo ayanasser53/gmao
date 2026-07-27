@@ -38,6 +38,8 @@ public record MaintenancePlanRequest(
 
         MaintenancePlanStatus status,
 
-        List<MaintenancePlanSparePartRequest> spareParts
+        List<MaintenancePlanSparePartRequest> spareParts,
+
+        List<Long> assigneeIds
 ) {
 }

@@ -15,4 +15,17 @@ public interface MaintenancePlanRepository
 
     @Query("select p from MaintenancePlan p where p.id = :id and p.equipment.usine.id = :usineId")
     Optional<MaintenancePlan> findByIdAndUsineId(@Param("id") Long id, @Param("usineId") Long usineId);
+
+    @Query("""
+            select distinct plan
+            from MaintenancePlan plan
+            join plan.assignees assignee
+            where assignee.user.id = :userId
+                and plan.equipment.usine.id = :usineId
+            order by plan.nextDueDate asc, plan.startDate asc
+            """)
+    List<MaintenancePlan> findMineByAssigneeIdAndUsineId(
+            @Param("userId") Long userId,
+            @Param("usineId") Long usineId
+    );
 }

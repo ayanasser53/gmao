@@ -24,6 +24,7 @@ import { getTasks } from "../../services/taskService";
 import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { TaskListItem } from "../../types/task";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import DocumentAttachmentField from "../../components/admin/DocumentAttachmentField";
 
@@ -43,6 +44,7 @@ function parseDecimal(value: string) {
 
 function ActivityFormPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [searchParams] = useSearchParams();
   const presetTaskId = searchParams.get("taskId");
 
@@ -103,7 +105,7 @@ function ActivityFormPage() {
   }, [spareParts, sparePartId]);
 
   function closeForm() {
-    navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
+    navigate(presetTaskId ? `${basePath}/tasks/${presetTaskId}` : `${basePath}/activities`);
   }
 
   function addMinutes(minutes: number) {
@@ -218,7 +220,7 @@ function ActivityFormPage() {
         await createActivity(payload, files);
       }
 
-      navigate(presetTaskId ? `/admin/tasks/${presetTaskId}` : "/admin/activities");
+      navigate(presetTaskId ? `${basePath}/tasks/${presetTaskId}` : `${basePath}/activities`);
     } catch (submitError) {
       console.error(submitError);
       setError("Impossible d'ajouter l'activité.");

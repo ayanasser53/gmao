@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.user.Role;
 import com.gmao.gmao_backend.activity.Activity;
 import com.gmao.gmao_backend.activity.ActivityResponse;
 
@@ -17,6 +18,14 @@ import java.util.stream.Collectors;
 public class TaskMapper {
 
     public TaskResponse toResponse(Task task) {
+        return toResponse(task, resolveDisplayStatus(task));
+    }
+
+    public TaskResponse toOperatorResponse(Task task) {
+        return toResponse(task, task.getStatus());
+    }
+
+    private TaskResponse toResponse(Task task, TaskStatus status) {
         Equipment equipment = task.getEquipment();
 
         return new TaskResponse(
@@ -55,7 +64,7 @@ public class TaskMapper {
                         ? equipment.getCostCenter().getName()
                         : null,
 
-                resolveDisplayStatus(task),
+                status,
 
                 mapAssignees(task.getAssignees()),
 
@@ -76,6 +85,14 @@ public class TaskMapper {
     }
 
     public TaskListItemResponse toListItemResponse(Task task) {
+        return toListItemResponse(task, resolveDisplayStatus(task));
+    }
+
+    public TaskListItemResponse toOperatorListItemResponse(Task task) {
+        return toListItemResponse(task, task.getStatus());
+    }
+
+    private TaskListItemResponse toListItemResponse(Task task, TaskStatus status) {
         Equipment equipment = task.getEquipment();
 
         return new TaskListItemResponse(
@@ -112,7 +129,7 @@ public class TaskMapper {
 
                 mapTags(task.getTags()),
 
-                resolveDisplayStatus(task)
+                status
         );
     }
 
@@ -123,8 +140,22 @@ public class TaskMapper {
      * marked DONE is never considered late or planned.
      */
     private TaskStatus resolveDisplayStatus(Task task) {
+        if (task.getCreatedBy() != null && task.getCreatedBy().getRole() == Role.PRODUCTION) {
+            return task.getStatus();
+        }
+
         if (task.getStatus() == TaskStatus.PLANNED || task.getStatus() == TaskStatus.DONE) {
             return task.getStatus();
+        }
+
+        LocalTime startTime = task.isAllDay() || task.getStartHour() == null
+                ? LocalTime.of(0, 0)
+                : task.getStartHour();
+
+        LocalDateTime startDateTime = task.getStartDate().atTime(startTime);
+
+        if (startDateTime.isAfter(LocalDateTime.now())) {
+            return TaskStatus.PLANNED;
         }
 
         LocalTime endTime = task.isAllDay() || task.getEndHour() == null

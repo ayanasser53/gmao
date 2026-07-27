@@ -74,6 +74,10 @@ public class MaintenancePlan {
     @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MaintenancePlanSparePart> spareParts = new HashSet<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MaintenancePlanAssignee> assignees = new HashSet<>();
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

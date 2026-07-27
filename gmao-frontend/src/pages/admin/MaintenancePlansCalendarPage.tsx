@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { MaintenancePlan } from "../../types/maintenancePlan";
 import { getMaintenancePlans } from "../../services/maintenancePlanService";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
@@ -140,6 +141,7 @@ function getStatusLabel(status: DisplayStatus) {
 
 export default function MaintenancePlansCalendarPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [error, setError] = useState("");
   const [agendaDate, setAgendaDate] = useState(() => parseDateKey(getTodayKey()));
@@ -200,7 +202,7 @@ export default function MaintenancePlansCalendarPage() {
         type="button"
         key={plan.id}
         className={`maintenance-agenda-plan ${status}`}
-        onClick={() => navigate(`/admin/maintenance-plans/${plan.id}`)}
+        onClick={() => navigate(`${basePath}/maintenance-plans/${plan.id}`)}
         title={plan.description}
       >
         <strong>{getStatusLabel(status)}</strong>
@@ -215,7 +217,7 @@ export default function MaintenancePlansCalendarPage() {
         <button
           type="button"
           className="details-back-button"
-          onClick={() => navigate("/admin/maintenance-plans")}
+          onClick={() => navigate(`${basePath}/maintenance-plans`)}
           aria-label="Retour aux plans"
         >
           <ArrowLeft size={22} />

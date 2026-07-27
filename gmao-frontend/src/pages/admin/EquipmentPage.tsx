@@ -61,6 +61,7 @@ import type {
 import type { Tag } from "../../types/tag";
 import type { CostCenter } from "../../types/costCenter";
 import type { SparePart } from "../../types/sparePart";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 const BACKEND_URL = "http://localhost:8090";
 
@@ -129,6 +130,7 @@ function toStoredDocuments(
 
 function EquipmentPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [equipment, setEquipment] =
     useState<Equipment[]>([]);
@@ -1221,7 +1223,7 @@ return (
                 tabIndex={0}
                 onClick={() =>
                   navigate(
-                    `/admin/equipment/${item.id}`,
+                    `${basePath}/equipment/${item.id}`,
                   )
                 }
                 onKeyDown={(event) => {
@@ -1230,7 +1232,7 @@ return (
                     event.key === " "
                   ) {
                     navigate(
-                      `/admin/equipment/${item.id}`,
+                      `${basePath}/equipment/${item.id}`,
                     );
                   }
                 }}

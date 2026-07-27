@@ -14,6 +14,10 @@ function defaultPathForRole(role: string) {
     return "/operator";
   }
 
+  if (role === "TECHNICIAN") {
+    return "/technician/tasks";
+  }
+
   return "/admin/dashboard";
 }
 

@@ -23,6 +23,11 @@ public class ActivityController {
         return ResponseEntity.ok(activityService.findAll());
     }
 
+    @GetMapping("/activities/my")
+    public ResponseEntity<List<ActivityResponse>> findMine() {
+        return ResponseEntity.ok(activityService.findMine());
+    }
+
     @GetMapping("/activities/in-progress")
     public ResponseEntity<List<ActivityResponse>> findInProgress() {
         return ResponseEntity.ok(activityService.findInProgress());

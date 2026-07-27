@@ -36,6 +36,15 @@ public class TaskController {
         );
     }
 
+    @GetMapping("/my-created/{id}")
+    public ResponseEntity<TaskResponse> findMyCreatedTaskById(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                taskService.findMyCreatedTaskById(id)
+        );
+    }
+
     @GetMapping("/summary")
     public ResponseEntity<TaskSummaryResponse> findSummary() {
         return ResponseEntity.ok(

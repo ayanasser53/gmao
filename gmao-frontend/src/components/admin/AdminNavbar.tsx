@@ -47,7 +47,25 @@ interface NavigationItem {
   icon: ReactNode;
 }
 
-function AdminNavbar() {
+interface AdminNavbarProps {
+  workspaceLabel?: string;
+  profileLabel?: string;
+  homePath?: string;
+  profilePath?: string;
+  notificationsPath?: string;
+  showNotifications?: boolean;
+  navigationItems?: NavigationItem[];
+}
+
+function AdminNavbar({
+  workspaceLabel = "Espace administrateur",
+  profileLabel = "Administrateur",
+  homePath = "/admin/dashboard",
+  profilePath = "/admin/profile",
+  notificationsPath = "/admin/notifications",
+  showNotifications = true,
+  navigationItems: customNavigationItems,
+}: AdminNavbarProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -157,9 +175,9 @@ function AdminNavbar() {
     },
   ];
 
-  const navigationItems: NavigationItem[] = isSuperAdmin
-    ? superAdminNavigationItems
-    : standardNavigationItems;
+  const navigationItems: NavigationItem[] =
+    customNavigationItems ??
+    (isSuperAdmin ? superAdminNavigationItems : standardNavigationItems);
 
   const activeNavigationItem =
     navigationItems
@@ -172,16 +190,16 @@ function AdminNavbar() {
       )[0];
 
   const topbarTitle =
-    location.pathname === "/admin/notifications"
+    location.pathname === notificationsPath
       ? "Notifications"
-      : location.pathname === "/admin/profile"
+      : location.pathname === profilePath
         ? "Mon profil"
-        : activeNavigationItem?.label ?? "Espace administrateur";
+        : activeNavigationItem?.label ?? workspaceLabel;
 
   const topbarDescription =
-    location.pathname === "/admin/notifications"
+    location.pathname === notificationsPath
       ? "Consultez les dernières alertes"
-      : location.pathname === "/admin/profile"
+      : location.pathname === profilePath
         ? "Gérez vos informations personnelles"
         : activeNavigationItem?.description ??
           "Administration de SmartMaint";
@@ -251,7 +269,7 @@ function AdminNavbar() {
 
         <div className="admin-current-module">
           <span className="admin-current-module-label">
-            Espace administrateur
+            {workspaceLabel}
           </span>
 
           <div className="admin-current-module-row">
@@ -262,22 +280,24 @@ function AdminNavbar() {
         </div>
 
         <div className="admin-topbar-actions">
-          <button
-            type="button"
-            className="notification-button"
-            onClick={() =>
-              navigate("/admin/notifications")
-            }
-            aria-label="Notifications"
-          >
-            <Bell size={21} />
+          {showNotifications && (
+            <button
+              type="button"
+              className="notification-button"
+              onClick={() =>
+                navigate(notificationsPath)
+              }
+              aria-label="Notifications"
+            >
+              <Bell size={21} />
 
-            {notificationCount > 0 && (
-              <span className="notification-count">
-                {notificationCount}
-              </span>
-            )}
-          </button>
+              {notificationCount > 0 && (
+                <span className="notification-count">
+                  {notificationCount}
+                </span>
+              )}
+            </button>
+          )}
 
           <div
             className="profile-menu-container"
@@ -297,7 +317,7 @@ function AdminNavbar() {
               </div>
 
               <div className="admin-profile-summary">
-                <strong>Administrateur</strong>
+                <strong>{profileLabel}</strong>
                 <span>{email}</span>
               </div>
             </button>
@@ -307,7 +327,7 @@ function AdminNavbar() {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate("/admin/profile");
+                    navigate(profilePath);
                     setProfileMenuOpen(false);
                   }}
                 >
@@ -342,7 +362,7 @@ function AdminNavbar() {
       >
         <div className="admin-sidebar-header">
           <NavLink
-            to="/admin/dashboard"
+            to={homePath}
             className="admin-sidebar-brand"
             onClick={closeMobileSidebar}
           >

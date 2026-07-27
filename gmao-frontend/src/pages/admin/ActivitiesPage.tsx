@@ -16,11 +16,13 @@ import { Link, useNavigate } from "react-router-dom";
 
 import {
   getActivities,
+  getMyActivities,
 } from "../../services/activityService";
 import { getCostCenters } from "../../services/costCenterService";
 import { getEquipment } from "../../services/equipmentService";
 import { getTags } from "../../services/tagService";
 import { getTasks } from "../../services/taskService";
+import { getAuthenticatedUserId } from "../../services/authService";
 import { getUsers } from "../../services/userService";
 import type { Activity } from "../../types/activity";
 import type { CostCenter } from "../../types/costCenter";
@@ -28,6 +30,7 @@ import type { Equipment } from "../../types/equipment";
 import type { Tag } from "../../types/tag";
 import type { TaskListItem } from "../../types/task";
 import type { UserSummary } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 import "./task-styles.css";
 
@@ -124,8 +127,14 @@ function parseLocalDate(value: string): Date | null {
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-function ActivitiesPage() {
+interface ActivitiesPageProps {
+  technicianMode?: boolean;
+}
+
+function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
+  const currentUserId = getAuthenticatedUserId();
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
@@ -159,7 +168,7 @@ function ActivitiesPage() {
           equipmentData,
           costCentersData,
         ] = await Promise.all([
-          getActivities(),
+          technicianMode ? getMyActivities() : getActivities(),
           getTasks(),
           getUsers(),
           getTags(),
@@ -179,7 +188,7 @@ function ActivitiesPage() {
     }
 
     void loadActivities();
-  }, []);
+  }, [technicianMode]);
 
   const filteredActivities = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -187,6 +196,14 @@ function ActivitiesPage() {
 
     return activities.filter((activity) => {
       const task = tasksById.get(activity.taskId);
+      if (
+        technicianMode &&
+        currentUserId &&
+        !activity.intervenants.some((user) => user.userId === currentUserId)
+      ) {
+        return false;
+      }
+
       const matchesSearch =
         !value ||
         activity.description.toLowerCase().includes(value) ||
@@ -258,6 +275,8 @@ function ActivitiesPage() {
     });
   }, [
     activities,
+    technicianMode,
+    currentUserId,
     search,
     tasks,
     filterAssignee,
@@ -339,7 +358,7 @@ function ActivitiesPage() {
       return;
     }
 
-    navigate(`/admin/tasks/${activity.taskId}?from=activities`);
+    navigate(`${basePath}/tasks/${activity.taskId}?from=activities`);
   }
 
   return (
@@ -373,13 +392,16 @@ function ActivitiesPage() {
             CSV
           </button>
 
-          <Link
-            to="/admin/activities/create"
-            className="supplier-primary-button"
-          >
-            <Plus size={18} />
-            Ajouter une activité
-          </Link>
+
+          {!technicianMode && (
+            <Link
+              to={`${basePath}/activities/create`}
+              className="supplier-primary-button"
+            >
+              <Plus size={18} />
+              Ajouter une activite
+            </Link>
+          )}
         </div>
       </div>
 
@@ -893,4 +915,5 @@ function ActivitiesPage() {
 }
 
 export default ActivitiesPage;
+
 

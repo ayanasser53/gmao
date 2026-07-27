@@ -14,7 +14,7 @@ import {
   DocumentPreviewModal,
   type PreviewDocument,
 } from "../../components/admin/DocumentAttachmentField";
-import { getTaskById } from "../../services/taskService";
+import { getMyCreatedTaskById } from "../../services/taskService";
 import type { Task, TaskStatus } from "../../types/task";
 
 import "../admin/task-styles.css";
@@ -74,24 +74,53 @@ function OperatorTaskDetailsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let canceled = false;
+
     async function loadTask(): Promise<void> {
       if (!Number.isFinite(taskId)) {
-        setError("Tache introuvable.");
-        setLoading(false);
+        if (!canceled) {
+          setError("Tache introuvable.");
+          setLoading(false);
+        }
         return;
       }
 
       try {
-        setTask(await getTaskById(taskId));
+        const nextTask = await getMyCreatedTaskById(taskId);
+
+        if (!canceled) {
+          setTask(nextTask);
+          setError("");
+        }
       } catch (requestError) {
         console.error(requestError);
-        setError("Impossible de charger les details de la tache.");
+        if (!canceled) {
+          setError("Impossible de charger les details de la tache.");
+        }
       } finally {
-        setLoading(false);
+        if (!canceled) {
+          setLoading(false);
+        }
       }
     }
 
     void loadTask();
+
+    const intervalId = window.setInterval(() => {
+      void loadTask();
+    }, 10000);
+
+    function handleWindowFocus(): void {
+      void loadTask();
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      canceled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
   }, [taskId]);
 
   const equipmentImage = useMemo(

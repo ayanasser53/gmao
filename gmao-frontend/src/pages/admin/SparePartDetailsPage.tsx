@@ -21,6 +21,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getSparePartById } from "../../services/sparePartService";
 
 import type { SparePart } from "../../types/sparePart";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
@@ -66,17 +67,18 @@ function displayNumber(value: number | null): string {
 function SparePartDetailsPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const basePath = useWorkspaceBasePath();
   const from = searchParams.get("from");
   const equipmentId = searchParams.get("equipmentId");
   const backTarget =
     from === "equipment" && equipmentId
       ? {
           label: "Retour à l'équipement",
-          path: `/admin/equipment/${equipmentId}`,
+          path: `${basePath}/equipment/${equipmentId}`,
         }
       : {
           label: "Retour aux pièces détachées",
-          path: "/admin/spare-parts",
+          path: `${basePath}/spare-parts`,
         };
 
   const [sparePart, setSparePart] = useState<SparePart | null>(null);
@@ -343,7 +345,7 @@ function SparePartDetailsPage() {
                         </div>
                       </div>
 
-                      <Link className="spare-detail-linked-action" to={`/admin/equipment/${equipment.id}?from=spare-parts`}>
+                      <Link className="spare-detail-linked-action" to={`${basePath}/equipment/${equipment.id}?from=spare-parts`}>
                         Voir le détail
                         <ChevronRight size={18} />
                       </Link>
@@ -387,7 +389,7 @@ function SparePartDetailsPage() {
                         </div>
                       </div>
 
-                      <Link className="spare-detail-linked-action" to={`/admin/spare-parts/${part.id}`}>
+                      <Link className="spare-detail-linked-action" to={`${basePath}/spare-parts/${part.id}`}>
                         Voir le détail
                         <ChevronRight size={18} />
                       </Link>

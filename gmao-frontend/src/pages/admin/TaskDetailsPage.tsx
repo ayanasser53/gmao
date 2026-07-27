@@ -36,6 +36,7 @@ import type { SparePart } from "../../types/sparePart";
 import type { Task, TaskStatus, UpdateTaskInput } from "../../types/task";
 import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
@@ -158,6 +159,7 @@ function TaskDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const basePath = useWorkspaceBasePath();
 
   const taskId = Number(id);
   const equipmentBackSource =
@@ -427,7 +429,7 @@ function TaskDetailsPage() {
         <button
           type="button"
           className="details-back-button"
-          onClick={() => navigate("/admin/tasks")}
+          onClick={() => navigate(`${basePath}/tasks`)}
           aria-label="Retour aux tâches"
         >
           <ArrowLeft size={22} />
@@ -1168,7 +1170,7 @@ function TaskDetailsPage() {
               <button
                 type="button"
                 className="success-button"
-                onClick={() => navigate(`/admin/activities/create?taskId=${task.id}`)}
+                onClick={() => navigate(`${basePath}/activities/create?taskId=${task.id}`)}
               >
                 <Plus size={17} />
                 Ajouter une activité
@@ -1308,7 +1310,7 @@ function TaskDetailsPage() {
               onClick={() =>
                 task.equipment &&
                 navigate(
-                  `/admin/equipment/${task.equipment.id}?from=${equipmentBackSource}`,
+                  `${basePath}/equipment/${task.equipment.id}?from=${equipmentBackSource}`,
                 )
               }
               disabled={!task.equipment}

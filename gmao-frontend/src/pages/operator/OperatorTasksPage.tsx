@@ -56,18 +56,45 @@ function OperatorTasksPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let canceled = false;
+
     async function load(): Promise<void> {
       try {
-        setTasks(await getMyCreatedTasks());
+        const nextTasks = await getMyCreatedTasks();
+
+        if (!canceled) {
+          setTasks(nextTasks);
+          setError("");
+        }
       } catch (requestError) {
         console.error(requestError);
-        setError("Impossible de charger vos taches.");
+        if (!canceled) {
+          setError("Impossible de charger vos taches.");
+        }
       } finally {
-        setLoading(false);
+        if (!canceled) {
+          setLoading(false);
+        }
       }
     }
 
     void load();
+
+    const intervalId = window.setInterval(() => {
+      void load();
+    }, 10000);
+
+    function handleWindowFocus(): void {
+      void load();
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      canceled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+    };
   }, []);
 
   const statusCounts = useMemo(

@@ -37,6 +37,7 @@ import { getUsersDetailed } from "../../services/userService";
 import type { Measure } from "../../types/measure";
 import type { SparePart } from "../../types/sparePart";
 import type { UserDetail } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
@@ -285,6 +286,7 @@ function planToPayload(plan: MaintenancePlan) {
 
 export default function MaintenancePlanDetailsPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const { id } = useParams();
   const [plan, setPlan] = useState<MaintenancePlan | null>(null);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -842,7 +844,7 @@ export default function MaintenancePlanDetailsPage() {
         <button
           type="button"
           className="maintenance-form-back-button"
-          onClick={() => navigate("/admin/maintenance-plans")}
+          onClick={() => navigate(`${basePath}/maintenance-plans`)}
         >
           <ArrowLeft size={18} />
           Retour aux plans de maintenance
@@ -909,7 +911,7 @@ export default function MaintenancePlanDetailsPage() {
             <button
               type="button"
               className="linked-equipment-card linked-equipment-action"
-              onClick={() => navigate(`/admin/equipment/${plan.equipmentId}`)}
+              onClick={() => navigate(`${basePath}/equipment/${plan.equipmentId}`)}
             >
               {equipmentImage ? (
                 <img src={equipmentImage} alt={plan.equipmentName} />

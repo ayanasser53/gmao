@@ -23,12 +23,14 @@ import { getCostCenters } from "../../services/costCenterService";
 import { getTasks, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
+import { getAuthenticatedUserId } from "../../services/authService";
 import type { Activity } from "../../types/activity";
 import type { Equipment } from "../../types/equipment";
 import type { CostCenter } from "../../types/costCenter";
 import type { TaskListItem, TaskStatus } from "../../types/task";
 import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 
 import "./task-styles.css";
@@ -125,8 +127,14 @@ function formatTaskCounters(activities: Activity[]): string {
   return counters.length ? counters.join(", ") : "-";
 }
 
-function TaskListPage() {
+interface TaskListPageProps {
+  technicianMode?: boolean;
+}
+
+function TaskListPage({ technicianMode = false }: TaskListPageProps) {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
+  const currentUserId = getAuthenticatedUserId();
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -229,19 +237,42 @@ function TaskListPage() {
   }
 
   const statusCounts = useMemo(() => {
+    const visibleTasks =
+      technicianMode && currentUserId
+        ? tasks.filter((task) =>
+            [...task.assignees, ...task.assignedTo].some(
+              (assignee) =>
+                assignee.type === "USER" &&
+                assignee.userId === currentUserId,
+            ),
+          )
+        : tasks;
+
     return {
-      ALL: tasks.length,
-      PLANNED: tasks.filter((task) => task.status === "PLANNED").length,
-      IN_PROGRESS: tasks.filter((task) => task.status === "IN_PROGRESS").length,
-      LATE: tasks.filter((task) => task.status === "LATE").length,
-      DONE: tasks.filter((task) => task.status === "DONE").length,
+      ALL: visibleTasks.length,
+      PLANNED: visibleTasks.filter((task) => task.status === "PLANNED").length,
+      IN_PROGRESS: visibleTasks.filter((task) => task.status === "IN_PROGRESS").length,
+      LATE: visibleTasks.filter((task) => task.status === "LATE").length,
+      DONE: visibleTasks.filter((task) => task.status === "DONE").length,
     };
-  }, [tasks]);
+  }, [tasks, technicianMode, currentUserId]);
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return tasks.filter((task) => {
+      if (
+        technicianMode &&
+        currentUserId &&
+        ![...task.assignees, ...task.assignedTo].some(
+          (assignee) =>
+            assignee.type === "USER" &&
+            assignee.userId === currentUserId,
+        )
+      ) {
+        return false;
+      }
+
       if (activeTab !== "ALL" && task.status !== activeTab) {
         return false;
       }
@@ -319,7 +350,7 @@ function TaskListPage() {
 
       return true;
     });
-  }, [tasks, search, activeTab, appliedFilters]);
+  }, [tasks, technicianMode, currentUserId, search, activeTab, appliedFilters]);
 
   const taskActivityTotals = useMemo(() => {
     const totals = new Map<number, { spentMinutes: number; cost: number }>();
@@ -463,14 +494,17 @@ function TaskListPage() {
             CSV
           </button>
 
-          <button
-            type="button"
-            className="resource-primary-button"
-            onClick={() => navigate("/admin/tasks/new")}
-          >
-            <Plus size={17} />
-            Créer une tâche
-          </button>
+
+          {!technicianMode && (
+            <button
+              type="button"
+              className="resource-primary-button"
+              onClick={() => navigate(`${basePath}/tasks/new`)}
+            >
+              <Plus size={17} />
+              Creer une tache
+            </button>
+          )}
         </div>
       </div>
 
@@ -1048,7 +1082,7 @@ function TaskListPage() {
                   <tr
                     key={task.id}
                     className="supplier-clickable-row"
-                    onClick={() => navigate(`/admin/tasks/${task.id}`)}
+                    onClick={() => navigate(`${basePath}/tasks/${task.id}`)}
                   >
                     <td className="resource-table-id-cell">#{task.id}</td>
                     <td>
@@ -1159,3 +1193,5 @@ function TaskListPage() {
 }
 
 export default TaskListPage;
+
+

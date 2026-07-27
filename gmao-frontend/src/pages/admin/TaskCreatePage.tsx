@@ -34,6 +34,7 @@ import type {
 import type { Equipment } from "../../types/equipment";
 import type { Team } from "../../types/team";
 import type { UserDetail } from "../../types/user";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import EquipmentSelect from "../../components/admin/EquipmentSelect";
 import DocumentAttachmentField from "../../components/admin/DocumentAttachmentField";
@@ -67,6 +68,7 @@ function initials(label: string): string {
 
 function TaskCreatePage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [equipmentOnly] = useState(true);
   const [equipmentId, setEquipmentId] = useState<number | "">("");
@@ -265,7 +267,7 @@ function TaskCreatePage() {
         setFiles([]);
         setTagIds([]);
       } else {
-        navigate("/admin/tasks");
+        navigate(`${basePath}/tasks`);
       }
     } catch (submitError) {
       console.error(submitError);
@@ -338,7 +340,7 @@ function TaskCreatePage() {
         type="button"
         className="supplier-form-backdrop"
         aria-label="Retour aux tâches"
-        onClick={() => navigate("/admin/tasks")}
+        onClick={() => navigate(`${basePath}/tasks`)}
       />
 
       <aside className="supplier-form-drawer task-form-drawer">
@@ -350,7 +352,7 @@ function TaskCreatePage() {
             <button
               type="button"
               className="measure-drawer-back"
-              onClick={() => navigate("/admin/tasks")}
+              onClick={() => navigate(`${basePath}/tasks`)}
               aria-label="Retour aux tâches"
             >
               <ArrowLeft size={22} />
@@ -361,7 +363,7 @@ function TaskCreatePage() {
             <button
               type="button"
               className="measure-drawer-close"
-              onClick={() => navigate("/admin/tasks")}
+              onClick={() => navigate(`${basePath}/tasks`)}
               aria-label="Fermer"
             >
               <X size={21} />

@@ -32,6 +32,10 @@ function getStartPath(authData: AuthResponse): string {
     return "/operator";
   }
 
+  if (authData.role === "TECHNICIAN") {
+    return "/technician/tasks";
+  }
+
   return "/admin/dashboard";
 }
 function LoginPage() {
@@ -74,6 +78,10 @@ function LoginPage() {
         requestError as AxiosError<ApiErrorResponse>;
 
       const message =
+        axiosError.code === "ECONNABORTED" ||
+        axiosError.message.toLowerCase().includes("network")
+          ? "Le backend ne repond pas. Verifiez que Docker et gmao_backend sont demarres."
+          :
         axiosError.response?.data?.message ??
         axiosError.response?.data?.error ??
         "Email ou mot de passe incorrect.";

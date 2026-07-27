@@ -16,6 +16,16 @@ export interface MaintenancePlanSparePart {
   quantity: number;
 }
 
+export interface MaintenancePlanAssignee {
+  id: number;
+  type: "USER" | "TEAM";
+  userId: number | null;
+  userFullName: string | null;
+  userPhoto: string | null;
+  teamId: number | null;
+  teamName: string | null;
+}
+
 export interface MaintenancePlan {
   id: number;
   equipmentId: number;
@@ -38,6 +48,7 @@ export interface MaintenancePlan {
   plannedStoppedMinutes: number;
   status: MaintenancePlanStatus;
   spareParts: MaintenancePlanSparePart[];
+  assignees: MaintenancePlanAssignee[];
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -61,5 +72,6 @@ export interface MaintenancePlanPayload {
     sparePartId: number;
     quantity: number;
   }[];
+  assigneeIds?: number[];
 }
 

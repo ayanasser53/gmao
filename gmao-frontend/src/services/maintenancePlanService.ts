@@ -12,6 +12,11 @@ export async function getMaintenancePlans(): Promise<MaintenancePlan[]> {
   return response.data;
 }
 
+export async function getMyMaintenancePlans(): Promise<MaintenancePlan[]> {
+  const response = await api.get<MaintenancePlan[]>(`${BASE_URL}/my`);
+  return response.data;
+}
+
 export async function getMaintenancePlanById(
   id: number
 ): Promise<MaintenancePlan> {

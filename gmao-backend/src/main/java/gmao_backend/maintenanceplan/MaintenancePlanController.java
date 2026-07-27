@@ -20,6 +20,11 @@ public class MaintenancePlanController {
         return ResponseEntity.ok(maintenancePlanService.findAll());
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<List<MaintenancePlanResponse>> findMine() {
+        return ResponseEntity.ok(maintenancePlanService.findMine());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<MaintenancePlanResponse> findById(
             @PathVariable Long id

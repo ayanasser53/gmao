@@ -26,4 +26,18 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
     @Query("select a from Activity a where a.id = :id and a.task.equipment.usine.id = :usineId")
     Optional<Activity> findByIdAndUsineId(@Param("id") Long id, @Param("usineId") Long usineId);
+
+    @Query("""
+            select distinct activity
+            from Activity activity
+            join ActivityIntervenant intervenant
+                on intervenant.activity = activity
+            where intervenant.user.id = :userId
+                and activity.task.equipment.usine.id = :usineId
+            order by activity.performedDate desc, activity.performedEndTime desc
+            """)
+    List<Activity> findMineByIntervenantIdAndUsineId(
+            @Param("userId") Long userId,
+            @Param("usineId") Long usineId
+    );
 }

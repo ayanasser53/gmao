@@ -54,6 +54,22 @@ export async function getMyCreatedTasks(): Promise<TaskListItem[]> {
   return handle<TaskListItem[]>(response);
 }
 
+export async function getMyCreatedTaskById(id: number): Promise<Task> {
+  const response = await fetch(`${BACKEND_URL}/api/tasks/my-created/${id}`, {
+    headers: authHeaders(),
+  });
+  const task = await handle<Task>(response);
+
+  return {
+    ...task,
+    assignees: task.assignees ?? [],
+    assignedTo: task.assignedTo ?? [],
+    tags: task.tags ?? [],
+    spareParts: task.spareParts ?? [],
+    documents: task.documents ?? [],
+  };
+}
+
 export async function getTaskSummary(): Promise<TaskSummary> {
   const response = await fetch(`${BACKEND_URL}/api/tasks/summary`, {
     headers: authHeaders(),

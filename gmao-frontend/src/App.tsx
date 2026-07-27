@@ -8,6 +8,7 @@ import {
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./layouts/AdminLayout";
 import OperatorLayout from "./layouts/OperatorLayout";
+import TechnicianLayout from "./layouts/TechnicianLayout";
 import TaskListPage from "./pages/admin/TaskListPage";
 import TaskDetailsPage from "./pages/admin/TaskDetailsPage";
 import TaskCreatePage from "./pages/admin/TaskCreatePage";
@@ -59,12 +60,27 @@ import OperatorCreateTaskPage from "./pages/operator/OperatorCreateTaskPage";
 import OperatorDashboardPage from "./pages/operator/OperatorDashboardPage";
 import OperatorTaskDetailsPage from "./pages/operator/OperatorTaskDetailsPage";
 import OperatorTasksPage from "./pages/operator/OperatorTasksPage";
+import TechnicianActivitiesPage from "./pages/technician/TechnicianActivitiesPage";
+import TechnicianActivityFormPage from "./pages/technician/TechnicianActivityFormPage";
+import TechnicianMaintenancePlanDetailsPage from "./pages/technician/TechnicianMaintenancePlanDetailsPage";
+import TechnicianMaintenancePlansCalendarPage from "./pages/technician/TechnicianMaintenancePlansCalendarPage";
+import TechnicianMaintenancePlansPage from "./pages/technician/TechnicianMaintenancePlansPage";
+import TechnicianTaskDetailsPage from "./pages/technician/TechnicianTaskDetailsPage";
+import TechnicianTasksPage from "./pages/technician/TechnicianTasksPage";
 import { getAuthenticatedRole } from "./services/authService";
 
 function DashboardRedirect() {
+  const role = getAuthenticatedRole();
+
   return (
     <Navigate
-      to={getAuthenticatedRole() === "PRODUCTION" ? "/operator" : "/admin/dashboard"}
+      to={
+        role === "PRODUCTION"
+          ? "/operator"
+          : role === "TECHNICIAN"
+          ? "/technician/tasks"
+          : "/admin/dashboard"
+      }
       replace
     />
   );
@@ -312,6 +328,30 @@ function App() {
           <Route path="tasks/:id" element={<OperatorTaskDetailsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/operator" replace />} />
+        </Route>
+
+        <Route
+          path="/technician"
+          element={
+            <ProtectedRoute allowedRoles={["TECHNICIAN"]}>
+              <TechnicianLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="tasks" replace />} />
+          <Route path="tasks" element={<TechnicianTasksPage />} />
+          <Route path="tasks/new" element={<Navigate to="/technician/tasks" replace />} />
+          <Route path="tasks/:id" element={<TechnicianTaskDetailsPage />} />
+          <Route path="activities" element={<TechnicianActivitiesPage />} />
+          <Route path="activities/create" element={<TechnicianActivityFormPage />} />
+          <Route path="maintenance-plans" element={<TechnicianMaintenancePlansPage />} />
+          <Route path="maintenance-plans/calendar" element={<TechnicianMaintenancePlansCalendarPage />} />
+          <Route path="maintenance-plans/new" element={<Navigate to="/technician/maintenance-plans" replace />} />
+          <Route path="maintenance-plans/:id" element={<TechnicianMaintenancePlanDetailsPage />} />
+          <Route path="maintenance-plans/:id/edit" element={<Navigate to="/technician/maintenance-plans" replace />} />
+          <Route path="equipment/:id" element={<EquipmentDetailsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/technician/tasks" replace />} />
         </Route>
 
         {/* Ancienne route dashboard */}

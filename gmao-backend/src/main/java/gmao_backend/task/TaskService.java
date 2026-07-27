@@ -20,6 +20,7 @@ import com.gmao.gmao_backend.team.TeamRepository;
 
 import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
+import com.gmao.gmao_backend.user.Role;
 
 import lombok.RequiredArgsConstructor;
 
@@ -77,8 +78,20 @@ public class TaskService {
         return taskRepository
                 .findAllByCreatedByIdOrderByCreatedAtDesc(currentUser.getId())
                 .stream()
-                .map(mapper::toListItemResponse)
+                .map(mapper::toOperatorListItemResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TaskResponse findMyCreatedTaskById(Long id) {
+        User currentUser = resolveCurrentUser();
+        Task task = findEntityById(id);
+
+        if (task.getCreatedBy() == null || !task.getCreatedBy().getId().equals(currentUser.getId())) {
+            throw new ResourceNotFoundException("Tache introuvable.");
+        }
+
+        return mapper.toOperatorResponse(task);
     }
 
     @Transactional(readOnly = true)
@@ -140,13 +153,15 @@ public class TaskService {
             CreateTaskRequest request,
             List<MultipartFile> documents
     ) {
+        User currentUser = resolveCurrentUserOrNull();
+
         Task task = Task.builder()
 
                 .equipmentOnly(request.equipmentOnly())
 
                 .equipment(resolveEquipment(request.equipmentId()))
 
-                .createdBy(resolveCurrentUserOrNull())
+                .createdBy(currentUser)
 
                 .description(request.description().trim())
 
@@ -168,7 +183,9 @@ public class TaskService {
 
                 .plannedStoppedMinutes(request.plannedStoppedMinutes())
 
-                .status(TaskStatus.PLANNED)
+                .status(currentUser != null && currentUser.getRole() == Role.PRODUCTION
+                        ? TaskStatus.PLANNED
+                        : TaskStatus.IN_PROGRESS)
 
                 .tags(resolveTags(request.tagIds()))
 

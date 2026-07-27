@@ -7,10 +7,9 @@ import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovementRepository;
+import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -49,6 +48,17 @@ public class MaintenancePlanService {
         return toResponse(plan);
     }
 
+    public List<MaintenancePlanResponse> findMine() {
+        Long usineId = currentUserProvider.requireUsineId();
+        ensureDueOccurrences(usineId);
+        User currentUser = currentUserProvider.getUser();
+
+        return maintenancePlanRepository.findMineByAssigneeIdAndUsineId(currentUser.getId(), usineId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public MaintenancePlanResponse create(MaintenancePlanRequest request) {
         Equipment equipment = equipmentRepository.findByIdAndUsineId(request.equipmentId(), currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Équipement introuvable"));
@@ -71,6 +81,7 @@ public class MaintenancePlanService {
                 .build();
 
         applySpareParts(plan, request.spareParts());
+        applyAssignees(plan, request.assigneeIds());
         return toResponse(maintenancePlanRepository.save(plan));
     }
 
@@ -96,6 +107,7 @@ public class MaintenancePlanService {
         plan.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
         plan.setStatus(resolveSavedStatus(request.status()));
         applySpareParts(plan, request.spareParts());
+        applyAssignees(plan, request.assigneeIds());
 
         return toResponse(maintenancePlanRepository.save(plan));
     }
@@ -204,6 +216,22 @@ public class MaintenancePlanService {
         }
     }
 
+    private void applyAssignees(MaintenancePlan plan, List<Long> assigneeIds) {
+        plan.getAssignees().clear();
+
+        if (assigneeIds == null || assigneeIds.isEmpty()) {
+            return;
+        }
+
+        userRepository.findAllById(assigneeIds)
+                .forEach(user -> plan.getAssignees().add(
+                        MaintenancePlanAssignee.builder()
+                                .maintenancePlan(plan)
+                                .user(user)
+                                .build()
+                ));
+    }
+
     private MaintenancePlanResponse toResponse(MaintenancePlan plan) {
         Equipment equipment = plan.getEquipment();
 
@@ -234,8 +262,26 @@ public class MaintenancePlanService {
                         .stream()
                         .map(this::toSparePartResponse)
                         .toList(),
+                plan.getAssignees()
+                        .stream()
+                        .map(this::toAssigneeResponse)
+                        .toList(),
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
+        );
+    }
+
+    private MaintenancePlanAssigneeResponse toAssigneeResponse(MaintenancePlanAssignee assignee) {
+        User user = assignee.getUser();
+
+        return new MaintenancePlanAssigneeResponse(
+                assignee.getId(),
+                user != null ? "USER" : "TEAM",
+                user != null ? user.getId() : null,
+                user != null ? (user.getFirstName() + " " + user.getLastName()).trim() : null,
+                user != null ? user.getPhoto() : null,
+                assignee.getTeam() != null ? assignee.getTeam().getId() : null,
+                assignee.getTeam() != null ? assignee.getTeam().getName() : null
         );
     }
 
@@ -381,6 +427,16 @@ public class MaintenancePlanService {
                 .plannedStoppedMinutes(source.getPlannedStoppedMinutes())
                 .status(MaintenancePlanStatus.PLANNED)
                 .build();
+
+        source.getAssignees().forEach(assignee ->
+                nextPlan.getAssignees().add(
+                        MaintenancePlanAssignee.builder()
+                                .maintenancePlan(nextPlan)
+                                .user(assignee.getUser())
+                                .team(assignee.getTeam())
+                                .build()
+                )
+        );
 
         source.getSpareParts().forEach(item ->
                 nextPlan.getSpareParts().add(
