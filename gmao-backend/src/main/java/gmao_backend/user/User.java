@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.user;
 
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.team.Team;
+import com.gmao.gmao_backend.usine.Usine;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -48,6 +49,15 @@ public class User {
     private BigDecimal hourlyRate;
 
     private Boolean active = true;
+
+    /**
+     * Usine (site industriel) à laquelle appartient cet utilisateur.
+     * Null uniquement pour les comptes SUPERADMIN, qui ne sont rattachés
+     * à aucune usine en particulier.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

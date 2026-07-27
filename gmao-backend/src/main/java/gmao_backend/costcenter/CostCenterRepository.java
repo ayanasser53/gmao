@@ -3,16 +3,22 @@ package com.gmao.gmao_backend.costcenter;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CostCenterRepository
         extends JpaRepository<CostCenter, Long> {
 
-    List<CostCenter> findAllByOrderByNameAsc();
+    List<CostCenter> findAllByUsineIdOrderByNameAsc(Long usineId);
 
-    boolean existsByNameIgnoreCase(String name);
+    Optional<CostCenter> findByIdAndUsineId(Long id, Long usineId);
 
-    boolean existsByNameIgnoreCaseAndIdNot(
+    boolean existsByNameIgnoreCaseAndUsineId(String name, Long usineId);
+
+    boolean existsByNameIgnoreCaseAndUsineIdAndIdNot(
             String name,
+            Long usineId,
             Long id
     );
+
+    List<CostCenter> findAllByUsineIdIsNull();
 }

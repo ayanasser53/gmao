@@ -1,8 +1,11 @@
 package com.gmao.gmao_backend.user;
 
+import com.gmao.gmao_backend.security.CurrentUserProvider;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,11 +17,17 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final CurrentUserProvider currentUserProvider;
 
     @GetMapping
     public ResponseEntity<List<UserSummaryResponse>> findAll() {
-        List<UserSummaryResponse> users = userRepository.findAll()
-                .stream()
+        User currentUser = currentUserProvider.getUser();
+
+        List<User> users = currentUser.getRole() == Role.SUPERADMIN
+                ? userRepository.findAll()
+                : userRepository.findAllByUsineId(currentUserProvider.requireUsineId());
+
+        List<UserSummaryResponse> response = users.stream()
                 .map(user -> new UserSummaryResponse(
                         user.getId(),
                         user.getFirstName(),
@@ -29,7 +38,7 @@ public class UserController {
                 ))
                 .toList();
 
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/detailed")
@@ -43,10 +52,11 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDetailResponse> invite(@RequestBody UserRequest request) {
+    public ResponseEntity<UserInviteResponse> invite(@RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.invite(request));
     }
 
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UserDetailResponse> update(
             @PathVariable Long id,
@@ -55,6 +65,7 @@ public class UserController {
         return ResponseEntity.ok(userService.update(id, request));
     }
 
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         userService.delete(id);

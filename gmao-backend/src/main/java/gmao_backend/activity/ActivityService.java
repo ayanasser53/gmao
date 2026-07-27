@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.activity;
 
 import com.gmao.gmao_backend.measure.Measure;
 import com.gmao.gmao_backend.measure.MeasureRepository;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
@@ -44,37 +45,38 @@ public class ActivityService {
     private final OfficePreviewService officePreviewService;
     private final MeasureRepository measureRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<ActivityResponse> findAll() {
-        return activityRepository.findAllByOrderByPerformedDateDescPerformedEndTimeDesc()
+        return activityRepository.findAllByUsineIdOrderByPerformedDateDesc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ActivityResponse> findInProgress() {
-        return activityRepository.findByStatusOrderByPerformedDateDescPerformedEndTimeDesc(ActivityStatus.IN_PROGRESS)
+        return activityRepository.findByStatusAndUsineId(ActivityStatus.IN_PROGRESS, currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ActivityResponse> findLate() {
-        return activityRepository.findByStatusOrderByPerformedDateDescPerformedEndTimeDesc(ActivityStatus.LATE)
+        return activityRepository.findByStatusAndUsineId(ActivityStatus.LATE, currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ActivityResponse> findHistory() {
-        return activityRepository.findByStatusOrderByPerformedDateDescPerformedEndTimeDesc(ActivityStatus.DONE)
+        return activityRepository.findByStatusAndUsineId(ActivityStatus.DONE, currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ActivityResponse> findByTaskId(Long taskId) {
-        return activityRepository.findByTaskIdOrderByPerformedDateDescPerformedEndTimeDesc(taskId)
+        return activityRepository.findByTaskIdAndUsineId(taskId, currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -364,15 +366,12 @@ public class ActivityService {
     }
 
     private String currentUserName() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null) {
+        try {
+            var user = currentUserProvider.getUser();
+            return (user.getFirstName() + " " + user.getLastName()).trim();
+        } catch (RuntimeException exception) {
             return null;
         }
-
-        return userRepository.findByEmail(authentication.getName())
-                .map(user -> (user.getFirstName() + " " + user.getLastName()).trim())
-                .orElse(null);
     }
 
     private void saveIntervenants(Activity activity, List<Long> intervenantIds) {
@@ -446,12 +445,12 @@ public class ActivityService {
     }
 
     private Task findTask(Long taskId) {
-        return taskRepository.findById(taskId)
+        return taskRepository.findByIdAndUsineId(taskId, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new IllegalArgumentException("Tâche introuvable."));
     }
 
     private Activity findActivity(Long id) {
-        return activityRepository.findById(id)
+        return activityRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new IllegalArgumentException("Activité introuvable."));
     }
 

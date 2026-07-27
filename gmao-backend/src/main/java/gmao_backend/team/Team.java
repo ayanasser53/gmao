@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.team;
 
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.user.User;
+import com.gmao.gmao_backend.usine.Usine;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,6 +32,10 @@ public class Team {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @ManyToMany(mappedBy = "teams", fetch = FetchType.LAZY)
     @Builder.Default

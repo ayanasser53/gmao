@@ -3,6 +3,7 @@ package com.gmao.gmao_backend.equipment;
 import com.gmao.gmao_backend.costcenter.CostCenter;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.usine.Usine;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -50,6 +51,10 @@ public class Equipment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cost_center_id")
     private CostCenter costCenter;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @Column(name = "gtin_ean_code", length = 100)
     private String gtinEanCode;

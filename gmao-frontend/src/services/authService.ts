@@ -3,20 +3,7 @@ import api from "./api";
 import type {
   AuthResponse,
   LoginRequest,
-  RegisterRequest,
-  RegisterResponse,
 } from "../types/auth";
-
-export async function registerAdmin(
-  data: RegisterRequest,
-): Promise<RegisterResponse> {
-  const response = await api.post<RegisterResponse>(
-    "/auth/register",
-    data,
-  );
-
-  return response.data;
-}
 
 export async function loginAdmin(
   data: LoginRequest,
@@ -34,6 +21,18 @@ export function saveAuthentication(authData: AuthResponse): void {
   localStorage.setItem("userId", String(authData.userId));
   localStorage.setItem("email", authData.email);
   localStorage.setItem("role", authData.role);
+
+  if (authData.usineId !== null) {
+    localStorage.setItem("usineId", String(authData.usineId));
+  } else {
+    localStorage.removeItem("usineId");
+  }
+
+  if (authData.usineName !== null) {
+    localStorage.setItem("usineName", authData.usineName);
+  } else {
+    localStorage.removeItem("usineName");
+  }
 }
 
 export function getToken(): string | null {
@@ -57,9 +56,19 @@ export function getAuthenticatedRole(): string {
   return localStorage.getItem("role") ?? "";
 }
 
+export function isSuperAdmin(): boolean {
+  return getAuthenticatedRole() === "SUPERADMIN";
+}
+
+export function getAuthenticatedUsineName(): string {
+  return localStorage.getItem("usineName") ?? "";
+}
+
 export function logout(): void {
   localStorage.removeItem("token");
   localStorage.removeItem("userId");
   localStorage.removeItem("email");
   localStorage.removeItem("role");
+  localStorage.removeItem("usineId");
+  localStorage.removeItem("usineName");
 }

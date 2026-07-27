@@ -1,5 +1,7 @@
 package com.gmao.gmao_backend.supplier;
 
+import com.gmao.gmao_backend.usine.Usine;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,8 +15,8 @@ import java.time.LocalDateTime;
         name = "suppliers",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_supplier_email",
-                        columnNames = "email"
+                        name = "uk_supplier_email_usine",
+                        columnNames = {"email", "usine_id"}
                 )
         }
 )
@@ -35,7 +37,7 @@ public class Supplier {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String email;
 
     @Column(length = 255)
@@ -65,10 +67,20 @@ public class Supplier {
     @Column(length = 100)
     private String country;
 
+    /**
+     * PUBLIC : visible en lecture par toutes les usines (catalogue partagé).
+     * PRIVATE : visible uniquement par l'usine propriétaire.
+     * Dans les deux cas, seule l'usine propriétaire (ou un SUPERADMIN)
+     * peut modifier/supprimer la fiche.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
     private SupplierVisibility visibility = SupplierVisibility.PRIVATE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;

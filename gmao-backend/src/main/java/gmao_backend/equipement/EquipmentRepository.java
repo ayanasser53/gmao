@@ -12,6 +12,12 @@ public interface EquipmentRepository
 
     List<Equipment> findAllByOrderByCreatedAtDesc();
 
+    List<Equipment> findAllByUsineIdOrderByCreatedAtDesc(Long usineId);
+
+    java.util.Optional<Equipment> findByIdAndUsineId(Long id, Long usineId);
+
+    List<Equipment> findAllByUsineIdIsNull();
+
     boolean existsByCostCenterId(Long costCenterId);
 
     @Query("select distinct e from Equipment e join e.linkedSpareParts sp where sp.id = :sparePartId")

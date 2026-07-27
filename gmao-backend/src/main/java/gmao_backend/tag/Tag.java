@@ -1,5 +1,7 @@
 package com.gmao.gmao_backend.tag;
 
+import com.gmao.gmao_backend.usine.Usine;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,12 +15,12 @@ import java.time.LocalDateTime;
         name = "tags",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_tags_code",
-                        columnNames = "code"
+                        name = "uk_tags_code_usine",
+                        columnNames = {"code", "usine_id"}
                 ),
                 @UniqueConstraint(
-                        name = "uk_tags_name",
-                        columnNames = "name"
+                        name = "uk_tags_name_usine",
+                        columnNames = {"name", "usine_id"}
                 )
         }
 )
@@ -33,18 +35,10 @@ public class Tag {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(
-            nullable = false,
-            unique = true,
-            length = 100
-    )
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(
-            nullable = false,
-            unique = true,
-            length = 100
-    )
+    @Column(nullable = false, length = 100)
     private String code;
 
     @Column(nullable = false, length = 20)
@@ -54,6 +48,10 @@ public class Tag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private TagGroup group;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @CreationTimestamp
     @Column(

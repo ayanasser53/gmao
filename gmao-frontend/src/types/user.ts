@@ -8,6 +8,7 @@ export interface UserSummary {
 }
 
 export type UserRole =
+  | "SUPERADMIN"
   | "ADMIN"
   | "TECHNICIAN"
   | "PRODUCTION"
@@ -34,6 +35,8 @@ export interface UserDetail {
   role: UserRole;
   hourlyRate: number | null;
   active: boolean;
+  usineId: number | null;
+  usineName: string | null;
   teams: UserTeamSummary[];
   tags: UserTagSummary[];
 }

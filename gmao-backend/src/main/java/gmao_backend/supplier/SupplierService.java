@@ -2,10 +2,15 @@ package com.gmao.gmao_backend.supplier;
 
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.storage.DatabaseFile;
 import com.gmao.gmao_backend.storage.ServedDatabaseFile;
+import com.gmao.gmao_backend.usine.UsineRepository;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,9 +24,14 @@ public class SupplierService {
 
     private final SupplierRepository supplierRepository;
     private final AppFileStorageService fileStorageService;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
+
     @Transactional(readOnly = true)
     public List<SupplierResponse> findAll() {
-        return supplierRepository.findAll()
+        Long usineId = currentUserProvider.requireUsineId();
+
+        return supplierRepository.findAllByUsineIdOrVisibility(usineId, SupplierVisibility.PUBLIC)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -29,7 +39,7 @@ public class SupplierService {
 
     @Transactional(readOnly = true)
     public SupplierResponse findById(Long id) {
-        return toResponse(findSupplierById(id));
+        return toResponse(findVisibleSupplierById(id));
     }
 
     public SupplierResponse create(SupplierRequest request) {
@@ -37,8 +47,10 @@ public class SupplierService {
     }
 
     public SupplierResponse create(SupplierRequest request, MultipartFile logo) {
-        if (supplierRepository.existsByEmail(request.email())) {
-            throw new ResourceAlreadyExistsException("Supplier with this email already exists");
+        Long usineId = currentUserProvider.requireUsineId();
+
+        if (supplierRepository.existsByEmailAndUsineId(request.email(), usineId)) {
+            throw new ResourceAlreadyExistsException("Un fournisseur avec cet email existe déjà.");
         }
 
         Supplier supplier = Supplier.builder()
@@ -55,6 +67,7 @@ public class SupplierService {
                 .city(request.city())
                 .country(request.country())
                 .visibility(request.visibility() != null ? request.visibility() : SupplierVisibility.PRIVATE)
+                .usine(usineRepository.getReferenceById(usineId))
                 .build();
 
         applyLogo(supplier, request.logoUrl(), logo);
@@ -69,12 +82,12 @@ public class SupplierService {
     }
 
     public SupplierResponse update(Long id, SupplierRequest request, MultipartFile logo) {
-        Supplier supplier = findSupplierById(id);
+        Supplier supplier = findOwnedSupplierById(id);
 
-        supplierRepository.findByEmail(request.email())
+        supplierRepository.findByEmailAndUsineId(request.email(), supplier.getUsine().getId())
                 .filter(existingSupplier -> !existingSupplier.getId().equals(id))
                 .ifPresent(existingSupplier -> {
-                    throw new ResourceAlreadyExistsException("Supplier with this email already exists");
+                    throw new ResourceAlreadyExistsException("Un fournisseur avec cet email existe déjà.");
                 });
 
         supplier.setName(request.name());
@@ -97,15 +110,15 @@ public class SupplierService {
     }
 
     public void delete(Long id) {
-        Supplier supplier = findSupplierById(id);
+        Supplier supplier = findOwnedSupplierById(id);
         supplierRepository.delete(supplier);
     }
 
     public ServedDatabaseFile getLogo(Long id) {
-        Supplier supplier = findSupplierById(id);
+        Supplier supplier = findVisibleSupplierById(id);
 
         if (supplier.getLogoData() == null || supplier.getLogoData().length == 0) {
-            throw new ResourceNotFoundException("Logo not found");
+            throw new ResourceNotFoundException("Logo introuvable.");
         }
 
         return new ServedDatabaseFile(
@@ -146,9 +159,35 @@ public class SupplierService {
         }
     }
 
-    private Supplier findSupplierById(Long id) {
-        return supplierRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
+    /** Lecture : la fiche de sa propre usine, ou une fiche du catalogue public. */
+    private Supplier findVisibleSupplierById(Long id) {
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Fournisseur introuvable."));
+
+        Long usineId = currentUserProvider.requireUsineId();
+        boolean own = supplier.getUsine() != null && supplier.getUsine().getId().equals(usineId);
+        boolean isPublic = supplier.getVisibility() == SupplierVisibility.PUBLIC;
+
+        if (!own && !isPublic) {
+            throw new ResourceNotFoundException("Fournisseur introuvable.");
+        }
+
+        return supplier;
+    }
+
+    /** Modification/suppression : uniquement la fiche de sa propre usine. */
+    private Supplier findOwnedSupplierById(Long id) {
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Fournisseur introuvable."));
+
+        Long usineId = currentUserProvider.requireUsineId();
+        boolean own = supplier.getUsine() != null && supplier.getUsine().getId().equals(usineId);
+
+        if (!own) {
+            throw new AccessDeniedException("Vous ne pouvez pas gérer ce fournisseur.");
+        }
+
+        return supplier;
     }
 
     private SupplierResponse toResponse(Supplier supplier) {

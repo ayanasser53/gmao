@@ -12,6 +12,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import {
+  getAuthenticatedRole,
   loginAdmin,
   saveAuthentication,
 } from "../services/authService";
@@ -175,8 +176,8 @@ function LoginPage() {
           </form>
 
           <p className="auth-switch">
-            Vous n’avez pas encore de compte ?{" "}
-            <Link to="/register">Créer un compte</Link>
+            Vous n’avez pas encore de compte ? Contactez l’administrateur de
+            votre usine.
           </p>
         </div>
       </section>

@@ -42,11 +42,7 @@ function HomePage() {
             </p>
 
             <div className="hero-actions">
-              <Link to="/register" className="primary-button">
-                Créer un compte
-              </Link>
-
-              <Link to="/login" className="secondary-button">
+              <Link to="/login" className="primary-button">
                 Se connecter
               </Link>
             </div>

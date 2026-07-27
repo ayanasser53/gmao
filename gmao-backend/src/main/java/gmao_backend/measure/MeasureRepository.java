@@ -8,16 +8,19 @@ import java.util.Optional;
 public interface MeasureRepository
         extends JpaRepository<Measure, Long> {
 
-    List<Measure> findAllByOrderByNameAsc();
+    List<Measure> findAllByUsineIdOrderByNameAsc(Long usineId);
 
-    Optional<Measure> findByCodeIgnoreCase(String code);
+    Optional<Measure> findByIdAndUsineId(Long id, Long usineId);
 
-    boolean existsByCodeIgnoreCase(String code);
+    boolean existsByCodeIgnoreCaseAndUsineId(String code, Long usineId);
 
-    boolean existsByCodeIgnoreCaseAndIdNot(
+    boolean existsByCodeIgnoreCaseAndUsineIdAndIdNot(
             String code,
+            Long usineId,
             Long id
     );
 
     boolean existsByUnitId(Long unitId);
+
+    List<Measure> findAllByUsineIdIsNull();
 }

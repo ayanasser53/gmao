@@ -11,6 +11,7 @@ import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
 import "./team-styles.css";
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  SUPERADMIN: "Super administrateur",
   ADMIN: "Administrateur",
   TECHNICIAN: "Technicien",
   PRODUCTION: "Production",

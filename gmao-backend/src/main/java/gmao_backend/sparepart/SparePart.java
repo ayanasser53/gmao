@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.sparepart;
 
 import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.usine.Usine;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -32,7 +33,7 @@ public class SparePart {
     @Column(length = 5000)
     private String description;
 
-    @Column(unique = true)
+    @Column
     private String code;
 
     private String manufacturerReference;
@@ -79,6 +80,10 @@ public class SparePart {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @ManyToMany
     @JoinTable(

@@ -1,10 +1,13 @@
 package com.gmao.gmao_backend.team;
 
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
 import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
+import com.gmao.gmao_backend.usine.Usine;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,9 +25,11 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<TeamResponse> findAll() {
-        return teamRepository.findAll()
+        return teamRepository.findAllByUsineId(currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -36,9 +41,12 @@ public class TeamService {
 
     @Transactional
     public TeamResponse create(TeamRequest request) {
+        Usine usine = usineRepository.getReferenceById(currentUserProvider.requireUsineId());
+
         Team team = Team.builder()
                 .name(request.name().trim())
                 .description(request.description())
+                .usine(usine)
                 .tags(resolveTags(request.tagIds()))
                 .build();
 
@@ -66,7 +74,7 @@ public class TeamService {
     public void delete(Long id) {
         Team team = getTeam(id);
 
-        for (User member : userRepository.findAll()) {
+        for (User member : userRepository.findAllByUsineId(currentUserProvider.requireUsineId())) {
             if (member.getTeams().remove(team)) {
                 userRepository.save(member);
             }
@@ -80,7 +88,7 @@ public class TeamService {
                 ? new HashSet<>()
                 : new HashSet<>(memberIds);
 
-        for (User user : userRepository.findAll()) {
+        for (User user : userRepository.findAllByUsineId(currentUserProvider.requireUsineId())) {
             boolean shouldBeMember = targetIds.contains(user.getId());
             boolean isMember = user.getTeams().contains(team);
 
@@ -103,7 +111,7 @@ public class TeamService {
     }
 
     private Team getTeam(Long id) {
-        return teamRepository.findById(id)
+        return teamRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Equipe introuvable."));
     }
 

@@ -3,6 +3,7 @@ package com.gmao.gmao_backend.sparepart;
 import com.gmao.gmao_backend.costcenter.CostCenterRepository;
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.storage.DatabaseFile;
 import com.gmao.gmao_backend.storage.ServedDatabaseFile;
@@ -10,8 +11,10 @@ import com.gmao.gmao_backend.supplier.Supplier;
 import com.gmao.gmao_backend.supplier.SupplierRepository;
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
+import com.gmao.gmao_backend.usine.UsineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -36,9 +39,13 @@ public class SparePartService {
     private final EquipmentRepository equipmentRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
     private final TagRepository tagRepository;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<SparePartResponse> findAll() {
-        return sparePartRepository.findAll()
+        Long usineId = currentUserProvider.requireUsineId();
+
+        return sparePartRepository.findAllByUsineIdOrVisibility(usineId, SparePartVisibility.PUBLIC)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -56,13 +63,15 @@ public class SparePartService {
     public SparePartResponse create(SparePartRequest request, MultipartFile image) {
         validateRequest(request);
 
+        Long usineId = currentUserProvider.requireUsineId();
+
         String code = normalizeCode(request.code());
 
         if (code == null || code.isBlank()) {
-            code = generateCode();
+            code = generateCode(usineId);
         }
 
-        if (sparePartRepository.existsByCode(code)) {
+        if (sparePartRepository.existsByCodeAndUsineId(code, usineId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Code already exists");
         }
 
@@ -87,6 +96,7 @@ public class SparePartService {
                 .articleCode(request.articleCode())
                 .visibility(defaultVisibility(request.visibility()))
                 .supplier(supplier)
+                .usine(usineRepository.getReferenceById(usineId))
                 .tags(resolveTags(request.tagIds()))
                 .linkedSpareParts(resolveLinkedSpareParts(request.linkedSparePartIds(), null))
                 .build();
@@ -108,11 +118,11 @@ public class SparePartService {
     public SparePartResponse update(Long id, SparePartRequest request, MultipartFile image) {
         validateRequest(request);
 
-        SparePart sparePart = getSparePart(id);
+        SparePart sparePart = getOwnedSparePart(id);
         String code = normalizeCode(request.code());
 
         if (code != null && !code.isBlank() && !code.equals(sparePart.getCode())) {
-            if (sparePartRepository.existsByCode(code)) {
+            if (sparePartRepository.existsByCodeAndUsineId(code, currentUserProvider.requireUsineId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Code already exists");
             }
             sparePart.setCode(code);
@@ -149,7 +159,7 @@ public class SparePartService {
     }
 
     public void delete(Long id) {
-        SparePart sparePart = getSparePart(id);
+        SparePart sparePart = getOwnedSparePart(id);
         syncLinkedEquipment(sparePart, List.of());
         sparePartRepository.delete(sparePart);
     }
@@ -185,7 +195,9 @@ public class SparePartService {
      * de votre vrai système externe (ERP, WMS...) quand vous en aurez un.
      */
     public List<ExternalStockCheckResponse> checkExternalStockForAll() {
-        return sparePartRepository.findAll()
+        Long usineId = currentUserProvider.requireUsineId();
+
+        return sparePartRepository.findAllByUsineIdOrVisibility(usineId, SparePartVisibility.PUBLIC)
                 .stream()
                 .map(sparePart -> checkExternalStock(sparePart.getId()))
                 .toList();
@@ -234,7 +246,7 @@ public class SparePartService {
     }
 
     public SparePartResponse reconcileStock(Long id, BigDecimal externalQuantity) {
-        SparePart sparePart = getSparePart(id);
+        SparePart sparePart = getOwnedSparePart(id);
 
         BigDecimal appQuantity = sparePart.getQuantity() == null
                 ? BigDecimal.ZERO
@@ -330,8 +342,32 @@ public class SparePartService {
     }
 
     private SparePart getSparePart(Long id) {
-        return sparePartRepository.findById(id)
+        SparePart sparePart = sparePartRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Spare part not found"));
+
+        Long usineId = currentUserProvider.requireUsineId();
+        boolean own = sparePart.getUsine() != null && sparePart.getUsine().getId().equals(usineId);
+        boolean isPublic = sparePart.getVisibility() == SparePartVisibility.PUBLIC;
+
+        if (!own && !isPublic) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Spare part not found");
+        }
+
+        return sparePart;
+    }
+
+    private SparePart getOwnedSparePart(Long id) {
+        SparePart sparePart = sparePartRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Spare part not found"));
+
+        Long usineId = currentUserProvider.requireUsineId();
+        boolean own = sparePart.getUsine() != null && sparePart.getUsine().getId().equals(usineId);
+
+        if (!own) {
+            throw new AccessDeniedException("Vous ne pouvez pas gérer cette pièce de rechange.");
+        }
+
+        return sparePart;
     }
 
     private Supplier getSupplier(Long supplierId) {
@@ -427,14 +463,14 @@ public class SparePartService {
         }
     }
 
-    private String generateCode() {
-        long nextNumber = sparePartRepository.count() + 1;
+    private String generateCode(Long usineId) {
+        long nextNumber = sparePartRepository.countByUsineId(usineId) + 1;
         String code;
 
         do {
             code = "MM-%06d".formatted(nextNumber);
             nextNumber++;
-        } while (sparePartRepository.existsByCode(code));
+        } while (sparePartRepository.existsByCodeAndUsineId(code, usineId));
 
         return code;
     }

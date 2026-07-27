@@ -1,0 +1,252 @@
+.usines-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+}
+
+.usines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.usines-header h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  color: #172b4d;
+}
+
+.usines-header p {
+  margin: 0;
+  color: #5b6b82;
+  font-size: 14px;
+}
+
+.usines-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 260px;
+  color: #5b6b82;
+}
+
+.usines-search input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  color: #172b4d;
+}
+
+.usines-new-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  background: #087fbd;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 8px 22px rgba(8, 127, 189, 0.23);
+}
+
+.usines-new-button:hover {
+  background: #066f9f;
+}
+
+.usines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.usine-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usine-card.inactive {
+  opacity: 0.6;
+}
+
+.usine-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.usine-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.usine-card-title-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eaf6fc;
+  color: #087fbd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.usine-card-title h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #172b4d;
+}
+
+.usine-status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.usine-status-badge.active {
+  background: #e5f8ee;
+  color: #1a8f4f;
+}
+
+.usine-status-badge.inactive {
+  background: #f1f2f4;
+  color: #7a8699;
+}
+
+.usine-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #5b6b82;
+}
+
+.usine-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usine-card-user-count {
+  font-size: 13px;
+  color: #172b4d;
+  font-weight: 600;
+}
+
+.usine-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.usine-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #172b4d;
+}
+
+.usine-action-button:hover {
+  background: #f5f7fa;
+}
+
+.usine-action-button.primary {
+  border-color: transparent;
+  background: #087fbd;
+  color: #fff;
+}
+
+.usine-action-button.primary:hover {
+  background: #066f9f;
+}
+
+.usine-action-button.danger {
+  color: #c0392b;
+  border-color: #f3d3ce;
+}
+
+.usine-action-button.danger:hover {
+  background: #fdf1ef;
+}
+
+.usines-empty {
+  padding: 40px;
+  text-align: center;
+  color: #5b6b82;
+  background: #fff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
+}
+
+.measure-form-success {
+  background: #e5f8ee;
+  color: #1a8f4f;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.usine-credentials-box {
+  background: #eaf6fc;
+  border: 1px solid #bfe4f5;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usine-credentials-box p {
+  margin: 0;
+  font-size: 13px;
+  color: #172b4d;
+}
+
+.usine-credentials-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.usine-credentials-row span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7a8699;
+}
+
+.usine-credentials-row strong {
+  font-size: 14px;
+  color: #172b4d;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}

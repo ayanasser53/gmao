@@ -61,19 +61,9 @@ function Navbar() {
         </a>
 
         {!authenticated ? (
-          <>
-            <Link to="/login" className="nav-login" onClick={closeMenu}>
-              Connexion
-            </Link>
-
-            <Link
-              to="/register"
-              className="primary-button small-button"
-              onClick={closeMenu}
-            >
-              Créer un compte
-            </Link>
-          </>
+          <Link to="/login" className="nav-login" onClick={closeMenu}>
+            Connexion
+          </Link>
         ) : (
           <>
             <Link to="/dashboard" className="nav-login" onClick={closeMenu}>

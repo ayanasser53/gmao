@@ -13,6 +13,8 @@ public record UserDetailResponse(
         Role role,
         BigDecimal hourlyRate,
         boolean active,
+        Long usineId,
+        String usineName,
         List<UserTeamSummary> teams,
         List<UserTagSummary> tags
 ) {

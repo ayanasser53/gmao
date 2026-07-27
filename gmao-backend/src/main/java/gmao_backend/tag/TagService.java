@@ -4,6 +4,9 @@ import com.gmao.gmao_backend.common.CodeGenerator;
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceInUseException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
+import com.gmao.gmao_backend.usine.Usine;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,11 +24,13 @@ public class TagService {
     private final TagGroupRepository groupRepository;
     private final TagMapper tagMapper;
     private final CodeGenerator codeGenerator;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<TagResponse> findAll() {
         return tagRepository
-                .findAllByOrderByNameAsc()
+                .findAllByUsineIdOrderByNameAsc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(tagMapper::toResponse)
                 .toList();
@@ -38,10 +43,12 @@ public class TagService {
 
     @Transactional
     public TagResponse create(CreateTagRequest request) {
+        Long usineId = currentUserProvider.requireUsineId();
 
         if (
-                tagRepository.existsByNameIgnoreCase(
-                        request.name().trim()
+                tagRepository.existsByNameIgnoreCaseAndUsineId(
+                        request.name().trim(),
+                        usineId
                 )
         ) {
             throw new ResourceAlreadyExistsException(
@@ -52,16 +59,18 @@ public class TagService {
         String code = codeGenerator.generateUniqueCode(
                 request.code(),
                 request.name(),
-                tagRepository::existsByCodeIgnoreCase
+                candidate -> tagRepository.existsByCodeIgnoreCaseAndUsineId(candidate, usineId)
         );
 
         TagGroup group = findGroup(request.groupId());
+        Usine usine = usineRepository.getReferenceById(usineId);
 
         Tag tag = Tag.builder()
                 .name(request.name().trim())
                 .code(code)
                 .color(normalizeColor(request.color()))
                 .group(group)
+                .usine(usine)
                 .build();
 
         return tagMapper.toResponse(
@@ -75,10 +84,12 @@ public class TagService {
             UpdateTagRequest request
     ) {
         Tag tag = findEntityById(id);
+        Long usineId = currentUserProvider.requireUsineId();
 
         if (
-                tagRepository.existsByNameIgnoreCaseAndIdNot(
+                tagRepository.existsByNameIgnoreCaseAndUsineIdAndIdNot(
                         request.name().trim(),
+                        usineId,
                         id
                 )
         ) {
@@ -91,8 +102,9 @@ public class TagService {
                 codeGenerator.normalize(request.code());
 
         if (
-                tagRepository.existsByCodeIgnoreCaseAndIdNot(
+                tagRepository.existsByCodeIgnoreCaseAndUsineIdAndIdNot(
                         normalizedCode,
+                        usineId,
                         id
                 )
         ) {
@@ -128,7 +140,7 @@ public class TagService {
     @Transactional(readOnly = true)
     public Tag findEntityById(Long id) {
         return tagRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Tag introuvable."
@@ -142,7 +154,7 @@ public class TagService {
         }
 
         return groupRepository
-                .findById(groupId)
+                .findByIdAndUsineId(groupId, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Groupe de tags introuvable."

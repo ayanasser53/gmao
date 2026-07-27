@@ -14,16 +14,8 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(
-            @Valid @RequestBody RegisterRequest request
-    ) {
-        RegisterResponse response = authService.register(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
-    }
+    // L'inscription publique a été supprimée : seul un SUPERADMIN peut
+    // créer une usine et son administrateur (voir UsineController / UserController).
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(

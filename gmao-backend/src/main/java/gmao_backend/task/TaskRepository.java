@@ -15,7 +15,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query(
             "SELECT COALESCE(SUM(t.plannedMaintenanceHours * 60 + t.plannedMaintenanceMinutes), 0) " +
-                    "FROM Task t"
+                    "FROM Task t WHERE t.equipment.usine.id = :usineId"
     )
-    long sumPlannedMaintenanceMinutes();
+    long sumPlannedMaintenanceMinutes(@org.springframework.data.repository.query.Param("usineId") Long usineId);
 }

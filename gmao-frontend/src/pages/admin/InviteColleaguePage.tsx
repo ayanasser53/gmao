@@ -13,6 +13,7 @@ import type { UserRole } from "../../types/user";
 
 import "./task-styles.css";
 import "./team-styles.css";
+import "./usines-styles.css";
 
 const ROLES: {
   value: UserRole;
@@ -66,6 +67,11 @@ function InviteColleaguePage() {
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     void getTags()
@@ -145,11 +151,14 @@ function InviteColleaguePage() {
     try {
       if (isEdit) {
         await updateUser(Number(id), payload);
+        navigate("/admin/teams");
       } else {
-        await inviteUser(payload);
+        const result = await inviteUser(payload);
+        setCreatedCredentials({
+          email: result.user.email,
+          password: result.temporaryPassword,
+        });
       }
-
-      navigate("/admin/teams");
     } catch (requestError) {
       console.error(requestError);
       setError(
@@ -158,6 +167,86 @@ function InviteColleaguePage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleCopyCredentials(): Promise<void> {
+    if (!createdCredentials) {
+      return;
+    }
+
+    const text = `Email : ${createdCredentials.email}\nMot de passe temporaire : ${createdCredentials.password}`;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (copyError) {
+      console.error(copyError);
+    }
+  }
+
+  if (createdCredentials) {
+    return (
+      <section className="supplier-modal-page">
+        <button
+          type="button"
+          className="supplier-form-backdrop"
+          aria-label="Retour à l'équipe"
+          onClick={() => navigate("/admin/teams")}
+        />
+
+        <aside className="supplier-form-drawer task-form-drawer">
+          <div className="measure-drawer-header">
+            <h2>Collègue créé avec succès</h2>
+            <button
+              type="button"
+              className="measure-drawer-close"
+              onClick={() => navigate("/admin/teams")}
+              aria-label="Fermer"
+            >
+              <X size={21} />
+            </button>
+          </div>
+
+          <div className="measure-drawer-body">
+            <div className="usine-credentials-box">
+              <p>
+                Communiquez-lui ces identifiants —{" "}
+                <strong>ce mot de passe ne sera plus jamais affiché</strong> :
+              </p>
+
+              <div className="usine-credentials-row">
+                <span>Email</span>
+                <strong>{createdCredentials.email}</strong>
+              </div>
+
+              <div className="usine-credentials-row">
+                <span>Mot de passe</span>
+                <strong>{createdCredentials.password}</strong>
+              </div>
+
+              <button
+                type="button"
+                className="usine-action-button"
+                onClick={() => void handleCopyCredentials()}
+              >
+                {copied ? "Copié !" : "Copier les identifiants"}
+              </button>
+            </div>
+          </div>
+
+          <div className="measure-drawer-footer">
+            <button
+              type="button"
+              className="measure-primary-button"
+              onClick={() => navigate("/admin/teams")}
+            >
+              Terminer
+            </button>
+          </div>
+        </aside>
+      </section>
+    );
   }
 
   if (step === "role") {

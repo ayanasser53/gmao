@@ -4,8 +4,10 @@ import com.gmao.gmao_backend.common.CodeGenerator;
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceInUseException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.unit.MeasurementUnit;
 import com.gmao.gmao_backend.unit.MeasurementUnitService;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,11 +25,13 @@ public class MeasureService {
     private final MeasurementUnitService unitService;
     private final MeasureMapper measureMapper;
     private final CodeGenerator codeGenerator;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<MeasureResponse> findAll() {
         return measureRepository
-                .findAllByOrderByNameAsc()
+                .findAllByUsineIdOrderByNameAsc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(measureMapper::toResponse)
                 .toList();
@@ -44,13 +48,15 @@ public class MeasureService {
     public MeasureResponse create(
             CreateMeasureRequest request
     ) {
+        Long usineId = currentUserProvider.requireUsineId();
+
         MeasurementUnit unit =
                 unitService.findEntityById(request.unitId());
 
         String code = codeGenerator.generateUniqueCode(
                 request.code(),
                 request.name(),
-                measureRepository::existsByCodeIgnoreCase
+                candidate -> measureRepository.existsByCodeIgnoreCaseAndUsineId(candidate, usineId)
         );
 
         Measure measure = Measure.builder()
@@ -60,6 +66,7 @@ public class MeasureService {
                         normalizeOptional(request.description())
                 )
                 .unit(unit)
+                .usine(usineRepository.getReferenceById(usineId))
                 .build();
 
         return measureMapper.toResponse(
@@ -78,8 +85,9 @@ public class MeasureService {
                 codeGenerator.normalize(request.code());
 
         if (
-                measureRepository.existsByCodeIgnoreCaseAndIdNot(
+                measureRepository.existsByCodeIgnoreCaseAndUsineIdAndIdNot(
                         normalizedCode,
+                        currentUserProvider.requireUsineId(),
                         id
                 )
         ) {
@@ -119,7 +127,7 @@ public class MeasureService {
 
     private Measure findEntityById(Long id) {
         return measureRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Mesure introuvable."

@@ -8,8 +8,10 @@ import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.storage.DatabaseFile;
 import com.gmao.gmao_backend.storage.ServedDatabaseFile;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
@@ -40,10 +42,14 @@ public class EquipmentService {
 
     private final FileStorageService storage;
 
+    private final UsineRepository usineRepository;
+
+    private final CurrentUserProvider currentUserProvider;
+
     @Transactional(readOnly = true)
     public List<EquipmentResponse> findAll() {
         return equipmentRepository
-                .findAllByOrderByCreatedAtDesc()
+                .findAllByUsineIdOrderByCreatedAtDesc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -99,6 +105,12 @@ public class EquipmentService {
                 .linkedSpareParts(
                         resolveLinkedSpareParts(
                                 request.linkedSparePartIds()
+                        )
+                )
+
+                .usine(
+                        usineRepository.getReferenceById(
+                                currentUserProvider.requireUsineId()
                         )
                 )
 
@@ -244,7 +256,7 @@ public class EquipmentService {
             Long id
     ) {
         return equipmentRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () ->
                                 new ResourceNotFoundException(
@@ -261,7 +273,7 @@ public class EquipmentService {
         }
 
         return costCenterRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () ->
                                 new ResourceNotFoundException(
@@ -325,6 +337,11 @@ public class EquipmentService {
                         uniqueIds
                 );
 
+        Long usineId = currentUserProvider.requireUsineId();
+        foundEquipment.removeIf(
+                e -> e.getUsine() == null || !e.getUsine().getId().equals(usineId)
+        );
+
         if (
                 foundEquipment.size() !=
                         uniqueIds.size()
@@ -375,7 +392,9 @@ public class EquipmentService {
             Equipment equipmentToDelete
     ) {
         List<Equipment> allEquipment =
-                equipmentRepository.findAll();
+                equipmentRepository.findAllByUsineIdOrderByCreatedAtDesc(
+                        currentUserProvider.requireUsineId()
+                );
 
         for (Equipment equipment : allEquipment) {
             if (

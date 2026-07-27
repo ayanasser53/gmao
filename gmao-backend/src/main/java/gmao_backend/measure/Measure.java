@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.measure;
 
 import com.gmao.gmao_backend.unit.MeasurementUnit;
+import com.gmao.gmao_backend.usine.Usine;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
         name = "measures",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_measure_code",
-                        columnNames = "code"
+                        name = "uk_measure_code_usine",
+                        columnNames = {"code", "usine_id"}
                 )
         }
 )
@@ -34,7 +35,7 @@ public class Measure {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String code;
 
     @Column(columnDefinition = "TEXT")
@@ -43,6 +44,10 @@ public class Measure {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "unit_id", nullable = false)
     private MeasurementUnit unit;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usine_id")
+    private Usine usine;
 
     @CreationTimestamp
     @Column(

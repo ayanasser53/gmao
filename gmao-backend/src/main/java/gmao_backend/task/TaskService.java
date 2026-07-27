@@ -5,6 +5,7 @@ import com.gmao.gmao_backend.equipment.EquipmentRepository;
 
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.storage.DatabaseFile;
@@ -58,10 +59,12 @@ public class TaskService {
 
     private final OfficePreviewService officePreviewService;
 
+    private final CurrentUserProvider currentUserProvider;
+
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findAll() {
         return taskRepository
-               .findAllByOrderByCreatedAtDesc()
+               .findAllByUsineIdOrderByCreatedAtDesc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(mapper::toListItemResponse)
                 .toList();
@@ -80,9 +83,11 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public TaskSummaryResponse findSummary() {
-        long totalTasks = taskRepository.count();
+        Long usineId = currentUserProvider.requireUsineId();
 
-        long totalMinutes = taskRepository.sumPlannedMaintenanceMinutes();
+        long totalTasks = taskRepository.findAllByUsineIdOrderByCreatedAtDesc(usineId).size();
+
+        long totalMinutes = taskRepository.sumPlannedMaintenanceMinutes(usineId);
 
         return new TaskSummaryResponse(
                 totalTasks,
@@ -287,7 +292,7 @@ public class TaskService {
 
     private Task findEntityById(Long id) {
         return taskRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Tâche introuvable."
@@ -297,7 +302,7 @@ public class TaskService {
 
     private Equipment resolveEquipment(Long equipmentId) {
         return equipmentRepository
-                .findById(equipmentId)
+                .findByIdAndUsineId(equipmentId, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Équipement introuvable."

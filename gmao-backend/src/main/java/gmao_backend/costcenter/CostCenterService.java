@@ -4,6 +4,9 @@ import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceInUseException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
+import com.gmao.gmao_backend.usine.Usine;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,11 +21,13 @@ public class CostCenterService {
 
     private final CostCenterRepository costCenterRepository;
     private final EquipmentRepository equipmentRepository;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<CostCenterResponse> findAll() {
         return costCenterRepository
-                .findAllByOrderByNameAsc()
+                .findAllByUsineIdOrderByNameAsc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -37,9 +42,10 @@ public class CostCenterService {
     public CostCenterResponse create(
             CostCenterRequest request
     ) {
+        Long usineId = currentUserProvider.requireUsineId();
         String name = request.name().trim();
 
-        if (costCenterRepository.existsByNameIgnoreCase(name)) {
+        if (costCenterRepository.existsByNameIgnoreCaseAndUsineId(name, usineId)) {
             throw new ResourceAlreadyExistsException(
                     "Un centre de coût possède déjà ce nom."
             );
@@ -47,6 +53,7 @@ public class CostCenterService {
 
         CostCenter costCenter = CostCenter.builder()
                 .name(name)
+                .usine(usineRepository.getReferenceById(usineId))
                 .build();
 
         return toResponse(
@@ -65,7 +72,9 @@ public class CostCenterService {
 
         if (
                 costCenterRepository
-                        .existsByNameIgnoreCaseAndIdNot(name, id)
+                        .existsByNameIgnoreCaseAndUsineIdAndIdNot(
+                                name, currentUserProvider.requireUsineId(), id
+                        )
         ) {
             throw new ResourceAlreadyExistsException(
                     "Un centre de coût possède déjà ce nom."
@@ -94,7 +103,7 @@ public class CostCenterService {
 
     private CostCenter findEntityById(Long id) {
         return costCenterRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Centre de coût introuvable."

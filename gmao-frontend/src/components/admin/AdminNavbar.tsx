@@ -36,6 +36,7 @@ import {
 
 import {
   getAuthenticatedEmail,
+  getAuthenticatedRole,
   logout,
 } from "../../services/authService";
 
@@ -63,8 +64,19 @@ function AdminNavbar() {
 
   const notificationCount = 3;
   const email = getAuthenticatedEmail();
+  const role = getAuthenticatedRole();
+  const isSuperAdmin = role === "SUPERADMIN";
 
-  const navigationItems: NavigationItem[] = [
+  const superAdminNavigationItems: NavigationItem[] = [
+    {
+      label: "Usines",
+      path: "/admin/usines",
+      description: "Gestion des usines et de leurs administrateurs",
+      icon: <Building2 size={20} />,
+    },
+  ];
+
+  const standardNavigationItems: NavigationItem[] = [
     {
       label: "Dashboard",
       path: "/admin/dashboard",
@@ -144,6 +156,10 @@ function AdminNavbar() {
       icon: <Users size={20} />,
     },
   ];
+
+  const navigationItems: NavigationItem[] = isSuperAdmin
+    ? superAdminNavigationItems
+    : standardNavigationItems;
 
   const activeNavigationItem =
     navigationItems

@@ -98,6 +98,16 @@ public ResponseEntity<ApiErrorResponse> handleResourceInUse(
     );
 }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException exception
+    ) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "Vous n'avez pas les droits nécessaires pour effectuer cette action."
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(
             Exception exception

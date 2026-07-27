@@ -10,6 +10,7 @@ public record UserRequest(
         String password,
         Role role,
         BigDecimal hourlyRate,
-        java.util.List<Long> tagIds
+        java.util.List<Long> tagIds,
+        Long usineId
 ) {
 }

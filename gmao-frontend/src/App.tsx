@@ -14,8 +14,10 @@ import TaskCreatePage from "./pages/admin/TaskCreatePage";
 
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+
 import ProfilePage from "./pages/ProfilePage";
+
+import UsinesPage from "./pages/admin/UsinesPage";
 
 import DashboardPage from "./pages/admin/DashboardPage";
 import NotificationsPage from "./pages/admin/NotificationsPage";
@@ -80,11 +82,6 @@ function App() {
           element={<LoginPage />}
         />
 
-        <Route
-          path="/register"
-          element={<RegisterPage />}
-        />
-
         {/* Routes administrateur protégées */}
         <Route
           path="/admin"
@@ -108,6 +105,12 @@ function App() {
           <Route
             path="dashboard"
             element={<DashboardPage />}
+          />
+
+          {/* Usines (SUPERADMIN) */}
+          <Route
+            path="usines"
+            element={<UsinesPage />}
           />
 
           {/* Tâches */}

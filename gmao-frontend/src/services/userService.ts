@@ -1,5 +1,10 @@
 import api from "./api";
-import type { UserDetail, UserRequest, UserSummary } from "../types/user";
+import type {
+  UserDetail,
+  UserInviteResponse,
+  UserRequest,
+  UserSummary,
+} from "../types/user";
 
 export async function getUsers(): Promise<UserSummary[]> {
   const response = await api.get<UserSummary[]>("/users");

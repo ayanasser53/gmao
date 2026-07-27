@@ -2,6 +2,9 @@ package com.gmao.gmao_backend.tag;
 
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
+import com.gmao.gmao_backend.usine.Usine;
+import com.gmao.gmao_backend.usine.UsineRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,11 +22,13 @@ public class TagGroupService {
     private final TagGroupRepository groupRepository;
     private final TagRepository tagRepository;
     private final TagGroupMapper groupMapper;
+    private final UsineRepository usineRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<TagGroupResponse> findAll() {
         return groupRepository
-                .findAllByOrderByNameAsc()
+                .findAllByUsineIdOrderByNameAsc(currentUserProvider.requireUsineId())
                 .stream()
                 .map(groupMapper::toResponse)
                 .toList();
@@ -40,9 +45,12 @@ public class TagGroupService {
     public TagGroupResponse create(
             CreateTagGroupRequest request
     ) {
+        Long usineId = currentUserProvider.requireUsineId();
+
         if (
-                groupRepository.existsByNameIgnoreCase(
-                        request.name().trim()
+                groupRepository.existsByNameIgnoreCaseAndUsineId(
+                        request.name().trim(),
+                        usineId
                 )
         ) {
             throw new ResourceAlreadyExistsException(
@@ -50,10 +58,13 @@ public class TagGroupService {
             );
         }
 
+        Usine usine = usineRepository.getReferenceById(usineId);
+
         TagGroup group = TagGroup.builder()
                 .name(request.name().trim())
                 .singleChoice(request.singleChoice())
                 .mandatory(request.mandatory())
+                .usine(usine)
                 .build();
 
         TagGroup savedGroup =
@@ -72,8 +83,9 @@ public class TagGroupService {
         TagGroup group = findEntityById(id);
 
         if (
-                groupRepository.existsByNameIgnoreCaseAndIdNot(
+                groupRepository.existsByNameIgnoreCaseAndUsineIdAndIdNot(
                         request.name().trim(),
+                        currentUserProvider.requireUsineId(),
                         id
                 )
         ) {
@@ -139,7 +151,7 @@ public class TagGroupService {
 
     private TagGroup findEntityById(Long id) {
         return groupRepository
-                .findById(id)
+                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
                                 "Groupe de tags introuvable."

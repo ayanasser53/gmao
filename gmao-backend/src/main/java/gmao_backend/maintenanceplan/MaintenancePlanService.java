@@ -2,6 +2,7 @@ package com.gmao.gmao_backend.maintenanceplan;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
@@ -29,25 +30,27 @@ public class MaintenancePlanService {
     private final SparePartRepository sparePartRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
     private final UserRepository userRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<MaintenancePlanResponse> findAll() {
-        ensureDueOccurrences();
+        Long usineId = currentUserProvider.requireUsineId();
+        ensureDueOccurrences(usineId);
 
-        return maintenancePlanRepository.findAll()
+        return maintenancePlanRepository.findAllByUsineId(usineId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public MaintenancePlanResponse findById(Long id) {
-        MaintenancePlan plan = maintenancePlanRepository.findById(id)
+        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
 
         return toResponse(plan);
     }
 
     public MaintenancePlanResponse create(MaintenancePlanRequest request) {
-        Equipment equipment = equipmentRepository.findById(request.equipmentId())
+        Equipment equipment = equipmentRepository.findByIdAndUsineId(request.equipmentId(), currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Équipement introuvable"));
 
         MaintenancePlan plan = MaintenancePlan.builder()
@@ -72,10 +75,10 @@ public class MaintenancePlanService {
     }
 
     public MaintenancePlanResponse update(Long id, MaintenancePlanRequest request) {
-        MaintenancePlan plan = maintenancePlanRepository.findById(id)
+        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
 
-        Equipment equipment = equipmentRepository.findById(request.equipmentId())
+        Equipment equipment = equipmentRepository.findByIdAndUsineId(request.equipmentId(), currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Équipement introuvable"));
 
         plan.setEquipment(equipment);
@@ -98,7 +101,7 @@ public class MaintenancePlanService {
     }
 
     public MaintenancePlanResponse updateStatus(Long id, MaintenancePlanStatus status) {
-        MaintenancePlan plan = maintenancePlanRepository.findById(id)
+        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
 
         MaintenancePlanStatus previousStatus = plan.getStatus();
@@ -158,19 +161,19 @@ public class MaintenancePlanService {
     }
 
     private String currentUserName() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null) {
+        try {
+            var user = currentUserProvider.getUser();
+            return (user.getFirstName() + " " + user.getLastName()).trim();
+        } catch (RuntimeException exception) {
             return null;
         }
-
-        return userRepository.findByEmail(authentication.getName())
-                .map(user -> (user.getFirstName() + " " + user.getLastName()).trim())
-                .orElse(null);
     }
 
     public void delete(Long id) {
-        maintenancePlanRepository.deleteById(id);
+        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
+                .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
+
+        maintenancePlanRepository.delete(plan);
     }
 
     private void applySpareParts(
@@ -262,8 +265,8 @@ public class MaintenancePlanService {
         return requestedStatus == null ? MaintenancePlanStatus.PLANNED : requestedStatus;
     }
 
-    private void ensureDueOccurrences() {
-        List<MaintenancePlan> existingPlans = maintenancePlanRepository.findAll();
+    private void ensureDueOccurrences(Long usineId) {
+        List<MaintenancePlan> existingPlans = maintenancePlanRepository.findAllByUsineId(usineId);
         Set<String> existingKeys = new HashSet<>(
                 existingPlans.stream()
                         .map(this::getOccurrenceKey)
@@ -315,7 +318,8 @@ public class MaintenancePlanService {
         MaintenancePlan nextPlan = copyForOccurrence(source, nextDate);
         String nextKey = getOccurrenceKey(nextPlan);
 
-        boolean alreadyExists = maintenancePlanRepository.findAll()
+        boolean alreadyExists = maintenancePlanRepository
+                .findAllByUsineId(source.getEquipment().getUsine().getId())
                 .stream()
                 .map(this::getOccurrenceKey)
                 .anyMatch(nextKey::equals);
