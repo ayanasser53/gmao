@@ -51,7 +51,11 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserDetailResponse findCurrentUser() {
-        return toDetailResponse(currentUserProvider.getUser());
+        User currentUser = currentUserProvider.getUser();
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable."));
+
+        return toDetailResponse(user);
     }
 
     @Transactional
