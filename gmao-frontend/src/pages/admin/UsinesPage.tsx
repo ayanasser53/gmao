@@ -7,11 +7,10 @@ import {
   Check,
   CirclePlus,
   Copy,
-  Mail,
   Pencil,
-  Phone,
   Power,
   Search,
+  Settings2,
   Trash2,
   UserPlus,
   X,
@@ -236,7 +235,7 @@ function UsinesPage() {
 
       setCreatedCredentials({
         email: result.user.email,
-        password: result.temporaryPassword,
+        password: result.temporaryPassword ?? "",
       });
       setAdminForm(EMPTY_ADMIN_FORM);
       await loadUsines();
@@ -271,128 +270,159 @@ function UsinesPage() {
   }
 
   return (
-    <section className="usines-page">
-      <div className="usines-header">
-        <div>
-          <h1>Usines</h1>
+    <section className="usines-workspace">
+      <div className="suppliers-page-heading">
+        <div className="suppliers-heading-content">
+          <div className="suppliers-title">
+            <Building2 size={28} />
+            <h1>Usines</h1>
+          </div>
+
           <p>
             Créez les usines de votre organisation et rattachez-y un
             administrateur.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div className="usines-search">
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Rechercher une usine..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+        <button
+          type="button"
+          className="resource-primary-button"
+          onClick={openCreateDrawer}
+        >
+          <CirclePlus size={20} />
+          Nouvelle usine
+        </button>
+      </div>
 
-          <button
-            type="button"
-            className="usines-new-button"
-            onClick={openCreateDrawer}
-          >
-            <CirclePlus size={18} />
-            Nouvelle usine
-          </button>
+      {pageError && (
+        <div className="resource-error-message">{pageError}</div>
+      )}
+
+      <div className="resource-toolbar">
+        <div className="resource-search">
+          <Search size={19} />
+
+          <input
+            type="search"
+            placeholder="Rechercher une usine..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+
+        <div className="resource-counter">
+          <Settings2 size={18} />
+
+          <span>
+            {filteredUsines.length} usine
+            {filteredUsines.length > 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
-      {pageError && <div className="error-message">{pageError}</div>}
-
       {loading ? (
-        <p>Chargement...</p>
-      ) : filteredUsines.length === 0 ? (
-        <div className="usines-empty">
-          Aucune usine pour le moment. Cliquez sur « Nouvelle usine » pour
-          commencer.
-        </div>
+        <div className="resource-loading">Chargement des usines...</div>
       ) : (
-        <div className="usines-grid">
-          {filteredUsines.map((usine) => (
-            <div
-              key={usine.id}
-              className={`usine-card ${usine.active ? "" : "inactive"}`}
-            >
-              <div className="usine-card-top">
-                <div className="usine-card-title">
-                  <div className="usine-card-title-icon">
-                    <Building2 size={20} />
-                  </div>
-                  <h3>{usine.name}</h3>
-                </div>
+        <div className="resource-table-container">
+          <table className="resource-table">
+            <thead>
+              <tr>
+                <th>Usine</th>
+                <th>Adresse</th>
+                <th>Téléphone</th>
+                <th>Email</th>
+                <th>Utilisateurs</th>
+                <th>Statut</th>
+                <th className="resource-actions-column">Actions</th>
+              </tr>
+            </thead>
 
-                <span
-                  className={`usine-status-badge ${
-                    usine.active ? "active" : "inactive"
-                  }`}
-                >
-                  {usine.active ? "Active" : "Inactive"}
-                </span>
-              </div>
+            <tbody>
+              {filteredUsines.map((usine) => (
+                <tr key={usine.id}>
+                  <td>
+                    <div className="usine-table-name-cell">
+                      <div className="usine-card-title-icon">
+                        <Building2 size={18} />
+                      </div>
+                      <strong className="resource-name">
+                        {usine.name}
+                      </strong>
+                    </div>
+                  </td>
 
-              <div className="usine-card-meta">
-                {usine.address && <span>{usine.address}</span>}
-                {usine.phone && (
-                  <span>
-                    <Phone size={14} /> {usine.phone}
-                  </span>
-                )}
-                {usine.email && (
-                  <span>
-                    <Mail size={14} /> {usine.email}
-                  </span>
-                )}
-              </div>
+                  <td>{usine.address || "—"}</td>
+                  <td>{usine.phone || "—"}</td>
+                  <td>{usine.email || "—"}</td>
 
-              <span className="usine-card-user-count">
-                {usine.userCount} utilisateur{usine.userCount > 1 ? "s" : ""}
-              </span>
+                  <td>
+                    {usine.userCount} utilisateur
+                    {usine.userCount > 1 ? "s" : ""}
+                  </td>
 
-              <div className="usine-card-actions">
-                <button
-                  type="button"
-                  className="usine-action-button primary"
-                  onClick={() => openAdminDrawer(usine)}
-                >
-                  <UserPlus size={15} />
-                  Ajouter un admin
-                </button>
+                  <td>
+                    <span
+                      className={`resource-type-badge ${
+                        usine.active
+                          ? "resource-type-number"
+                          : "resource-type-text"
+                      }`}
+                    >
+                      {usine.active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
 
-                <button
-                  type="button"
-                  className="usine-action-button"
-                  onClick={() => openEditDrawer(usine)}
-                >
-                  <Pencil size={15} />
-                  Modifier
-                </button>
+                  <td>
+                    <div className="resource-row-actions">
+                      <button
+                        type="button"
+                        className="resource-edit-button"
+                        title="Ajouter un admin"
+                        onClick={() => openAdminDrawer(usine)}
+                      >
+                        <UserPlus size={18} />
+                      </button>
 
-                <button
-                  type="button"
-                  className="usine-action-button"
-                  onClick={() => void handleToggleActive(usine)}
-                >
-                  <Power size={15} />
-                  {usine.active ? "Désactiver" : "Activer"}
-                </button>
+                      <button
+                        type="button"
+                        className="resource-edit-button"
+                        title="Modifier"
+                        onClick={() => openEditDrawer(usine)}
+                      >
+                        <Pencil size={18} />
+                      </button>
 
-                <button
-                  type="button"
-                  className="usine-action-button danger"
-                  onClick={() => void handleDelete(usine)}
-                >
-                  <Trash2 size={15} />
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          ))}
+                      <button
+                        type="button"
+                        className="resource-edit-button"
+                        title={usine.active ? "Désactiver" : "Activer"}
+                        onClick={() => void handleToggleActive(usine)}
+                      >
+                        <Power size={18} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="resource-delete-button"
+                        title="Supprimer"
+                        onClick={() => void handleDelete(usine)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredUsines.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="resource-table-empty">
+                    Aucune usine trouvée.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 

@@ -1,3 +1,9 @@
+.usines-workspace {
+  min-height: calc(100vh - 66px);
+  padding: 30px;
+  background: #ffffff;
+}
+
 .usines-page {
   display: flex;
   flex-direction: column;
@@ -201,6 +207,18 @@
   background: #fff;
   border: 1px dashed #e2e8f0;
   border-radius: 14px;
+}
+
+.usine-table-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.usine-table-name-cell .usine-card-title-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .measure-form-success {
