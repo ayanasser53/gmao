@@ -13,11 +13,10 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +31,10 @@ public class UserService {
     private final UsineRepository usineRepository;
     private final PasswordEncoder passwordEncoder;
     private final CurrentUserProvider currentUserProvider;
+
+    private static final String TEMP_PASSWORD_CHARS =
+            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     @Transactional(readOnly = true)
     public List<UserDetailResponse> findAllDetailed() {
@@ -48,16 +51,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserDetailResponse findCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null) {
-            throw new ResourceNotFoundException("Utilisateur connecte introuvable.");
-        }
-
-        User user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecte introuvable."));
-
-        return toDetailResponse(user);
+        return toDetailResponse(currentUserProvider.getUser());
     }
 
     @Transactional
@@ -80,26 +74,28 @@ public class UserService {
             throw new EmailAlreadyExistsException();
         }
 
-<<<<<<< HEAD
-        if (request.password() == null || request.password().length() < 6) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caracteres.");
+        // Si un mot de passe a été fourni manuellement dans le formulaire, on
+        // l'utilise ; sinon on en génère un temporaire automatiquement.
+        String temporaryPassword = null;
+        String rawPassword;
+
+        if (request.password() != null && !request.password().isBlank()) {
+            if (request.password().length() < 6) {
+                throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caractères.");
+            }
+            rawPassword = request.password();
+        } else {
+            temporaryPassword = generateTempPassword();
+            rawPassword = temporaryPassword;
         }
-=======
-        String temporaryPassword = generateTempPassword();
->>>>>>> 9ee36af (ajout separation par usine)
 
         User user = User.builder()
                 .firstName(request.firstName().trim())
                 .lastName(request.lastName().trim())
                 .email(normalizedEmail)
-<<<<<<< HEAD
                 .phone(normalizeNullable(request.phone()))
-                .password(passwordEncoder.encode(request.password()))
-                .role(request.role() == null ? Role.TECHNICIAN : request.role())
-=======
-                .password(passwordEncoder.encode(temporaryPassword))
+                .password(passwordEncoder.encode(rawPassword))
                 .role(targetRole)
->>>>>>> 9ee36af (ajout separation par usine)
                 .hourlyRate(request.hourlyRate())
                 .active(true)
                 .usine(usine)
@@ -142,21 +138,20 @@ public class UserService {
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastName().trim());
         user.setEmail(normalizedEmail);
-<<<<<<< HEAD
+
         if (request.phone() != null) {
             user.setPhone(normalizeNullable(request.phone()));
         }
+
         if (request.password() != null && !request.password().isBlank()) {
             if (request.password().length() < 6) {
-                throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caracteres.");
+                throw new IllegalArgumentException("Le mot de passe doit contenir au moins 6 caractères.");
             }
 
             user.setPassword(passwordEncoder.encode(request.password()));
         }
-        user.setRole(request.role() == null ? user.getRole() : request.role());
-=======
+
         user.setRole(newRole);
->>>>>>> 9ee36af (ajout separation par usine)
         user.setHourlyRate(request.hourlyRate());
         user.setTags(resolveTags(request.tagIds()));
 
@@ -174,12 +169,6 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    /**
-     * Détermine l'usine à laquelle rattacher un nouvel utilisateur, selon
-     * qui crée le compte :
-     * - un ADMIN ne peut créer que des utilisateurs de SA propre usine.
-     * - un SUPERADMIN doit obligatoirement préciser l'usine cible.
-     */
     private Usine resolveUsineForCreation(User currentUser, Long requestedUsineId) {
         if (currentUser.getRole() == Role.SUPERADMIN) {
             if (requestedUsineId == null) {
@@ -192,17 +181,12 @@ public class UserService {
                     .orElseThrow(() -> new ResourceNotFoundException("Usine introuvable."));
         }
 
-        // Un ADMIN (ou autre rôle habilité) crée toujours dans sa propre usine.
         Long ownUsineId = currentUserProvider.requireUsineId();
 
         return usineRepository.findById(ownUsineId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usine introuvable."));
     }
 
-    /**
-     * Récupère un utilisateur en vérifiant que l'appelant a le droit de le voir/modifier :
-     * un SUPERADMIN peut tout, un ADMIN uniquement les membres de sa propre usine.
-     */
     private User findAccessibleUser(Long id) {
         User currentUser = currentUserProvider.getUser();
 
@@ -237,6 +221,18 @@ public class UserService {
         }
 
         return value.trim();
+    }
+
+    private String generateTempPassword() {
+        StringBuilder builder = new StringBuilder(12);
+
+        for (int i = 0; i < 12; i++) {
+            builder.append(
+                    TEMP_PASSWORD_CHARS.charAt(RANDOM.nextInt(TEMP_PASSWORD_CHARS.length()))
+            );
+        }
+
+        return builder.toString();
     }
 
     private UserDetailResponse toDetailResponse(User user) {

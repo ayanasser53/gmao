@@ -15,6 +15,7 @@ import { getCurrentUser, updateUser } from "../services/userService";
 import type { UserDetail, UserRole } from "../types/user";
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  SUPERADMIN: "Super administrateur",
   ADMIN: "Administrateur",
   TECHNICIAN: "Technicien",
   PRODUCTION: "Operateur",

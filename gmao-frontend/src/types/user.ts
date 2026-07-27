@@ -50,4 +50,10 @@ export interface UserRequest {
   role: UserRole;
   hourlyRate: number | null;
   tagIds: number[];
+  usineId?: number | null;
+}
+
+export interface UserInviteResponse {
+  user: UserDetail;
+  temporaryPassword: string | null;
 }

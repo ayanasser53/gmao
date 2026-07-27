@@ -311,25 +311,15 @@ public class TaskService {
     }
 
     private User resolveCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null) {
-            throw new ResourceNotFoundException("Utilisateur connecte introuvable.");
-        }
-
-        return userRepository
-                .findByEmail(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur connecte introuvable."));
+        return currentUserProvider.getUser();
     }
 
     private User resolveCurrentUserOrNull() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || authentication.getName() == null) {
+        try {
+            return currentUserProvider.getUser();
+        } catch (RuntimeException exception) {
             return null;
         }
-
-        return userRepository.findByEmail(authentication.getName()).orElse(null);
     }
 
     private Set<Tag> resolveTags(Set<Long> ids) {

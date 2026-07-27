@@ -24,13 +24,16 @@ import type {
 } from "../types/auth";
 
 function getStartPath(authData: AuthResponse): string {
+  if (authData.role === "SUPERADMIN") {
+    return "/admin/usines";
+  }
+
   if (authData.role === "PRODUCTION") {
     return "/operator";
   }
 
   return "/admin/dashboard";
 }
-
 function LoginPage() {
   const navigate = useNavigate();
 
