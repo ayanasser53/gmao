@@ -21,8 +21,8 @@ export async function getCurrentUser(): Promise<UserDetail> {
   return response.data;
 }
 
-export async function inviteUser(payload: UserRequest): Promise<UserDetail> {
-  const response = await api.post<UserDetail>("/users", payload);
+export async function inviteUser(payload: UserRequest): Promise<UserInviteResponse> {
+  const response = await api.post<UserInviteResponse>("/users", payload);
   return response.data;
 }
 

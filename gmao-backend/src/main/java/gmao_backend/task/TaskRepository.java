@@ -12,6 +12,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("select t from Task t where t.equipment.usine.id = :usineId order by t.createdAt desc")
     List<Task> findAllByUsineIdOrderByCreatedAtDesc(@org.springframework.data.repository.query.Param("usineId") Long usineId);
 
+    @Query("select count(t) from Task t where t.equipment.usine.id = :usineId")
+    long countByUsineId(@org.springframework.data.repository.query.Param("usineId") Long usineId);
+
     @Query("select t from Task t where t.id = :id and t.equipment.usine.id = :usineId")
     java.util.Optional<Task> findByIdAndUsineId(
             @org.springframework.data.repository.query.Param("id") Long id,

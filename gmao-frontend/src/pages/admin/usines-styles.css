@@ -268,3 +268,121 @@
   color: #172b4d;
   font-family: "SFMono-Regular", Consolas, monospace;
 }
+
+.usine-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  color: #087fbd;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0;
+  margin-bottom: 18px;
+}
+
+.usine-back-link:hover {
+  text-decoration: underline;
+}
+
+.usine-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 6px;
+  color: #5b6b82;
+  font-size: 14px;
+}
+
+.usine-detail-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usine-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.usine-stat-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.usine-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eaf6fc;
+  color: #087fbd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.usine-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #172b4d;
+  line-height: 1.2;
+}
+
+.usine-stat-label {
+  font-size: 13px;
+  color: #5b6b82;
+}
+
+.usine-admins-section {
+  margin-top: 12px;
+}
+
+.usine-admins-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #172b4d;
+  margin-bottom: 14px;
+}
+
+.usine-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #172b4d;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.usine-link-button:hover {
+  color: #087fbd;
+  text-decoration: underline;
+}
+.usine-view-dashboard-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.usine-view-dashboard-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.usine-info-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #172b4d;
+  line-height: 1.3;
+  word-break: break-word;
+}

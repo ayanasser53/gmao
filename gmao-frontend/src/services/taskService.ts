@@ -7,16 +7,32 @@ import type {
   UpdateTaskInput,
 } from "../types/task";
 
+import { getImpersonatedUsine } from "./impersonation";
+
 const BACKEND_URL = "http://localhost:8090";
 
 /**
  * The backend requires a JWT on every route except /api/auth/** and
  * /uploads/**. Adjust the localStorage key below ("token") if your
  * login flow stores it under a different name.
+ *
+ * Ce fichier utilise fetch() directement (pas le client axios partagé
+ * services/api.ts), donc l'en-tête X-Usine-Context utilisé par le SUPERADMIN
+ * pour consulter le dashboard d'une usine doit être ajouté ici aussi.
  */
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
+  const impersonatedUsine = getImpersonatedUsine();
+
+  if (impersonatedUsine) {
+    headers["X-Usine-Context"] = String(impersonatedUsine.id);
+  }
+
+  return headers;
 }
 
 async function handle<T>(response: Response): Promise<T> {

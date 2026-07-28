@@ -38,11 +38,11 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserDetailResponse> findAllDetailed() {
-        User currentUser = currentUserProvider.getUser();
+        Long usineId = currentUserProvider.getUsineIdOrNull();
 
-        List<User> users = currentUser.getRole() == Role.SUPERADMIN
+        List<User> users = usineId == null
                 ? userRepository.findAll()
-                : userRepository.findAllByUsineId(currentUserProvider.requireUsineId());
+                : userRepository.findAllByUsineId(usineId);
 
         return users.stream()
                 .map(this::toDetailResponse)

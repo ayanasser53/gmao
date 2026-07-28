@@ -135,7 +135,8 @@ public class SecurityConfig {
                         "Content-Type",
                         "Accept",
                         "Origin",
-                        "X-Requested-With"
+                        "X-Requested-With",
+                        "X-Usine-Context"
                 )
         );
 

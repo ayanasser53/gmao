@@ -26,9 +26,19 @@ public class UsineController {
         return ResponseEntity.ok(usineService.findAll());
     }
 
+    @GetMapping("/dashboard/summary")
+    public ResponseEntity<UsineGlobalDashboardResponse> globalDashboard() {
+        return ResponseEntity.ok(usineService.getGlobalDashboard());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UsineResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(usineService.findById(id));
+    }
+
+    @GetMapping("/{id}/dashboard")
+    public ResponseEntity<UsineDashboardResponse> dashboard(@PathVariable Long id) {
+        return ResponseEntity.ok(usineService.getDashboard(id));
     }
 
     @PostMapping

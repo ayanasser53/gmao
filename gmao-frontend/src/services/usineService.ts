@@ -1,6 +1,11 @@
 import api from "./api";
 
-import type { Usine, UsineRequest } from "../types/usine";
+import type {
+  Usine,
+  UsineDashboard,
+  UsineGlobalDashboard,
+  UsineRequest,
+} from "../types/usine";
 
 export async function getUsines(): Promise<Usine[]> {
   const response = await api.get<Usine[]>("/usines");
@@ -10,6 +15,20 @@ export async function getUsines(): Promise<Usine[]> {
 
 export async function getUsine(id: number): Promise<Usine> {
   const response = await api.get<Usine>(`/usines/${id}`);
+
+  return response.data;
+}
+
+export async function getUsineDashboard(id: number): Promise<UsineDashboard> {
+  const response = await api.get<UsineDashboard>(`/usines/${id}/dashboard`);
+
+  return response.data;
+}
+
+export async function getGlobalUsineDashboard(): Promise<UsineGlobalDashboard> {
+  const response = await api.get<UsineGlobalDashboard>(
+    "/usines/dashboard/summary",
+  );
 
   return response.data;
 }

@@ -21,11 +21,11 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<UserSummaryResponse>> findAll() {
-        User currentUser = currentUserProvider.getUser();
+        Long usineId = currentUserProvider.getUsineIdOrNull();
 
-        List<User> users = currentUser.getRole() == Role.SUPERADMIN
+        List<User> users = usineId == null
                 ? userRepository.findAll()
-                : userRepository.findAllByUsineId(currentUserProvider.requireUsineId());
+                : userRepository.findAllByUsineId(usineId);
 
         List<UserSummaryResponse> response = users.stream()
                 .map(user -> new UserSummaryResponse(

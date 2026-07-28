@@ -3,6 +3,8 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
+import { getImpersonatedUsine } from "./impersonation";
+
 const api = axios.create({
   baseURL: "http://localhost:8090/api",
   timeout: 10000,
@@ -30,6 +32,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization =
         `Bearer ${token}`;
+    }
+
+    const impersonatedUsine = getImpersonatedUsine();
+
+    if (impersonatedUsine) {
+      config.headers["X-Usine-Context"] =
+        String(impersonatedUsine.id);
     }
 
     /*

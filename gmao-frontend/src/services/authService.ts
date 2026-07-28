@@ -1,5 +1,7 @@
 import api from "./api";
 
+import { clearImpersonatedUsine } from "./impersonation";
+
 import type {
   AuthResponse,
   LoginRequest,
@@ -17,6 +19,8 @@ export async function loginAdmin(
 }
 
 export function saveAuthentication(authData: AuthResponse): void {
+  clearImpersonatedUsine();
+
   localStorage.setItem("token", authData.token);
   localStorage.setItem("userId", String(authData.userId));
   localStorage.setItem("email", authData.email);
@@ -71,4 +75,5 @@ export function logout(): void {
   localStorage.removeItem("role");
   localStorage.removeItem("usineId");
   localStorage.removeItem("usineName");
+  clearImpersonatedUsine();
 }

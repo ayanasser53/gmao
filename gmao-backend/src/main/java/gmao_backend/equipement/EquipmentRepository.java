@@ -14,6 +14,8 @@ public interface EquipmentRepository
 
     List<Equipment> findAllByUsineIdOrderByCreatedAtDesc(Long usineId);
 
+    long countByUsineId(Long usineId);
+
     java.util.Optional<Equipment> findByIdAndUsineId(Long id, Long usineId);
 
     List<Equipment> findAllByUsineIdIsNull();

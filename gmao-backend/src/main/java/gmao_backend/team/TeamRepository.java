@@ -9,6 +9,8 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
     List<Team> findAllByUsineId(Long usineId);
 
+    long countByUsineId(Long usineId);
+
     Optional<Team> findByIdAndUsineId(Long id, Long usineId);
 
     List<Team> findAllByUsineIdIsNull();

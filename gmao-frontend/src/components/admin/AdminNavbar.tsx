@@ -59,7 +59,7 @@ interface AdminNavbarProps {
 
 function AdminNavbar({
   workspaceLabel = "Espace administrateur",
-  profileLabel = "Administrateur",
+  profileLabel,
   homePath = "/admin/dashboard",
   profilePath = "/admin/profile",
   notificationsPath = "/admin/notifications",
@@ -84,6 +84,9 @@ function AdminNavbar({
   const email = getAuthenticatedEmail();
   const role = getAuthenticatedRole();
   const isSuperAdmin = role === "SUPERADMIN";
+
+  const resolvedProfileLabel =
+    profileLabel ?? (isSuperAdmin ? "Super administrateur" : "Administrateur");
 
   const superAdminNavigationItems: NavigationItem[] = [
     {
@@ -317,7 +320,7 @@ function AdminNavbar({
               </div>
 
               <div className="admin-profile-summary">
-                <strong>{profileLabel}</strong>
+                <strong>{resolvedProfileLabel}</strong>
                 <span>{email}</span>
               </div>
             </button>

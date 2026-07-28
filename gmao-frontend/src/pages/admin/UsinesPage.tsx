@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { AxiosError } from "axios";
 import {
@@ -7,6 +8,7 @@ import {
   Check,
   CirclePlus,
   Copy,
+  LayoutDashboard,
   Pencil,
   Power,
   Search,
@@ -25,6 +27,7 @@ import {
 } from "../../services/usineService";
 
 import { inviteUser } from "../../services/userService";
+import { setImpersonatedUsine } from "../../services/impersonation";
 
 import type { ApiErrorResponse } from "../../types/auth";
 import type { Usine, UsineRequest } from "../../types/usine";
@@ -51,6 +54,7 @@ const EMPTY_ADMIN_FORM: AdminFormState = {
 };
 
 function UsinesPage() {
+  const navigate = useNavigate();
   const [usines, setUsines] = useState<Usine[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -164,6 +168,11 @@ function UsinesPage() {
       console.error(error);
       setPageError("Impossible de mettre à jour le statut de cette usine.");
     }
+  }
+
+  function handleViewDashboard(usine: Usine): void {
+    setImpersonatedUsine({ id: usine.id, name: usine.name });
+    navigate("/admin/dashboard");
   }
 
   async function handleDelete(usine: Usine): Promise<void> {
@@ -345,9 +354,13 @@ function UsinesPage() {
                       <div className="usine-card-title-icon">
                         <Building2 size={18} />
                       </div>
-                      <strong className="resource-name">
+                      <button
+                        type="button"
+                        className="usine-link-button"
+                        onClick={() => navigate(`/admin/usines/${usine.id}`)}
+                      >
                         {usine.name}
-                      </strong>
+                      </button>
                     </div>
                   </td>
 
@@ -374,6 +387,20 @@ function UsinesPage() {
 
                   <td>
                     <div className="resource-row-actions">
+                      <button
+                        type="button"
+                        className="resource-edit-button"
+                        title={
+                          usine.active
+                            ? "Voir le dashboard"
+                            : "Usine inactive"
+                        }
+                        disabled={!usine.active}
+                        onClick={() => handleViewDashboard(usine)}
+                      >
+                        <LayoutDashboard size={18} />
+                      </button>
+
                       <button
                         type="button"
                         className="resource-edit-button"

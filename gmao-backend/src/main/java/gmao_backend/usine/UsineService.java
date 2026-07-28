@@ -1,8 +1,15 @@
 package com.gmao.gmao_backend.usine;
 
+import com.gmao.gmao_backend.equipment.EquipmentRepository;
 import com.gmao.gmao_backend.exception.ResourceAlreadyExistsException;
 import com.gmao.gmao_backend.exception.ResourceInUseException;
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.maintenanceplan.MaintenancePlanRepository;
+import com.gmao.gmao_backend.sparepart.SparePartRepository;
+import com.gmao.gmao_backend.task.TaskRepository;
+import com.gmao.gmao_backend.team.TeamRepository;
+import com.gmao.gmao_backend.user.Role;
+import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -10,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -18,6 +26,11 @@ public class UsineService {
 
     private final UsineRepository usineRepository;
     private final UserRepository userRepository;
+    private final EquipmentRepository equipmentRepository;
+    private final TaskRepository taskRepository;
+    private final SparePartRepository sparePartRepository;
+    private final TeamRepository teamRepository;
+    private final MaintenancePlanRepository maintenancePlanRepository;
 
     @Transactional(readOnly = true)
     public List<UsineResponse> findAll() {
@@ -96,6 +109,103 @@ public class UsineService {
         usineRepository.delete(usine);
     }
 
+    /**
+     * Tableau de bord détaillé d'une usine : mêmes indicateurs que ceux
+     * affichés à l'administrateur de cette usine, consultables par le
+     * SUPERADMIN depuis la fiche usine ("Voir le dashboard").
+     */
+    @Transactional(readOnly = true)
+    public UsineDashboardResponse getDashboard(Long id) {
+        Usine usine = findEntityById(id);
+
+        UsineDashboardResponse.UsineStats stats = new UsineDashboardResponse.UsineStats(
+                userRepository.countByUsineId(id),
+                equipmentRepository.countByUsineId(id),
+                taskRepository.countByUsineId(id),
+                sparePartRepository.countByUsineId(id),
+                teamRepository.countByUsineId(id),
+                maintenancePlanRepository.countByUsineId(id)
+        );
+
+        List<UsineDashboardResponse.UsineAdminSummary> admins = userRepository
+                .findAllByUsineId(id)
+                .stream()
+                .filter(user -> user.getRole() == Role.ADMIN)
+                .map(this::toAdminSummary)
+                .toList();
+
+        return new UsineDashboardResponse(
+                usine.getId(),
+                usine.getName(),
+                usine.getAddress(),
+                usine.getPhone(),
+                usine.getEmail(),
+                usine.getActive(),
+                usine.getCreatedAt(),
+                stats,
+                admins
+        );
+    }
+
+    /**
+     * Vue d'ensemble globale (toutes usines confondues), affichée au
+     * SUPERADMIN sur la liste des usines.
+     */
+    @Transactional(readOnly = true)
+    public UsineGlobalDashboardResponse getGlobalDashboard() {
+        List<Usine> usines = usineRepository.findAll();
+
+        long totalUsers = 0;
+        long totalEquipment = 0;
+        long totalTasks = 0;
+        long totalSpareParts = 0;
+        long totalTeams = 0;
+        long totalMaintenancePlans = 0;
+        long activeUsines = 0;
+
+        List<UsineGlobalDashboardResponse.UsineSummaryStats> perUsine = new ArrayList<>();
+
+        for (Usine usine : usines) {
+            Long usineId = usine.getId();
+
+            long userCount = userRepository.countByUsineId(usineId);
+            long equipmentCount = equipmentRepository.countByUsineId(usineId);
+            long taskCount = taskRepository.countByUsineId(usineId);
+
+            totalUsers += userCount;
+            totalEquipment += equipmentCount;
+            totalTasks += taskCount;
+            totalSpareParts += sparePartRepository.countByUsineId(usineId);
+            totalTeams += teamRepository.countByUsineId(usineId);
+            totalMaintenancePlans += maintenancePlanRepository.countByUsineId(usineId);
+
+            if (Boolean.TRUE.equals(usine.getActive())) {
+                activeUsines++;
+            }
+
+            perUsine.add(new UsineGlobalDashboardResponse.UsineSummaryStats(
+                    usineId,
+                    usine.getName(),
+                    Boolean.TRUE.equals(usine.getActive()),
+                    userCount,
+                    equipmentCount,
+                    taskCount
+            ));
+        }
+
+        return new UsineGlobalDashboardResponse(
+                usines.size(),
+                activeUsines,
+                totalUsers,
+                totalEquipment,
+                totalTasks,
+                totalSpareParts,
+                totalTeams,
+                totalMaintenancePlans,
+                perUsine
+        );
+    }
+
     Usine findEntityById(Long id) {
         return usineRepository.findById(id)
                 .orElseThrow(
@@ -117,6 +227,16 @@ public class UsineService {
                 usine.getActive(),
                 (int) userRepository.countByUsineId(usine.getId()),
                 usine.getCreatedAt()
+        );
+    }
+
+    private UsineDashboardResponse.UsineAdminSummary toAdminSummary(User user) {
+        return new UsineDashboardResponse.UsineAdminSummary(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                Boolean.TRUE.equals(user.getActive())
         );
     }
 }
