@@ -24,6 +24,7 @@ import {
   deleteMaintenancePlan,
   getMaintenancePlans,
   getMyMaintenancePlans,
+  getAssignedToMeMaintenancePlans,
   updateMaintenancePlanStatus,
 } from "../../services/maintenancePlanService";
 import { getCostCenters } from "../../services/costCenterService";
@@ -289,13 +290,16 @@ function planHasAssignee(plan: MaintenancePlan, userId: string) {
 
 interface MaintenancePlansPageProps {
   technicianMode?: boolean;
+  providerMode?: boolean;
 }
 
 export default function MaintenancePlansPage({
   technicianMode = false,
+  providerMode = false,
 }: MaintenancePlansPageProps) {
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
+  const restrictedMode = technicianMode || providerMode;
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
@@ -316,7 +320,7 @@ export default function MaintenancePlansPage({
 
   useEffect(() => {
     loadPlans();
-  }, [technicianMode]);
+  }, [technicianMode, providerMode]);
 
   async function loadPlans() {
     try {
@@ -328,7 +332,11 @@ export default function MaintenancePlansPage({
         tagsData,
         costCentersData,
       ] = await Promise.all([
-        technicianMode ? getMyMaintenancePlans() : getMaintenancePlans(),
+        providerMode
+          ? getAssignedToMeMaintenancePlans()
+          : technicianMode
+            ? getMyMaintenancePlans()
+            : getMaintenancePlans(),
         getEquipment(),
         getUsers(),
         getTags(),
@@ -665,7 +673,7 @@ export default function MaintenancePlansPage({
 
 
 
-          {!technicianMode && (
+          {!restrictedMode && (
             <button
               type="button"
               className="resource-primary-button"
@@ -863,7 +871,7 @@ export default function MaintenancePlansPage({
               <th>Déclencheur</th>
               <th>Prochaine échéance</th>
               <th>Statut</th>
-              {!technicianMode && (
+              {!restrictedMode && (
                 <th className="table-actions-column">Actions</th>
               )}
             </tr>
@@ -873,7 +881,7 @@ export default function MaintenancePlansPage({
             {filteredPlans.length === 0 ? (
               <tr>
                 <td
-                  colSpan={technicianMode ? 6 : 7}
+                  colSpan={restrictedMode ? 6 : 7}
                   className="resource-table-empty"
                 >
                   {activeTab === "all"
@@ -950,7 +958,7 @@ export default function MaintenancePlansPage({
                       </select>
                     </td>
 
-                    {!technicianMode && (
+                    {!restrictedMode && (
                       <td>
                         <div className="table-actions">
                           <button

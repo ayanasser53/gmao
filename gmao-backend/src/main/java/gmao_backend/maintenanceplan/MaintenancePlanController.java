@@ -25,6 +25,11 @@ public class MaintenancePlanController {
         return ResponseEntity.ok(maintenancePlanService.findMine());
     }
 
+    @GetMapping("/assigned-to-me")
+    public ResponseEntity<List<MaintenancePlanResponse>> findMineAnyUsine() {
+        return ResponseEntity.ok(maintenancePlanService.findMineAnyUsine());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<MaintenancePlanResponse> findById(
             @PathVariable Long id

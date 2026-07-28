@@ -20,7 +20,13 @@ import { useNavigate } from "react-router-dom";
 import { getActivities } from "../../services/activityService";
 import { getEquipment } from "../../services/equipmentService";
 import { getCostCenters } from "../../services/costCenterService";
-import { getTasks, updateTaskStatus, fetchTagOptions, type TagOption } from "../../services/taskService";
+import {
+  getTasks,
+  getAssignedToMeTasks,
+  updateTaskStatus,
+  fetchTagOptions,
+  type TagOption,
+} from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
 import { getAuthenticatedUserId } from "../../services/authService";
@@ -143,12 +149,18 @@ function formatTaskCounters(activities: Activity[]): string {
 
 interface TaskListPageProps {
   technicianMode?: boolean;
+  providerMode?: boolean;
 }
 
-function TaskListPage({ technicianMode = false }: TaskListPageProps) {
+function TaskListPage({ technicianMode = false, providerMode = false }: TaskListPageProps) {
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
   const currentUserId = getAuthenticatedUserId();
+
+  // Le prestataire n'a pas de vue "toutes les tâches de mon usine" : ses
+  // tâches lui sont déjà filtrées côté serveur (assigné, toutes usines
+  // confondues), donc pas besoin du filtrage client par assigné.
+  const restrictedMode = technicianMode || providerMode;
 
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -200,7 +212,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
           activityList,
         ] =
           await Promise.all([
-            getTasks(),
+            providerMode ? getAssignedToMeTasks() : getTasks(),
             getUsersDetailed().catch(() => [] as UserDetail[]),
             getTeams().catch(() => [] as Team[]),
             fetchTagOptions().catch(() => [] as TagOption[]),
@@ -252,7 +264,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
 
   const statusCounts = useMemo(() => {
     const visibleTasks =
-      technicianMode && currentUserId
+      restrictedMode && currentUserId
         ? tasks.filter((task) =>
             [...task.assignees, ...task.assignedTo].some(
               (assignee) =>
@@ -269,14 +281,14 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
       LATE: visibleTasks.filter((task) => task.status === "LATE").length,
       DONE: visibleTasks.filter((task) => task.status === "DONE").length,
     };
-  }, [tasks, technicianMode, currentUserId]);
+  }, [tasks, restrictedMode, currentUserId]);
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return tasks.filter((task) => {
       if (
-        technicianMode &&
+        restrictedMode &&
         currentUserId &&
         ![...task.assignees, ...task.assignedTo].some(
           (assignee) =>
@@ -364,7 +376,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
 
       return true;
     });
-  }, [tasks, technicianMode, currentUserId, search, activeTab, appliedFilters]);
+  }, [tasks, restrictedMode, currentUserId, search, activeTab, appliedFilters]);
 
   const taskActivityTotals = useMemo(() => {
     const totals = new Map<number, { spentMinutes: number; cost: number }>();
@@ -509,7 +521,7 @@ function TaskListPage({ technicianMode = false }: TaskListPageProps) {
           </button>
 
 
-          {!technicianMode && (
+          {!restrictedMode && (
             <button
               type="button"
               className="resource-primary-button"

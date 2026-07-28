@@ -17,6 +17,15 @@ export async function getMyMaintenancePlans(): Promise<MaintenancePlan[]> {
   return response.data;
 }
 
+/**
+ * Mes plans de maintenance, toutes usines confondues. Utilisé par le
+ * portail prestataire.
+ */
+export async function getAssignedToMeMaintenancePlans(): Promise<MaintenancePlan[]> {
+  const response = await api.get<MaintenancePlan[]>(`${BASE_URL}/assigned-to-me`);
+  return response.data;
+}
+
 export async function getMaintenancePlanById(
   id: number
 ): Promise<MaintenancePlan> {

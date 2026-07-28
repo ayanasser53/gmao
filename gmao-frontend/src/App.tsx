@@ -8,6 +8,8 @@ import {
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./layouts/AdminLayout";
 import OperatorLayout from "./layouts/OperatorLayout";
+import TechnicianLayout from "./layouts/TechnicianLayout";
+import ProviderLayout from "./layouts/ProviderLayout";
 import TaskListPage from "./pages/admin/TaskListPage";
 import TaskDetailsPage from "./pages/admin/TaskDetailsPage";
 import TaskCreatePage from "./pages/admin/TaskCreatePage";
@@ -60,15 +62,40 @@ import OperatorCreateTaskPage from "./pages/operator/OperatorCreateTaskPage";
 import OperatorDashboardPage from "./pages/operator/OperatorDashboardPage";
 import OperatorTaskDetailsPage from "./pages/operator/OperatorTaskDetailsPage";
 import OperatorTasksPage from "./pages/operator/OperatorTasksPage";
+
+import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage";
+import TechnicianTasksPage from "./pages/technician/TechnicianTasksPage";
+import TechnicianTaskDetailsPage from "./pages/technician/TechnicianTaskDetailsPage";
+import TechnicianActivitiesPage from "./pages/technician/TechnicianActivitiesPage";
+import TechnicianActivityFormPage from "./pages/technician/TechnicianActivityFormPage";
+import TechnicianMaintenancePlansPage from "./pages/technician/TechnicianMaintenancePlansPage";
+import TechnicianMaintenancePlansCalendarPage from "./pages/technician/TechnicianMaintenancePlansCalendarPage";
+import TechnicianMaintenancePlanDetailsPage from "./pages/technician/TechnicianMaintenancePlanDetailsPage";
+
+import ProviderDashboardPage from "./pages/provider/ProviderDashboardPage";
+import ProviderTasksPage from "./pages/provider/ProviderTasksPage";
+import ProviderTaskDetailsPage from "./pages/provider/ProviderTaskDetailsPage";
+import ProviderActivitiesPage from "./pages/provider/ProviderActivitiesPage";
+import ProviderActivityFormPage from "./pages/provider/ProviderActivityFormPage";
+import ProviderMaintenancePlansPage from "./pages/provider/ProviderMaintenancePlansPage";
+import ProviderMaintenancePlansCalendarPage from "./pages/provider/ProviderMaintenancePlansCalendarPage";
+import ProviderMaintenancePlanDetailsPage from "./pages/provider/ProviderMaintenancePlanDetailsPage";
+
 import { getAuthenticatedRole } from "./services/authService";
 
 function DashboardRedirect() {
-  return (
-    <Navigate
-      to={getAuthenticatedRole() === "PRODUCTION" ? "/operator" : "/admin/dashboard"}
-      replace
-    />
-  );
+  const role = getAuthenticatedRole();
+
+  const target =
+    role === "PRODUCTION"
+      ? "/operator"
+      : role === "TECHNICIAN"
+        ? "/technician"
+        : role === "SERVICE_PROVIDER"
+          ? "/provider"
+          : "/admin/dashboard";
+
+  return <Navigate to={target} replace />;
 }
 
 function App() {
@@ -318,6 +345,63 @@ function App() {
           <Route path="tasks/:id" element={<OperatorTaskDetailsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/operator" replace />} />
+        </Route>
+
+        {/* Routes techniciens protégées */}
+        <Route
+          path="/technician"
+          element={
+            <ProtectedRoute allowedRoles={["TECHNICIAN"]}>
+              <TechnicianLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<TechnicianDashboardPage />} />
+          <Route path="tasks" element={<TechnicianTasksPage />} />
+          <Route path="tasks/:id" element={<TechnicianTaskDetailsPage />} />
+          <Route path="activities" element={<TechnicianActivitiesPage />} />
+          <Route path="activities/create" element={<TechnicianActivityFormPage />} />
+          <Route
+            path="maintenance-plans"
+            element={<TechnicianMaintenancePlansPage />}
+          />
+          <Route
+            path="maintenance-plans/calendar"
+            element={<TechnicianMaintenancePlansCalendarPage />}
+          />
+          <Route
+            path="maintenance-plans/:id"
+            element={<TechnicianMaintenancePlanDetailsPage />}
+          />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/technician" replace />} />
+        </Route>
+
+        {/* Routes prestataires protégées */}
+        <Route
+          path="/provider"
+          element={
+            <ProtectedRoute allowedRoles={["SERVICE_PROVIDER"]}>
+              <ProviderLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ProviderDashboardPage />} />
+          <Route path="tasks" element={<ProviderTasksPage />} />
+          <Route path="tasks/:id" element={<ProviderTaskDetailsPage />} />
+          <Route path="activities" element={<ProviderActivitiesPage />} />
+          <Route path="activities/create" element={<ProviderActivityFormPage />} />
+          <Route path="maintenance-plans" element={<ProviderMaintenancePlansPage />} />
+          <Route
+            path="maintenance-plans/calendar"
+            element={<ProviderMaintenancePlansCalendarPage />}
+          />
+          <Route
+            path="maintenance-plans/:id"
+            element={<ProviderMaintenancePlanDetailsPage />}
+          />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/provider" replace />} />
         </Route>
 
         {/* Ancienne route dashboard */}

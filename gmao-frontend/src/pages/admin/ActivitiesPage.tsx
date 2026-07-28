@@ -16,6 +16,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import {
   getActivities,
+  getAssignedToMeActivities,
   getMyActivities,
 } from "../../services/activityService";
 import { getCostCenters } from "../../services/costCenterService";
@@ -129,12 +130,15 @@ function parseLocalDate(value: string): Date | null {
 
 interface ActivitiesPageProps {
   technicianMode?: boolean;
+  providerMode?: boolean;
 }
 
-function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
+function ActivitiesPage({ technicianMode = false, providerMode = false }: ActivitiesPageProps) {
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
   const currentUserId = getAuthenticatedUserId();
+
+  const restrictedMode = technicianMode || providerMode;
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
@@ -168,7 +172,11 @@ function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
           equipmentData,
           costCentersData,
         ] = await Promise.all([
-          technicianMode ? getMyActivities() : getActivities(),
+          providerMode
+            ? getAssignedToMeActivities()
+            : technicianMode
+              ? getMyActivities()
+              : getActivities(),
           getTasks(),
           getUsers(),
           getTags(),
@@ -188,7 +196,7 @@ function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
     }
 
     void loadActivities();
-  }, [technicianMode]);
+  }, [technicianMode, providerMode]);
 
   const filteredActivities = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -197,7 +205,7 @@ function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
     return activities.filter((activity) => {
       const task = tasksById.get(activity.taskId);
       if (
-        technicianMode &&
+        restrictedMode &&
         currentUserId &&
         !activity.intervenants.some((user) => user.userId === currentUserId)
       ) {
@@ -275,7 +283,7 @@ function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
     });
   }, [
     activities,
-    technicianMode,
+    restrictedMode,
     currentUserId,
     search,
     tasks,
@@ -393,7 +401,7 @@ function ActivitiesPage({ technicianMode = false }: ActivitiesPageProps) {
           </button>
 
 
-          {!technicianMode && (
+          {!restrictedMode && (
             <Link
               to={`${basePath}/activities/create`}
               className="supplier-primary-button"

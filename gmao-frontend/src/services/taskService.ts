@@ -70,6 +70,17 @@ export async function getMyCreatedTasks(): Promise<TaskListItem[]> {
   return handle<TaskListItem[]>(response);
 }
 
+/**
+ * Tâches affectées à l'utilisateur courant, toutes usines confondues.
+ * Utilisé par le portail prestataire.
+ */
+export async function getAssignedToMeTasks(): Promise<TaskListItem[]> {
+  const response = await fetch(`${BACKEND_URL}/api/tasks/assigned-to-me`, {
+    headers: authHeaders(),
+  });
+  return handle<TaskListItem[]>(response);
+}
+
 export async function getMyCreatedTaskById(id: number): Promise<Task> {
   const response = await fetch(`${BACKEND_URL}/api/tasks/my-created/${id}`, {
     headers: authHeaders(),

@@ -63,6 +63,19 @@ public class ActivityService {
                 .toList();
     }
 
+    /**
+     * Mes activités, toutes usines confondues. Utilisé par le portail
+     * prestataire (peut intervenir sur plusieurs usines).
+     */
+    public List<ActivityResponse> findMineAnyUsine() {
+        User currentUser = currentUserProvider.getUser();
+
+        return activityRepository.findMineByIntervenantId(currentUser.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public List<ActivityResponse> findInProgress() {
         return activityRepository.findByStatusAndUsineId(ActivityStatus.IN_PROGRESS, currentUserProvider.requireUsineId())
                 .stream()
@@ -85,10 +98,32 @@ public class ActivityService {
     }
 
     public List<ActivityResponse> findByTaskId(Long taskId) {
-        return activityRepository.findByTaskIdAndUsineId(taskId, currentUserProvider.requireUsineId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        Long usineId = currentUserProvider.getUsineIdOrNull();
+        boolean taskInMyUsine =
+                usineId != null && taskRepository.findByIdAndUsineId(taskId, usineId).isPresent();
+
+        if (taskInMyUsine) {
+            return activityRepository.findByTaskIdAndUsineId(taskId, usineId)
+                    .stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+
+        // La tâche n'appartient pas à mon usine (cas d'un prestataire
+        // intervenant sur une autre usine) : autorisé si j'y suis affecté.
+        User currentUser = currentUserProvider.getUser();
+        boolean isAssignedToTask =
+                taskRepository.findByIdAssignedToUser(taskId, currentUser.getId()).isPresent();
+
+        if (isAssignedToTask) {
+            return activityRepository
+                    .findByTaskIdOrderByPerformedDateDescPerformedEndTimeDesc(taskId)
+                    .stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+
+        return List.of();
     }
 
     public ServedDatabaseFile getDocument(Long documentId) {
@@ -471,7 +506,22 @@ public class ActivityService {
     }
 
     private Task findTask(Long taskId) {
-        return taskRepository.findByIdAndUsineId(taskId, currentUserProvider.requireUsineId())
+        Long usineId = currentUserProvider.getUsineIdOrNull();
+
+        if (usineId != null) {
+            java.util.Optional<Task> scoped = taskRepository.findByIdAndUsineId(taskId, usineId);
+
+            if (scoped.isPresent()) {
+                return scoped.get();
+            }
+        }
+
+        // Un prestataire peut consigner une intervention sur une tâche qui
+        // ne relève pas de son usine de rattachement, tant qu'il en fait
+        // partie des personnes affectées.
+        User currentUser = currentUserProvider.getUser();
+
+        return taskRepository.findByIdAssignedToUser(taskId, currentUser.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Tâche introuvable."));
     }
 

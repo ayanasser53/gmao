@@ -14,8 +14,9 @@ import type { TaskListItem } from "../../types/task";
 import {
   getMaintenancePlans,
   getMyMaintenancePlans,
+  getAssignedToMeMaintenancePlans,
 } from "../../services/maintenancePlanService";
-import { getTasks } from "../../services/taskService";
+import { getTasks, getAssignedToMeTasks } from "../../services/taskService";
 import { getAuthenticatedUserId } from "../../services/authService";
 import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
@@ -35,6 +36,7 @@ type CalendarEntry = {
 
 interface MaintenancePlansCalendarPageProps {
   technicianMode?: boolean;
+  providerMode?: boolean;
 }
 
 const STATUS_TABS = [
@@ -187,6 +189,7 @@ function isAssignedToCurrentUser(task: TaskListItem, userId: number | null): boo
 
 export default function MaintenancePlansCalendarPage({
   technicianMode = false,
+  providerMode = false,
 }: MaintenancePlansCalendarPageProps) {
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
@@ -201,6 +204,17 @@ export default function MaintenancePlansCalendarPage({
     async function loadCalendar() {
       try {
         setError("");
+
+        if (providerMode) {
+          const [planList, taskList] = await Promise.all([
+            getAssignedToMeMaintenancePlans(),
+            getAssignedToMeTasks().catch(() => [] as TaskListItem[]),
+          ]);
+
+          setPlans(planList);
+          setTasks(taskList);
+          return;
+        }
 
         const [planList, taskList] = await Promise.all([
           technicianMode ? getMyMaintenancePlans() : getMaintenancePlans(),
@@ -219,7 +233,7 @@ export default function MaintenancePlansCalendarPage({
     }
 
     void loadCalendar();
-  }, [currentUserId, technicianMode]);
+  }, [currentUserId, technicianMode, providerMode]);
 
   const entriesByDate = useMemo(() => {
     const planEntries = plans.reduce(

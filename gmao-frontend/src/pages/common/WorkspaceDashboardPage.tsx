@@ -12,10 +12,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { getMyActivities } from "../../services/activityService";
+import { getAssignedToMeActivities, getMyActivities } from "../../services/activityService";
 import { getAuthenticatedUserId } from "../../services/authService";
-import { getMyMaintenancePlans } from "../../services/maintenancePlanService";
-import { getMyCreatedTasks, getTasks } from "../../services/taskService";
+import { getMyMaintenancePlans, getAssignedToMeMaintenancePlans } from "../../services/maintenancePlanService";
+import {
+  getAssignedToMeTasks,
+  getMyCreatedTasks,
+  getTasks,
+} from "../../services/taskService";
 import type { Activity as ActivityItem } from "../../types/activity";
 import type { MaintenancePlan } from "../../types/maintenancePlan";
 import type { TaskListItem, TaskStatus } from "../../types/task";
@@ -23,7 +27,7 @@ import type { TaskListItem, TaskStatus } from "../../types/task";
 import "../admin/task-styles.css";
 import "../admin/DashboardPage.css";
 
-type WorkspaceDashboardRole = "operator" | "technician";
+type WorkspaceDashboardRole = "operator" | "technician" | "provider";
 
 interface WorkspaceDashboardPageProps {
   role: WorkspaceDashboardRole;
@@ -162,7 +166,8 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
   const [error, setError] = useState("");
 
   const isTechnician = role === "technician";
-  const basePath = isTechnician ? "/technician" : "/operator";
+  const isProvider = role === "provider";
+  const basePath = isTechnician ? "/technician" : isProvider ? "/provider" : "/operator";
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -184,6 +189,18 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
           return;
         }
 
+        if (isProvider) {
+          const [taskList, activityList, planList] = await Promise.all([
+            getAssignedToMeTasks(),
+            getAssignedToMeActivities().catch(() => [] as ActivityItem[]),
+            getAssignedToMeMaintenancePlans().catch(() => [] as MaintenancePlan[]),
+          ]);
+          setTasks(taskList);
+          setActivities(activityList);
+          setPlans(planList);
+          return;
+        }
+
         const taskList = await getMyCreatedTasks();
         setTasks(taskList);
         setActivities([]);
@@ -197,7 +214,7 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
     }
 
     void load();
-  }, [currentUserId, isTechnician]);
+  }, [currentUserId, isTechnician, isProvider]);
 
   const metrics = useMemo(() => {
     const totalSpentMinutes = activities.reduce(
@@ -248,7 +265,7 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
       ]
     : [
         {
-          title: "Mes taches",
+          title: isProvider ? "Taches affectees" : "Mes taches",
           value: metrics.totalTasks,
           icon: <ClipboardList size={32} />,
           className: "dashboard-hero-card-tasks",
@@ -280,12 +297,16 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
         <h1>
           {isTechnician
             ? "Bienvenue dans votre espace technicien"
-            : "Bienvenue dans votre espace operateur"}
+            : isProvider
+              ? "Bienvenue dans votre espace prestataire"
+              : "Bienvenue dans votre espace operateur"}
         </h1>
         <p>
           {isTechnician
             ? "Suivez vos taches affectees, vos activites realisees et vos plans de maintenance."
-            : "Suivez les taches que vous avez declarees et leur avancement par la maintenance."}
+            : isProvider
+              ? "Suivez les interventions qui vous sont affectees, quelle que soit l'usine concernee."
+              : "Suivez les taches que vous avez declarees et leur avancement par la maintenance."}
         </p>
       </div>
 
@@ -309,7 +330,7 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
             <ClipboardList size={26} />
           </div>
           <div>
-            <span>{isTechnician ? "Taches affectees" : "Mes taches"}</span>
+            <span>{isTechnician || isProvider ? "Taches affectees" : "Mes taches"}</span>
             <strong>{metrics.totalTasks}</strong>
           </div>
         </Link>
@@ -327,6 +348,28 @@ function WorkspaceDashboardPage({ role }: WorkspaceDashboardPageProps) {
             </Link>
 
             <Link to="/technician/maintenance-plans" className="dashboard-resource-card">
+              <div className="dashboard-resource-icon">
+                <CalendarCheck size={26} />
+              </div>
+              <div>
+                <span>Plans de maintenance</span>
+                <strong>{metrics.totalPlans}</strong>
+              </div>
+            </Link>
+          </>
+        ) : isProvider ? (
+          <>
+            <Link to="/provider/activities" className="dashboard-resource-card">
+              <div className="dashboard-resource-icon">
+                <Activity size={26} />
+              </div>
+              <div>
+                <span>Activites</span>
+                <strong>{metrics.totalActivities}</strong>
+              </div>
+            </Link>
+
+            <Link to="/provider/maintenance-plans" className="dashboard-resource-card">
               <div className="dashboard-resource-icon">
                 <CalendarCheck size={26} />
               </div>

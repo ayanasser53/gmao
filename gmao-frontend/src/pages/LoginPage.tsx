@@ -36,6 +36,10 @@ function getStartPath(authData: AuthResponse): string {
     return "/technician";
   }
 
+  if (authData.role === "SERVICE_PROVIDER") {
+    return "/provider";
+  }
+
   return "/admin/dashboard";
 }
 function LoginPage() {

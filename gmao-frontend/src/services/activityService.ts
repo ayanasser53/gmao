@@ -45,6 +45,15 @@ export async function getMyActivities(): Promise<Activity[]> {
   return response.data.map(normalizeActivity);
 }
 
+/**
+ * Mes activités, toutes usines confondues. Utilisé par le portail
+ * prestataire.
+ */
+export async function getAssignedToMeActivities(): Promise<Activity[]> {
+  const response = await api.get<Activity[]>("/activities/assigned-to-me");
+  return response.data.map(normalizeActivity);
+}
+
 export async function getInProgressActivities(): Promise<Activity[]> {
   const response = await api.get<Activity[]>("/activities/in-progress");
   return response.data.map(normalizeActivity);

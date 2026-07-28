@@ -71,6 +71,23 @@ public class TaskService {
                 .toList();
     }
 
+    /**
+     * Tâches affectées à l'utilisateur courant, sur n'importe quelle usine.
+     * Utilisé par le portail prestataire (un prestataire peut intervenir
+     * sur plusieurs usines et n'a donc pas de liste "toutes les tâches de
+     * mon usine" pertinente).
+     */
+    @Transactional(readOnly = true)
+    public List<TaskListItemResponse> findAssignedToMe() {
+        User currentUser = resolveCurrentUser();
+
+        return taskRepository
+                .findAllAssignedToUserOrderByCreatedAtDesc(currentUser.getId())
+                .stream()
+                .map(mapper::toListItemResponse)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findMyCreatedTasks() {
         User currentUser = resolveCurrentUser();
@@ -308,13 +325,31 @@ public class TaskService {
     }
 
     private Task findEntityById(Long id) {
-        return taskRepository
-                .findByIdAndUsineId(id, currentUserProvider.requireUsineId())
-                .orElseThrow(
-                        () -> new ResourceNotFoundException(
-                                "Tâche introuvable."
-                        )
-                );
+        Long usineId = currentUserProvider.getUsineIdOrNull();
+
+        if (usineId != null) {
+            java.util.Optional<Task> scoped = taskRepository.findByIdAndUsineId(id, usineId);
+
+            if (scoped.isPresent()) {
+                return scoped.get();
+            }
+        }
+
+        // Un prestataire peut être affecté à une tâche en dehors de son
+        // usine de rattachement : on l'autorise s'il fait partie des
+        // personnes affectées à cette tâche précise.
+        User currentUser = resolveCurrentUserOrNull();
+
+        if (currentUser != null) {
+            java.util.Optional<Task> assigned =
+                    taskRepository.findByIdAssignedToUser(id, currentUser.getId());
+
+            if (assigned.isPresent()) {
+                return assigned.get();
+            }
+        }
+
+        throw new ResourceNotFoundException("Tâche introuvable.");
     }
 
     private Equipment resolveEquipment(Long equipmentId) {

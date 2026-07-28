@@ -15,10 +15,20 @@ function defaultPathForRole(role: string) {
   }
 
   if (role === "TECHNICIAN") {
-    return "/technician/tasks";
+    return "/technician";
   }
 
-  return "/admin/dashboard";
+  if (role === "SERVICE_PROVIDER") {
+    return "/provider";
+  }
+
+  if (role === "ADMIN" || role === "SUPERADMIN") {
+    return "/admin/dashboard";
+  }
+
+  // Rôle authentifié mais sans espace dédié pour l'instant : on renvoie
+  // vers le login plutôt que de boucler indéfiniment sur /admin.
+  return "/login";
 }
 
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {

@@ -25,6 +25,34 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     boolean existsByEquipmentId(Long equipmentId);
 
+    /**
+     * Tâches affectées à un utilisateur (directement, ou via une équipe —
+     * non géré ici, seulement l'affectation directe), quelle que soit
+     * l'usine. Utilisé par le portail prestataire, qui peut intervenir sur
+     * plusieurs usines.
+     */
+    @Query(
+            "select distinct t from Task t " +
+                    "left join t.assignees a " +
+                    "left join t.assignedTo at " +
+                    "where a.user.id = :userId or at.user.id = :userId " +
+                    "order by t.createdAt desc"
+    )
+    List<Task> findAllAssignedToUserOrderByCreatedAtDesc(
+            @org.springframework.data.repository.query.Param("userId") Long userId
+    );
+
+    @Query(
+            "select distinct t from Task t " +
+                    "left join t.assignees a " +
+                    "left join t.assignedTo at " +
+                    "where t.id = :id and (a.user.id = :userId or at.user.id = :userId)"
+    )
+    java.util.Optional<Task> findByIdAssignedToUser(
+            @org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("userId") Long userId
+    );
+
     @Query(
             "SELECT COALESCE(SUM(t.plannedMaintenanceHours * 60 + t.plannedMaintenanceMinutes), 0) " +
                     "FROM Task t WHERE t.equipment.usine.id = :usineId"

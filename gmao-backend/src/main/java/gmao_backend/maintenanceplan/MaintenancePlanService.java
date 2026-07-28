@@ -42,10 +42,7 @@ public class MaintenancePlanService {
     }
 
     public MaintenancePlanResponse findById(Long id) {
-        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
-                .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
-
-        return toResponse(plan);
+        return toResponse(resolvePlan(id));
     }
 
     public List<MaintenancePlanResponse> findMine() {
@@ -54,6 +51,19 @@ public class MaintenancePlanService {
         User currentUser = currentUserProvider.getUser();
 
         return maintenancePlanRepository.findMineByAssigneeIdAndUsineId(currentUser.getId(), usineId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * Mes plans de maintenance, toutes usines confondues. Utilisé par le
+     * portail prestataire (peut intervenir sur plusieurs usines).
+     */
+    public List<MaintenancePlanResponse> findMineAnyUsine() {
+        User currentUser = currentUserProvider.getUser();
+
+        return maintenancePlanRepository.findMineByAssigneeId(currentUser.getId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -113,8 +123,7 @@ public class MaintenancePlanService {
     }
 
     public MaintenancePlanResponse updateStatus(Long id, MaintenancePlanStatus status) {
-        MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
-                .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
+        MaintenancePlan plan = resolvePlan(id);
 
         MaintenancePlanStatus previousStatus = plan.getStatus();
         MaintenancePlanStatus nextStatus = resolveSavedStatus(status);
@@ -179,6 +188,28 @@ public class MaintenancePlanService {
         } catch (RuntimeException exception) {
             return null;
         }
+    }
+
+    /**
+     * Résout un plan par id, d'abord dans l'usine de l'utilisateur courant,
+     * puis, à défaut, s'il en fait partie des affectés (cas d'un
+     * prestataire intervenant sur une autre usine).
+     */
+    private MaintenancePlan resolvePlan(Long id) {
+        Long usineId = currentUserProvider.getUsineIdOrNull();
+
+        if (usineId != null) {
+            var scoped = maintenancePlanRepository.findByIdAndUsineId(id, usineId);
+
+            if (scoped.isPresent()) {
+                return scoped.get();
+            }
+        }
+
+        User currentUser = currentUserProvider.getUser();
+
+        return maintenancePlanRepository.findByIdAssignedToUser(id, currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
     }
 
     public void delete(Long id) {

@@ -28,4 +28,25 @@ public interface MaintenancePlanRepository
             @Param("userId") Long userId,
             @Param("usineId") Long usineId
     );
+
+    /**
+     * Plans de maintenance où l'utilisateur est affecté, toutes usines
+     * confondues. Utilisé par le portail prestataire.
+     */
+    @Query(
+            "select distinct p from MaintenancePlan p "
+                    + "join p.assignees a "
+                    + "where a.user.id = :userId"
+    )
+    List<MaintenancePlan> findMineByAssigneeId(@Param("userId") Long userId);
+
+    @Query(
+            "select distinct p from MaintenancePlan p "
+                    + "join p.assignees a "
+                    + "where p.id = :id and a.user.id = :userId"
+    )
+    Optional<MaintenancePlan> findByIdAssignedToUser(
+            @Param("id") Long id,
+            @Param("userId") Long userId
+    );
 }

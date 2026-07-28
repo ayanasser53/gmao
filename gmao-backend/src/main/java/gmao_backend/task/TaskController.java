@@ -36,6 +36,13 @@ public class TaskController {
         );
     }
 
+    @GetMapping("/assigned-to-me")
+    public ResponseEntity<List<TaskListItemResponse>> findAssignedToMe() {
+        return ResponseEntity.ok(
+                taskService.findAssignedToMe()
+        );
+    }
+
     @GetMapping("/my-created/{id}")
     public ResponseEntity<TaskResponse> findMyCreatedTaskById(
             @PathVariable Long id

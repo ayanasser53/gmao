@@ -40,4 +40,19 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
             @Param("userId") Long userId,
             @Param("usineId") Long usineId
     );
+
+    /**
+     * Activités où l'utilisateur est intervenant, toutes usines confondues.
+     * Utilisé par le portail prestataire, qui peut intervenir sur
+     * plusieurs usines.
+     */
+    @Query("""
+            select distinct activity
+            from Activity activity
+            join ActivityIntervenant intervenant
+                on intervenant.activity = activity
+            where intervenant.user.id = :userId
+            order by activity.performedDate desc, activity.performedEndTime desc
+            """)
+    List<Activity> findMineByIntervenantId(@Param("userId") Long userId);
 }

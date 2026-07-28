@@ -28,6 +28,11 @@ public class ActivityController {
         return ResponseEntity.ok(activityService.findMine());
     }
 
+    @GetMapping("/activities/assigned-to-me")
+    public ResponseEntity<List<ActivityResponse>> findMineAnyUsine() {
+        return ResponseEntity.ok(activityService.findMineAnyUsine());
+    }
+
     @GetMapping("/activities/in-progress")
     public ResponseEntity<List<ActivityResponse>> findInProgress() {
         return ResponseEntity.ok(activityService.findInProgress());

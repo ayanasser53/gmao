@@ -81,7 +81,7 @@ public class SecurityConfig {
 
                         // Seuls les roles maintenance pilotent l'avancement des taches
                         .requestMatchers(HttpMethod.PATCH, "/api/tasks/*/status")
-                        .hasAnyRole("ADMIN", "TECHNICIAN")
+                        .hasAnyRole("ADMIN", "TECHNICIAN", "SERVICE_PROVIDER")
 
                         // Les plans sont crees et structures par l'administrateur.
                         .requestMatchers(HttpMethod.POST, "/api/maintenance-plans")
@@ -91,7 +91,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/maintenance-plans/*")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/maintenance-plans/*/status")
-                        .hasAnyRole("ADMIN", "TECHNICIAN")
+                        .hasAnyRole("ADMIN", "TECHNICIAN", "SERVICE_PROVIDER")
 
                         // Toutes les autres routes demandent un JWT
                         .anyRequest().authenticated()
