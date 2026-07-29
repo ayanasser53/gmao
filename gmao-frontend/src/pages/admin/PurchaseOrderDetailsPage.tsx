@@ -23,6 +23,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   getPurchaseOrderById,
   updatePurchaseOrder,
@@ -194,6 +196,7 @@ function buildCalendarDays(monthDate: Date) {
 export default function PurchaseOrderDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [searchParams, setSearchParams] = useSearchParams();
   const panel = searchParams.get("panel");
   const lineId = searchParams.get("lineId");
@@ -613,7 +616,7 @@ export default function PurchaseOrderDetailsPage() {
         <button
           type="button"
           className="details-back-button"
-          onClick={() => navigate("/admin/purchase-orders")}
+          onClick={() => navigate(`${basePath}/purchase-orders`)}
           aria-label="Retour"
         >
           <ArrowLeft size={22} />
@@ -1335,7 +1338,7 @@ export default function PurchaseOrderDetailsPage() {
                   <button
                     type="button"
                     className="purchase-create-supplier-link"
-                    onClick={() => navigate("/admin/suppliers/create")}
+                    onClick={() => navigate(`${basePath}/suppliers/create`)}
                   >
                     <Plus size={15} />
                     Créer un fournisseur

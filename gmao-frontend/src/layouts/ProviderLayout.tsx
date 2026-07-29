@@ -16,7 +16,7 @@ function ProviderLayout() {
         profileLabel="Prestataire"
         homePath="/provider"
         profilePath="/provider/profile"
-        showNotifications={false}
+        notificationsPath="/provider/notifications"
         navigationItems={[
           {
             label: "Dashboard",

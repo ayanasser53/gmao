@@ -343,6 +343,7 @@ function App() {
           <Route path="tasks" element={<OperatorTasksPage />} />
           <Route path="tasks/new" element={<OperatorCreateTaskPage />} />
           <Route path="tasks/:id" element={<OperatorTaskDetailsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/operator" replace />} />
         </Route>
@@ -373,6 +374,7 @@ function App() {
             path="maintenance-plans/:id"
             element={<TechnicianMaintenancePlanDetailsPage />}
           />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/technician" replace />} />
         </Route>
@@ -400,6 +402,7 @@ function App() {
             path="maintenance-plans/:id"
             element={<ProviderMaintenancePlanDetailsPage />}
           />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/provider" replace />} />
         </Route>

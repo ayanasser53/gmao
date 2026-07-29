@@ -15,6 +15,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   deletePurchaseOrder,
   getPurchaseOrders,
@@ -106,6 +108,7 @@ function relativeDate(value: string) {
 
 export default function PurchaseOrdersPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [activeStatus, setActiveStatus] = useState<PurchaseOrderStatus>("ALL");
   const [search, setSearch] = useState("");
@@ -200,7 +203,7 @@ export default function PurchaseOrdersPage() {
           <button
             type="button"
             className="resource-primary-button"
-            onClick={() => navigate("/admin/purchase-orders/create")}
+            onClick={() => navigate(`${basePath}/purchase-orders/create`)}
           >
             <Plus size={17} />
             Créer un bon de commande
@@ -273,7 +276,7 @@ export default function PurchaseOrdersPage() {
                   <tr
                     key={order.id}
                     className="supplier-clickable-row"
-                    onClick={() => navigate(`/admin/purchase-orders/${order.id}`)}
+                    onClick={() => navigate(`${basePath}/purchase-orders/${order.id}`)}
                   >
                     <td className="purchase-reference">{order.reference}</td>
                     <td>{order.supplierName || "Non défini"}</td>

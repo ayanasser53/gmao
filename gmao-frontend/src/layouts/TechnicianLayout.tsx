@@ -16,7 +16,7 @@ function TechnicianLayout() {
         profileLabel="Technicien"
         homePath="/technician"
         profilePath="/technician/profile"
-        showNotifications={false}
+        notificationsPath="/technician/notifications"
         navigationItems={[
           {
             label: "Dashboard",

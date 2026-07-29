@@ -2,6 +2,8 @@ package com.gmao.gmao_backend.maintenanceplan;
 
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.notification.NotificationService;
+import com.gmao.gmao_backend.notification.NotificationType;
 import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
@@ -30,6 +32,7 @@ public class MaintenancePlanService {
     private final SparePartStockMovementRepository stockMovementRepository;
     private final UserRepository userRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final NotificationService notificationService;
 
     public List<MaintenancePlanResponse> findAll() {
         Long usineId = currentUserProvider.requireUsineId();
@@ -92,7 +95,12 @@ public class MaintenancePlanService {
 
         applySpareParts(plan, request.spareParts());
         applyAssignees(plan, request.assigneeIds());
-        return toResponse(maintenancePlanRepository.save(plan));
+
+        MaintenancePlan savedPlan = maintenancePlanRepository.save(plan);
+
+        notifyNewAssignees(savedPlan, java.util.Set.of(), currentUserProvider.getUser());
+
+        return toResponse(savedPlan);
     }
 
     public MaintenancePlanResponse update(Long id, MaintenancePlanRequest request) {
@@ -117,9 +125,49 @@ public class MaintenancePlanService {
         plan.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
         plan.setStatus(resolveSavedStatus(request.status()));
         applySpareParts(plan, request.spareParts());
+
+        java.util.Set<Long> previouslyAssignedUserIds = plan.getAssignees()
+                .stream()
+                .map(MaintenancePlanAssignee::getUser)
+                .filter(java.util.Objects::nonNull)
+                .map(com.gmao.gmao_backend.user.User::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
         applyAssignees(plan, request.assigneeIds());
 
-        return toResponse(maintenancePlanRepository.save(plan));
+        MaintenancePlan savedPlan = maintenancePlanRepository.save(plan);
+
+        notifyNewAssignees(savedPlan, previouslyAssignedUserIds, currentUserProvider.getUser());
+
+        return toResponse(savedPlan);
+    }
+
+    /**
+     * Prévient uniquement les utilisateurs nouvellement affectés à ce plan
+     * (absents de l'ancienne liste), sauf s'il s'agit de l'auteur de
+     * l'action lui-même.
+     */
+    private void notifyNewAssignees(
+            MaintenancePlan plan,
+            java.util.Set<Long> previouslyAssignedUserIds,
+            User actor
+    ) {
+        java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
+
+        plan.getAssignees()
+                .stream()
+                .map(MaintenancePlanAssignee::getUser)
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> !previouslyAssignedUserIds.contains(user.getId()))
+                .filter(user -> actor == null || !user.getId().equals(actor.getId()))
+                .filter(user -> notifiedUserIds.add(user.getId()))
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.MAINTENANCE_PLAN_ASSIGNED,
+                        "Plan de maintenance assigné",
+                        plan.getDescription(),
+                        "/maintenance-plans/" + plan.getId()
+                ));
     }
 
     public MaintenancePlanResponse updateStatus(Long id, MaintenancePlanStatus status) {
@@ -145,7 +193,42 @@ public class MaintenancePlanService {
             createNextOccurrenceIfMissing(savedPlan, LocalDate.now());
         }
 
+        if (nextStatus != previousStatus) {
+            notifyAssigneesOfStatusChange(savedPlan, nextStatus);
+        }
+
         return toResponse(savedPlan);
+    }
+
+    /**
+     * Prévient chaque affecté (hors auteur de l'action) qu'un plan de
+     * maintenance a changé de statut.
+     */
+    private void notifyAssigneesOfStatusChange(MaintenancePlan plan, MaintenancePlanStatus status) {
+        User actor = currentUserProvider.getUser();
+
+        plan.getAssignees()
+                .stream()
+                .map(MaintenancePlanAssignee::getUser)
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> !user.getId().equals(actor.getId()))
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.MAINTENANCE_PLAN_DUE,
+                        "Plan de maintenance mis à jour",
+                        "« " + plan.getDescription() + " » est maintenant « "
+                                + planStatusLabel(status) + " ».",
+                        "/maintenance-plans/" + plan.getId()
+                ));
+    }
+
+    private String planStatusLabel(MaintenancePlanStatus status) {
+        return switch (status) {
+            case PLANNED -> "Planifié";
+            case IN_PROGRESS -> "En cours";
+            case LATE -> "En retard";
+            case DONE -> "Terminé";
+        };
     }
 
     /**
@@ -379,11 +462,30 @@ public class MaintenancePlanService {
 
         if (!plansToUpdate.isEmpty()) {
             maintenancePlanRepository.saveAll(plansToUpdate);
+            plansToUpdate.forEach(this::notifyAssigneesOfLatePlan);
         }
 
         if (!plansToCreate.isEmpty()) {
             maintenancePlanRepository.saveAll(plansToCreate);
         }
+    }
+
+    /**
+     * Prévient chaque utilisateur directement affecté (hors équipes) qu'un
+     * plan de maintenance vient de passer en retard.
+     */
+    private void notifyAssigneesOfLatePlan(MaintenancePlan plan) {
+        plan.getAssignees()
+                .stream()
+                .map(MaintenancePlanAssignee::getUser)
+                .filter(java.util.Objects::nonNull)
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.MAINTENANCE_PLAN_DUE,
+                        "Plan de maintenance en retard",
+                        "« " + plan.getDescription() + " » est maintenant en retard.",
+                        "/maintenance-plans/" + plan.getId()
+                ));
     }
 
     private void createNextOccurrenceIfMissing(MaintenancePlan source, LocalDate today) {

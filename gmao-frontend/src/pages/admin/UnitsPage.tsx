@@ -17,6 +17,8 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   deleteUnit,
   getUnits,
@@ -30,6 +32,7 @@ import type {
 
 function UnitsPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [units, setUnits] =
     useState<MeasurementUnit[]>([]);
@@ -150,7 +153,7 @@ function UnitsPage() {
         type="button"
         className="resource-back-button"
         onClick={() =>
-          navigate("/admin/measures")
+          navigate(`${basePath}/measures`)
         }
       >
         <ArrowLeft size={18} />
@@ -174,7 +177,7 @@ function UnitsPage() {
           type="button"
           className="resource-primary-button"
           onClick={() =>
-            navigate("/admin/units/create")
+            navigate(`${basePath}/units/create`)
           }
         >
           <CirclePlus size={20} />
@@ -279,7 +282,7 @@ function UnitsPage() {
                         className="resource-edit-button"
                         onClick={() =>
                           navigate(
-                            `/admin/units/${unit.id}/edit`,
+                            `${basePath}/units/${unit.id}/edit`,
                           )
                         }
                       >

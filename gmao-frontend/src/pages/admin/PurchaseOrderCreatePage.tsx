@@ -15,6 +15,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import { createPurchaseOrder } from "../../services/purchaseOrderService";
 import { getSpareParts } from "../../services/sparePartService";
 import { getSuppliers } from "../../services/supplierService";
@@ -50,6 +52,7 @@ function formatCurrency(value: number) {
 
 export default function PurchaseOrderCreatePage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [reference, setReference] = useState(todayReferenceExample());
@@ -181,7 +184,7 @@ export default function PurchaseOrderCreatePage() {
         lines,
       });
 
-      navigate("/admin/purchase-orders");
+      navigate(`${basePath}/purchase-orders`);
     } catch {
       setError("Impossible de créer le bon de commande.");
     } finally {
@@ -194,7 +197,7 @@ export default function PurchaseOrderCreatePage() {
       <button
         type="button"
         className="purchase-panel-backdrop"
-        onClick={() => navigate("/admin/purchase-orders")}
+        onClick={() => navigate(`${basePath}/purchase-orders`)}
         aria-label="Fermer"
       />
 
@@ -202,7 +205,7 @@ export default function PurchaseOrderCreatePage() {
         <header>
           <button
             type="button"
-            onClick={() => navigate("/admin/purchase-orders")}
+            onClick={() => navigate(`${basePath}/purchase-orders`)}
             aria-label="Retour"
           >
             <ArrowLeft size={21} />
@@ -511,7 +514,7 @@ export default function PurchaseOrderCreatePage() {
           <button
             type="button"
             className="equipment-cancel-button"
-            onClick={() => navigate("/admin/purchase-orders")}
+            onClick={() => navigate(`${basePath}/purchase-orders`)}
             disabled={submitting}
           >
             Annuler

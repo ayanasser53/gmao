@@ -21,6 +21,8 @@ import {
   useParams,
 } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import { getSupplierById } from "../../services/supplierService";
 
 import type { Supplier } from "../../types/supplier";
@@ -61,6 +63,7 @@ function displayValue(value: string | null): string {
 function SupplierDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +131,7 @@ function SupplierDetailsPage() {
           <button
             type="button"
             className="supplier-detail-back"
-            onClick={() => navigate("/admin/suppliers")}
+            onClick={() => navigate(`${basePath}/suppliers`)}
           >
             <ArrowLeft size={17} />
             Retour aux fournisseurs

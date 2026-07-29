@@ -1,174 +1,255 @@
+import { AxiosError } from "axios";
 import {
   Bell,
+  CalendarCheck,
+  CheckCheck,
   CheckCircle2,
   ClipboardList,
   PackageCheck,
   ShoppingCart,
-  Wrench,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-interface NotificationItem {
-  id: number;
-  title: string;
-  description: string;
-  date: string;
-  unread: boolean;
-  type: "task" | "equipment" | "purchase" | "stock";
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  type AppNotification,
+  type NotificationType,
+} from "../../services/notificationService";
+
+import "./notifications-styles.css";
+
+type FilterTab = "ALL" | "UNREAD";
+
+interface NotificationTypeMeta {
+  icon: JSX.Element;
+  className: string;
 }
 
-const notifications: NotificationItem[] = [
-  {
-    id: 1,
-    title: "Nouvelle tâche créée",
-    description:
-      "Une intervention de maintenance a été créée pour l’équipement Presse hydraulique.",
-    date: "Il y a 10 minutes",
-    unread: true,
-    type: "task",
+const TYPE_META: Record<NotificationType, NotificationTypeMeta> = {
+  TASK_ASSIGNED: {
+    icon: <ClipboardList size={18} />,
+    className: "notif-icon-blue",
   },
-  {
-    id: 2,
-    title: "Stock minimum atteint",
-    description:
-      "Le stock de la pièce Roulement 6205 est inférieur au seuil minimum.",
-    date: "Il y a 1 heure",
-    unread: true,
-    type: "stock",
+  TASK_STATUS_CHANGED: {
+    icon: <ClipboardList size={18} />,
+    className: "notif-icon-blue",
   },
-  {
-    id: 3,
-    title: "Commande reçue",
-    description:
-      "La commande d’achat PO-2026-001 a été marquée comme reçue.",
-    date: "Hier à 16:20",
-    unread: false,
-    type: "purchase",
+  ACTIVITY_STATUS_CHANGED: {
+    icon: <CheckCircle2 size={18} />,
+    className: "notif-icon-green",
   },
-  {
-    id: 4,
-    title: "Équipement mis à jour",
-    description:
-      "Les informations de l’équipement Compresseur principal ont été modifiées.",
-    date: "Hier à 11:40",
-    unread: false,
-    type: "equipment",
+  STOCK_LOW: {
+    icon: <PackageCheck size={18} />,
+    className: "notif-icon-orange",
   },
-];
+  PURCHASE_ORDER_UPDATED: {
+    icon: <ShoppingCart size={18} />,
+    className: "notif-icon-purple",
+  },
+  MAINTENANCE_PLAN_ASSIGNED: {
+    icon: <CalendarCheck size={18} />,
+    className: "notif-icon-blue",
+  },
+  MAINTENANCE_PLAN_DUE: {
+    icon: <CalendarCheck size={18} />,
+    className: "notif-icon-red",
+  },
+};
 
-function getNotificationIcon(type: NotificationItem["type"]) {
-  switch (type) {
-    case "task":
-      return <ClipboardList size={22} />;
+function formatRelativeDate(value: string): string {
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.round(diffMs / 60000);
 
-    case "equipment":
-      return <Wrench size={22} />;
-
-    case "purchase":
-      return <ShoppingCart size={22} />;
-
-    case "stock":
-      return <PackageCheck size={22} />;
-
-    default:
-      return <Bell size={22} />;
+  if (diffMinutes < 1) {
+    return "À l'instant";
   }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours} h`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+
+  if (diffDays < 7) {
+    return `${diffDays} j`;
+  }
+
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+  });
 }
 
 function NotificationsPage() {
-  const unreadCount = notifications.filter(
-    (notification) => notification.unread,
-  ).length;
+  const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
+
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
+
+  useEffect(() => {
+    async function load(): Promise<void> {
+      try {
+        setError("");
+        setNotifications(await getNotifications());
+      } catch (requestError) {
+        console.error(requestError);
+
+        const axiosError = requestError as AxiosError<{ message?: string }>;
+        const status = axiosError.response?.status;
+        const backendMessage = axiosError.response?.data?.message;
+
+        setError(
+          `Impossible de charger les notifications` +
+            (status ? ` (erreur ${status})` : "") +
+            (backendMessage ? ` : ${backendMessage}` : "."),
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void load();
+  }, []);
+
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+
+  const visibleNotifications = useMemo(
+    () =>
+      activeTab === "UNREAD"
+        ? notifications.filter((notification) => !notification.read)
+        : notifications,
+    [notifications, activeTab],
+  );
+
+  async function handleMarkAllAsRead(): Promise<void> {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, read: true })),
+      );
+    } catch (requestError) {
+      console.error(requestError);
+    }
+  }
+
+  async function handleNotificationClick(notification: AppNotification): Promise<void> {
+    if (!notification.read) {
+      try {
+        await markNotificationAsRead(notification.id);
+        setNotifications((current) =>
+          current.map((item) =>
+            item.id === notification.id ? { ...item, read: true } : item,
+          ),
+        );
+      } catch (requestError) {
+        console.error(requestError);
+      }
+    }
+
+    if (notification.link) {
+      navigate(`${basePath}${notification.link}`);
+    }
+  }
 
   return (
-    <section className="admin-page notifications-page">
-      <div className="admin-page-header">
-        <div>
-          <span className="admin-page-eyebrow">
-            Espace administrateur
-          </span>
-
-          <h1>Notifications</h1>
-
-          <p>
-            Consultez les événements importants liés à la maintenance,
-            aux stocks et aux commandes.
-          </p>
-        </div>
+    <section className="notif-page">
+      <div className="notif-page-header">
+        <h1>Notifications</h1>
 
         <button
           type="button"
-          className="secondary-admin-button"
+          className="notif-mark-all-link"
+          onClick={handleMarkAllAsRead}
+          disabled={unreadCount === 0}
         >
-          <CheckCircle2 size={18} />
+          <CheckCheck size={16} />
           Tout marquer comme lu
         </button>
       </div>
 
-      <div className="notification-summary-grid">
-        <article className="notification-summary-card">
-          <div className="notification-summary-icon">
-            <Bell size={25} />
-          </div>
+      <div className="notif-card">
+        <div className="notif-tabs">
+          <button
+            type="button"
+            className={`notif-tab ${activeTab === "ALL" ? "notif-tab-active" : ""}`}
+            onClick={() => setActiveTab("ALL")}
+          >
+            Tout
+          </button>
 
-          <div>
-            <span>Total</span>
-            <strong>{notifications.length}</strong>
-          </div>
-        </article>
-
-        <article className="notification-summary-card">
-          <div className="notification-summary-icon unread">
-            <Bell size={25} />
-          </div>
-
-          <div>
-            <span>Non lues</span>
-            <strong>{unreadCount}</strong>
-          </div>
-        </article>
-      </div>
-
-      <div className="notifications-panel">
-        <div className="notifications-panel-header">
-          <div>
-            <h2>Notifications récentes</h2>
-            <p>
-              Les dernières mises à jour de votre application.
-            </p>
-          </div>
+          <button
+            type="button"
+            className={`notif-tab ${activeTab === "UNREAD" ? "notif-tab-active" : ""}`}
+            onClick={() => setActiveTab("UNREAD")}
+          >
+            Non lues
+            {unreadCount > 0 && <span className="notif-tab-badge">{unreadCount}</span>}
+          </button>
         </div>
 
-        <div className="notifications-list">
-          {notifications.map((notification) => (
-            <article
-              key={notification.id}
-              className={`notification-item ${
-                notification.unread
-                  ? "notification-item-unread"
-                  : ""
-              }`}
-            >
-              <div className="notification-item-icon">
-                {getNotificationIcon(notification.type)}
-              </div>
+        {error && <div className="admin-form-error">{error}</div>}
 
-              <div className="notification-item-content">
-                <div className="notification-item-heading">
-                  <h3>{notification.title}</h3>
+        <div className="notif-list">
+          {loading ? (
+            <div className="resource-loading">Chargement...</div>
+          ) : visibleNotifications.length === 0 ? (
+            <div className="notif-empty">
+              <Bell size={28} />
+              <p>
+                {activeTab === "UNREAD"
+                  ? "Aucune notification non lue."
+                  : "Aucune notification pour le moment."}
+              </p>
+            </div>
+          ) : (
+            visibleNotifications.map((notification) => {
+              const meta = TYPE_META[notification.type] ?? {
+                icon: <Bell size={18} />,
+                className: "notif-icon-blue",
+              };
 
-                  {notification.unread && (
-                    <span className="notification-unread-dot" />
-                  )}
-                </div>
+              return (
+                <article
+                  key={notification.id}
+                  className={`notif-row ${!notification.read ? "notif-row-unread" : ""} ${
+                    notification.link ? "notif-row-clickable" : ""
+                  }`}
+                  onClick={() => void handleNotificationClick(notification)}
+                >
+                  <div className={`notif-row-icon ${meta.className}`}>{meta.icon}</div>
 
-                <p>{notification.description}</p>
+                  <div className="notif-row-body">
+                    <div className="notif-row-title-line">
+                      <span className="notif-row-title">{notification.title}</span>
+                      <span className="notif-row-time">
+                        {formatRelativeDate(notification.createdAt)}
+                      </span>
+                    </div>
 
-                <span className="notification-date">
-                  {notification.date}
-                </span>
-              </div>
-            </article>
-          ))}
+                    {notification.message && (
+                      <p className="notif-row-message">{notification.message}</p>
+                    )}
+                  </div>
+
+                  {!notification.read && <span className="notif-row-dot" />}
+                </article>
+              );
+            })
+          )}
         </div>
       </div>
     </section>

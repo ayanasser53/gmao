@@ -16,6 +16,8 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   deleteSupplier,
   getSuppliers,
@@ -43,6 +45,7 @@ function getImageUrl(imagePath: string | null | undefined): string | null {
 
 function SuppliersPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
@@ -127,7 +130,7 @@ function SuppliersPage() {
         <button
           type="button"
           className="supplier-primary-button"
-          onClick={() => navigate("/admin/suppliers/create")}
+          onClick={() => navigate(`${basePath}/suppliers/create`)}
         >
           <CirclePlus size={19} />
           Ajouter un fournisseur
@@ -178,11 +181,11 @@ function SuppliersPage() {
                   className="supplier-clickable-row"
                   tabIndex={0}
                   onClick={() =>
-                    navigate(`/admin/suppliers/${supplier.id}`)
+                    navigate(`${basePath}/suppliers/${supplier.id}`)
                   }
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      navigate(`/admin/suppliers/${supplier.id}`);
+                      navigate(`${basePath}/suppliers/${supplier.id}`);
                     }
                   }}
                 >
@@ -234,7 +237,7 @@ function SuppliersPage() {
                         className="supplier-edit-button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/admin/suppliers/${supplier.id}/edit`);
+                          navigate(`${basePath}/suppliers/${supplier.id}/edit`);
                         }}
                         title="Modifier"
                       >

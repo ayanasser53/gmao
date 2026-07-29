@@ -2,6 +2,8 @@ package com.gmao.gmao_backend.activity;
 
 import com.gmao.gmao_backend.measure.Measure;
 import com.gmao.gmao_backend.measure.MeasureRepository;
+import com.gmao.gmao_backend.notification.NotificationService;
+import com.gmao.gmao_backend.notification.NotificationType;
 import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
@@ -45,6 +47,7 @@ public class ActivityService {
     private final MeasureRepository measureRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final NotificationService notificationService;
 
     public List<ActivityResponse> findAll() {
         return activityRepository.findAllByUsineIdOrderByPerformedDateDesc(currentUserProvider.requireUsineId())
@@ -300,7 +303,35 @@ public class ActivityService {
         Activity activity = findActivity(id);
         activity.setStatus(status);
 
-        return toResponse(activityRepository.save(activity));
+        Activity savedActivity = activityRepository.save(activity);
+
+        Task task = activity.getTask();
+
+        if (task != null && task.getCreatedBy() != null) {
+            User creator = task.getCreatedBy();
+            User actor = currentUserProvider.getUser();
+
+            if (!creator.getId().equals(actor.getId())) {
+                notificationService.notify(
+                        creator,
+                        NotificationType.ACTIVITY_STATUS_CHANGED,
+                        "Activité mise à jour",
+                        "Une activité sur « " + task.getDescription() + " » est maintenant « "
+                                + activityStatusLabel(status) + " ».",
+                        "/tasks/" + task.getId()
+                );
+            }
+        }
+
+        return toResponse(savedActivity);
+    }
+
+    private String activityStatusLabel(ActivityStatus status) {
+        return switch (status) {
+            case IN_PROGRESS -> "En cours";
+            case LATE -> "En retard";
+            case DONE -> "Terminée";
+        };
     }
 
     public void delete(Long id) {
@@ -358,6 +389,32 @@ public class ActivityService {
 
     }
 
+    /**
+     * Prévient les administrateurs de l'usine quand une pièce passe sous
+     * (ou reste sous) son seuil minimum.
+     */
+    private void notifyIfLowStock(SparePart sparePart) {
+        if (sparePart.getMinimumStock() == null || sparePart.getUsine() == null) {
+            return;
+        }
+
+        BigDecimal quantity = sparePart.getQuantity() == null ? BigDecimal.ZERO : sparePart.getQuantity();
+
+        if (quantity.compareTo(sparePart.getMinimumStock()) > 0) {
+            return;
+        }
+
+        userRepository.findAllByUsineIdAndRole(sparePart.getUsine().getId(), Role.ADMIN)
+                .forEach(admin -> notificationService.notify(
+                        admin,
+                        NotificationType.STOCK_LOW,
+                        "Stock minimum atteint",
+                        "Le stock de « " + sparePart.getName() + " » est sous le seuil minimum ("
+                                + quantity + "/" + sparePart.getMinimumStock() + ").",
+                        "/spare-parts/" + sparePart.getId()
+                ));
+    }
+
     private void saveSpareParts(Activity activity, List<ActivitySparePartRequest> spareParts) {
         if (spareParts == null) {
             return;
@@ -387,6 +444,8 @@ public class ActivityService {
                     : sparePart.getQuantity();
             sparePart.setQuantity(currentStock.subtract(BigDecimal.valueOf(quantity)));
             sparePartRepository.save(sparePart);
+
+            notifyIfLowStock(sparePart);
 
             SparePartStockMovement movement = SparePartStockMovement.builder()
                     .sparePart(sparePart)

@@ -5,6 +5,9 @@ import com.gmao.gmao_backend.equipment.EquipmentRepository;
 
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
 
+import com.gmao.gmao_backend.notification.NotificationService;
+import com.gmao.gmao_backend.notification.NotificationType;
+
 import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
@@ -61,6 +64,8 @@ public class TaskService {
     private final OfficePreviewService officePreviewService;
 
     private final CurrentUserProvider currentUserProvider;
+
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<TaskListItemResponse> findAll() {
@@ -226,7 +231,32 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
+        notifyAssignees(savedTask, currentUser);
+
         return mapper.toResponse(savedTask);
+    }
+
+    /**
+     * Prévient chaque utilisateur directement affecté (hors équipes) de la
+     * nouvelle tâche, sauf s'il en est lui-même l'auteur.
+     */
+    private void notifyAssignees(Task task, User actor) {
+        java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
+
+        java.util.stream.Stream.concat(
+                task.getAssignees().stream().map(TaskAssignee::getUser),
+                task.getAssignedTo().stream().map(TaskAssignedTo::getUser)
+        )
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> actor == null || !user.getId().equals(actor.getId()))
+                .filter(user -> notifiedUserIds.add(user.getId()))
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.TASK_ASSIGNED,
+                        "Nouvelle tâche assignée",
+                        task.getDescription(),
+                        "/tasks/" + task.getId()
+                ));
     }
 
     @Transactional
@@ -236,6 +266,8 @@ public class TaskService {
             List<MultipartFile> documents
     ) {
         Task task = findEntityById(id);
+
+        java.util.Set<Long> previouslyAssignedUserIds = previouslyAssignedUserIds(task);
 
         task.setEquipmentOnly(request.equipmentOnly());
 
@@ -299,7 +331,50 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
+        notifyNewAssignees(savedTask, previouslyAssignedUserIds, resolveCurrentUserOrNull());
+
         return mapper.toResponse(savedTask);
+    }
+
+    private java.util.Set<Long> previouslyAssignedUserIds(Task task) {
+        java.util.Set<Long> ids = new java.util.HashSet<>();
+
+        task.getAssignees().stream()
+                .map(TaskAssignee::getUser)
+                .filter(java.util.Objects::nonNull)
+                .forEach(user -> ids.add(user.getId()));
+
+        task.getAssignedTo().stream()
+                .map(TaskAssignedTo::getUser)
+                .filter(java.util.Objects::nonNull)
+                .forEach(user -> ids.add(user.getId()));
+
+        return ids;
+    }
+
+    /**
+     * Prévient uniquement les utilisateurs nouvellement affectés (absents
+     * de l'ancienne liste), pour ne pas re-notifier à chaque modification
+     * d'une tâche des personnes déjà affectées.
+     */
+    private void notifyNewAssignees(Task task, java.util.Set<Long> previouslyAssignedUserIds, User actor) {
+        java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
+
+        java.util.stream.Stream.concat(
+                task.getAssignees().stream().map(TaskAssignee::getUser),
+                task.getAssignedTo().stream().map(TaskAssignedTo::getUser)
+        )
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> !previouslyAssignedUserIds.contains(user.getId()))
+                .filter(user -> actor == null || !user.getId().equals(actor.getId()))
+                .filter(user -> notifiedUserIds.add(user.getId()))
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.TASK_ASSIGNED,
+                        "Nouvelle tâche assignée",
+                        task.getDescription(),
+                        "/tasks/" + task.getId()
+                ));
     }
 
     @Transactional
@@ -314,7 +389,52 @@ public class TaskService {
 
         task.setStatus(request.status());
 
-        return mapper.toResponse(taskRepository.save(task));
+        Task savedStatusTask = taskRepository.save(task);
+
+        User creator = task.getCreatedBy();
+        User actor = resolveCurrentUserOrNull();
+
+        java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
+
+        if (creator != null && (actor == null || !creator.getId().equals(actor.getId()))) {
+            notificationService.notify(
+                    creator,
+                    NotificationType.TASK_STATUS_CHANGED,
+                    "Statut de tâche mis à jour",
+                    task.getDescription() + " est maintenant « "
+                            + statusLabel(request.status()) + " ».",
+                    "/tasks/" + task.getId()
+            );
+
+            notifiedUserIds.add(creator.getId());
+        }
+
+        java.util.stream.Stream.concat(
+                task.getAssignees().stream().map(TaskAssignee::getUser),
+                task.getAssignedTo().stream().map(TaskAssignedTo::getUser)
+        )
+                .filter(java.util.Objects::nonNull)
+                .filter(user -> actor == null || !user.getId().equals(actor.getId()))
+                .filter(user -> notifiedUserIds.add(user.getId()))
+                .forEach(user -> notificationService.notify(
+                        user,
+                        NotificationType.TASK_STATUS_CHANGED,
+                        "Statut de tâche mis à jour",
+                        task.getDescription() + " est maintenant « "
+                                + statusLabel(request.status()) + " ».",
+                        "/tasks/" + task.getId()
+                ));
+
+        return mapper.toResponse(savedStatusTask);
+    }
+
+    private String statusLabel(TaskStatus status) {
+        return switch (status) {
+            case PLANNED -> "Planifiée";
+            case IN_PROGRESS -> "En cours";
+            case LATE -> "En retard";
+            case DONE -> "Terminée";
+        };
     }
 
     @Transactional

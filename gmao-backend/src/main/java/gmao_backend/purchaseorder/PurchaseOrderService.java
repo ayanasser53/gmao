@@ -1,6 +1,12 @@
 package com.gmao.gmao_backend.purchaseorder;
 
 import com.gmao.gmao_backend.exception.ResourceNotFoundException;
+import com.gmao.gmao_backend.notification.NotificationService;
+import com.gmao.gmao_backend.notification.NotificationType;
+import com.gmao.gmao_backend.security.CurrentUserProvider;
+import com.gmao.gmao_backend.user.Role;
+import com.gmao.gmao_backend.user.User;
+import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +21,9 @@ import java.util.List;
 public class PurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<PurchaseOrderResponse> findAll() {
@@ -48,7 +57,42 @@ public class PurchaseOrderService {
         PurchaseOrder order = findOrder(id);
         order.setStatus(request.status());
 
-        return toResponse(purchaseOrderRepository.save(order));
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+
+        notifyAdmins(savedOrder);
+
+        return toResponse(savedOrder);
+    }
+
+    /**
+     * La commande d'achat n'est pas rattachée à une usine ni à un créateur
+     * dans le modèle actuel : on prévient tous les administrateurs.
+     */
+    private void notifyAdmins(PurchaseOrder order) {
+        User actor = currentUserProvider.getUser();
+
+        userRepository.findAllByRole(Role.ADMIN)
+                .stream()
+                .filter(admin -> !admin.getId().equals(actor.getId()))
+                .forEach(admin -> notificationService.notify(
+                        admin,
+                        NotificationType.PURCHASE_ORDER_UPDATED,
+                        "Commande d'achat mise à jour",
+                        "La commande « " + order.getReference() + " » est maintenant « "
+                                + statusLabel(order.getStatus()) + " ».",
+                        "/purchase-orders/" + order.getId()
+                ));
+    }
+
+    private String statusLabel(PurchaseOrderStatus status) {
+        return switch (status) {
+            case DRAFT -> "Brouillon";
+            case CONFIRMED -> "Confirmée";
+            case IN_PROGRESS -> "En cours";
+            case DONE -> "Terminée";
+            case CANCELLED -> "Annulée";
+            case ARCHIVED -> "Archivée";
+        };
     }
 
     public PurchaseOrderResponse update(String id, PurchaseOrderUpdateRequest request) {
@@ -143,8 +187,8 @@ public class PurchaseOrderService {
                 line.getSparePartId(),
                 line.getSparePartName(),
                 line.getDescription(),
-                BigDecimal.valueOf(line.getQuantity()),
-                line.getUnitPrice(),
+                BigDecimal.valueOf(line.getQuantity() != null ? line.getQuantity() : 1),
+                line.getUnitPrice() != null ? line.getUnitPrice() : BigDecimal.ZERO,
                 line.getCurrency()
         );
     }

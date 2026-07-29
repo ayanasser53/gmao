@@ -17,6 +17,8 @@ import {
   useParams,
 } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   createSupplier,
   getSupplierById,
@@ -44,6 +46,7 @@ const emptyForm: SupplierRequest = {
 
 function SupplierFormPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const { id } = useParams();
 
   const isEditMode = Boolean(id);
@@ -144,7 +147,7 @@ function SupplierFormPage() {
         await createSupplier(request, logoFile);
       }
 
-      navigate("/admin/suppliers", {
+      navigate(`${basePath}/suppliers`, {
         replace: true,
       });
     } catch {
@@ -164,7 +167,7 @@ function SupplierFormPage() {
         type="button"
         className="supplier-form-backdrop"
         aria-label="Retour aux fournisseurs"
-        onClick={() => navigate("/admin/suppliers")}
+        onClick={() => navigate(`${basePath}/suppliers`)}
       />
 
       <aside className="supplier-form-drawer">
@@ -181,7 +184,7 @@ function SupplierFormPage() {
               <button
                 type="button"
                 className="measure-drawer-back"
-                onClick={() => navigate("/admin/suppliers")}
+                onClick={() => navigate(`${basePath}/suppliers`)}
                 aria-label="Retour aux fournisseurs"
               >
                 <ArrowLeft size={22} />
@@ -196,7 +199,7 @@ function SupplierFormPage() {
               <button
                 type="button"
                 className="measure-drawer-close"
-                onClick={() => navigate("/admin/suppliers")}
+                onClick={() => navigate(`${basePath}/suppliers`)}
                 aria-label="Fermer"
               >
                 <X size={21} />
@@ -415,7 +418,7 @@ function SupplierFormPage() {
               <button
                 type="button"
                 className="measure-cancel-button"
-                onClick={() => navigate("/admin/suppliers")}
+                onClick={() => navigate(`${basePath}/suppliers`)}
                 disabled={loading}
               >
                 Annuler

@@ -1,4 +1,5 @@
 import {
+  Bell,
   ClipboardList,
   LayoutDashboard,
   LogOut,
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { getAuthenticatedEmail, logout } from "../services/authService";
+import { getUnreadNotificationCount } from "../services/notificationService";
 
 function OperatorLayout() {
   const navigate = useNavigate();
@@ -16,9 +18,12 @@ function OperatorLayout() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const email = getAuthenticatedEmail();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const topbarTitle = location.pathname === "/operator/profile"
     ? "Mon profil"
+    : location.pathname === "/operator/notifications"
+    ? "Notifications"
     : location.pathname.startsWith("/operator/tasks")
     ? "Mes taches"
     : "Dashboard";
@@ -53,6 +58,24 @@ function OperatorLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    getUnreadNotificationCount()
+      .then((count) => {
+        if (!cancelled) {
+          setNotificationCount(count);
+        }
+      })
+      .catch(() => {
+        // silencieux
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
+
   return (
     <div className="admin-layout operator-admin-layout">
       <header className="admin-topbar">
@@ -66,6 +89,19 @@ function OperatorLayout() {
         </div>
 
         <div className="admin-topbar-actions">
+          <button
+            type="button"
+            className="notification-button"
+            onClick={() => navigate("/operator/notifications")}
+            aria-label="Notifications"
+          >
+            <Bell size={21} />
+
+            {notificationCount > 0 && (
+              <span className="notification-count">{notificationCount}</span>
+            )}
+          </button>
+
           <div className="profile-menu-container" ref={profileMenuRef}>
             <button
               type="button"
@@ -157,6 +193,23 @@ function OperatorLayout() {
               <ClipboardList size={20} />
             </span>
             <span className="admin-sidebar-link-label">Mes taches</span>
+          </NavLink>
+
+          <NavLink
+            to="/operator/notifications"
+            className={({ isActive }) =>
+              [
+                "admin-sidebar-link",
+                isActive ? "admin-sidebar-link-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
+            }
+          >
+            <span className="admin-sidebar-link-icon">
+              <Bell size={20} />
+            </span>
+            <span className="admin-sidebar-link-label">Notifications</span>
           </NavLink>
         </nav>
 

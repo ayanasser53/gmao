@@ -3,6 +3,8 @@ package com.gmao.gmao_backend.sparepart;
 import com.gmao.gmao_backend.costcenter.CostCenterRepository;
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.equipment.EquipmentRepository;
+import com.gmao.gmao_backend.notification.NotificationService;
+import com.gmao.gmao_backend.notification.NotificationType;
 import com.gmao.gmao_backend.security.CurrentUserProvider;
 import com.gmao.gmao_backend.storage.AppFileStorageService;
 import com.gmao.gmao_backend.storage.DatabaseFile;
@@ -12,6 +14,8 @@ import com.gmao.gmao_backend.supplier.SupplierRepository;
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.tag.TagRepository;
 import com.gmao.gmao_backend.usine.UsineRepository;
+import com.gmao.gmao_backend.user.Role;
+import com.gmao.gmao_backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -41,6 +45,8 @@ public class SparePartService {
     private final TagRepository tagRepository;
     private final UsineRepository usineRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public List<SparePartResponse> findAll() {
         Long usineId = currentUserProvider.requireUsineId();
@@ -154,8 +160,35 @@ public class SparePartService {
         syncLinkedEquipment(sparePart, request.linkedEquipmentIds());
         SparePart savedSparePart = sparePartRepository.save(sparePart);
         updateImageUrl(savedSparePart);
+        notifyIfLowStock(savedSparePart);
 
         return toResponse(savedSparePart);
+    }
+
+    /**
+     * Prévient les administrateurs de l'usine quand une pièce passe sous
+     * (ou reste sous) son seuil minimum.
+     */
+    private void notifyIfLowStock(SparePart sparePart) {
+        if (sparePart.getMinimumStock() == null || sparePart.getUsine() == null) {
+            return;
+        }
+
+        BigDecimal quantity = sparePart.getQuantity() == null ? BigDecimal.ZERO : sparePart.getQuantity();
+
+        if (quantity.compareTo(sparePart.getMinimumStock()) > 0) {
+            return;
+        }
+
+        userRepository.findAllByUsineIdAndRole(sparePart.getUsine().getId(), Role.ADMIN)
+                .forEach(admin -> notificationService.notify(
+                        admin,
+                        NotificationType.STOCK_LOW,
+                        "Stock minimum atteint",
+                        "Le stock de « " + sparePart.getName() + " » est sous le seuil minimum ("
+                                + quantity + "/" + sparePart.getMinimumStock() + ").",
+                        "/spare-parts/" + sparePart.getId()
+                ));
     }
 
     public void delete(Long id) {
@@ -258,6 +291,7 @@ public class SparePartService {
 
         sparePart.setQuantity(externalQuantity);
         sparePartRepository.save(sparePart);
+        notifyIfLowStock(sparePart);
 
         if (delta.signum() != 0) {
             SparePartStockMovement movement = SparePartStockMovement.builder()

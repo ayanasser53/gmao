@@ -17,6 +17,8 @@ import {
   useParams,
 } from "react-router-dom";
 
+import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
+
 import {
   createUnit,
   getUnitById,
@@ -32,6 +34,7 @@ import type {
 
 function UnitFormPage() {
   const navigate = useNavigate();
+  const basePath = useWorkspaceBasePath();
   const { id } = useParams();
 
   const isEditMode = Boolean(id);
@@ -140,7 +143,7 @@ function UnitFormPage() {
         await createUnit(requestData);
       }
 
-      navigate("/admin/units", {
+      navigate(`${basePath}/units`, {
         replace: true,
       });
     } catch (requestError) {
@@ -192,7 +195,7 @@ function UnitFormPage() {
         type="button"
         className="resource-back-button"
         onClick={() =>
-          navigate("/admin/units")
+          navigate(`${basePath}/units`)
         }
       >
         <ArrowLeft size={18} />
@@ -346,7 +349,7 @@ function UnitFormPage() {
             type="button"
             className="resource-cancel-button"
             onClick={() =>
-              navigate("/admin/units")
+              navigate(`${basePath}/units`)
             }
             disabled={loading}
           >

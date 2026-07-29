@@ -40,6 +40,8 @@ import {
   logout,
 } from "../../services/authService";
 
+import { getUnreadNotificationCount } from "../../services/notificationService";
+
 interface NavigationItem {
   label: string;
   path: string;
@@ -80,7 +82,7 @@ function AdminNavbar({
   const [profileMenuOpen, setProfileMenuOpen] =
     useState<boolean>(false);
 
-  const notificationCount = 3;
+  const [notificationCount, setNotificationCount] = useState<number>(0);
   const email = getAuthenticatedEmail();
   const role = getAuthenticatedRole();
   const isSuperAdmin = role === "SUPERADMIN";
@@ -218,6 +220,28 @@ function AdminNavbar({
   function closeMobileSidebar(): void {
     setSidebarOpen(false);
   }
+
+  useEffect(() => {
+    if (!showNotifications) {
+      return;
+    }
+
+    let cancelled = false;
+
+    getUnreadNotificationCount()
+      .then((count) => {
+        if (!cancelled) {
+          setNotificationCount(count);
+        }
+      })
+      .catch(() => {
+        // silencieux: le badge reste simplement à sa dernière valeur connue
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showNotifications, location.pathname]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent): void {
