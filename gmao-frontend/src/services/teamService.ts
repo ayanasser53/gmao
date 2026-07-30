@@ -24,6 +24,12 @@ export async function updateTeam(
   return response.data;
 }
 
-export async function deleteTeam(id: number): Promise<void> {
-  await api.delete(`/teams/${id}`);
+export async function setTeamActive(
+  id: number,
+  active: boolean,
+): Promise<Team> {
+  const response = await api.patch<Team>(
+    `/teams/${id}/active?active=${active}`,
+  );
+  return response.data;
 }

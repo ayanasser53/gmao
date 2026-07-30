@@ -55,6 +55,16 @@ public class PurchaseOrderService {
 
     public PurchaseOrderResponse updateStatus(String id, PurchaseOrderStatusRequest request) {
         PurchaseOrder order = findOrder(id);
+        User actor = currentUserProvider.getUser();
+
+        if (actor.getRole() == Role.SUPERVISOR
+                && (request.status() == PurchaseOrderStatus.CANCELLED
+                || request.status() == PurchaseOrderStatus.ARCHIVED)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Un superviseur ne peut pas annuler ou archiver un bon de commande."
+            );
+        }
+
         order.setStatus(request.status());
 
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
@@ -119,6 +129,16 @@ public class PurchaseOrderService {
         }
 
         if (request.status() != null) {
+            User actor = currentUserProvider.getUser();
+
+            if (actor.getRole() == Role.SUPERVISOR
+                    && (request.status() == PurchaseOrderStatus.CANCELLED
+                    || request.status() == PurchaseOrderStatus.ARCHIVED)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Un superviseur ne peut pas annuler ou archiver un bon de commande."
+                );
+            }
+
             order.setStatus(request.status());
         }
 

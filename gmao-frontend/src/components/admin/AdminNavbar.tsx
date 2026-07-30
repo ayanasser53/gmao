@@ -86,9 +86,15 @@ function AdminNavbar({
   const email = getAuthenticatedEmail();
   const role = getAuthenticatedRole();
   const isSuperAdmin = role === "SUPERADMIN";
+  const isSupervisor = role === "SUPERVISOR";
 
   const resolvedProfileLabel =
-    profileLabel ?? (isSuperAdmin ? "Super administrateur" : "Administrateur");
+    profileLabel ??
+    (isSuperAdmin
+      ? "Super administrateur"
+      : isSupervisor
+        ? "Superviseur"
+        : "Administrateur");
 
   const superAdminNavigationItems: NavigationItem[] = [
     {
@@ -180,9 +186,13 @@ function AdminNavbar({
     },
   ];
 
+  const resolvedStandardNavigationItems = isSupervisor
+    ? standardNavigationItems.filter((item) => item.path !== "/admin/teams")
+    : standardNavigationItems;
+
   const navigationItems: NavigationItem[] =
     customNavigationItems ??
-    (isSuperAdmin ? superAdminNavigationItems : standardNavigationItems);
+    (isSuperAdmin ? superAdminNavigationItems : resolvedStandardNavigationItems);
 
   const activeNavigationItem =
     navigationItems

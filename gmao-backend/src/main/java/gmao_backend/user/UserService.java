@@ -173,6 +173,23 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    @Transactional
+    public UserDetailResponse setActive(Long id, boolean active) {
+        User user = findAccessibleUser(id);
+
+        if (user.getId().equals(currentUserProvider.getUser().getId())) {
+            throw new InvalidRequestException("Vous ne pouvez pas modifier l'etat de votre propre compte.");
+        }
+
+        user.setActive(active);
+
+        if (!active) {
+            user.getTeams().clear();
+        }
+
+        return toDetailResponse(userRepository.save(user));
+    }
+
     private Usine resolveUsineForCreation(User currentUser, Long requestedUsineId) {
         if (currentUser.getRole() == Role.SUPERADMIN) {
             if (requestedUsineId == null) {

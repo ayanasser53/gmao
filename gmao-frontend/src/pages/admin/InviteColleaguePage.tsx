@@ -1,4 +1,17 @@
-import { ArrowLeft, Plus, X } from "lucide-react";
+import {
+  ArrowLeft,
+  BriefcaseBusiness,
+  CheckCircle2,
+  ChevronDown,
+  Eye,
+  Factory,
+  Plus,
+  ShieldCheck,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { AxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -9,6 +22,7 @@ import {
   updateUser,
 } from "../../services/userService";
 import type { Tag } from "../../types/tag";
+import type { ApiErrorResponse } from "../../types/auth";
 import type { UserRole } from "../../types/user";
 
 import "./task-styles.css";
@@ -19,35 +33,68 @@ const ROLES: {
   value: UserRole;
   label: string;
   description: string;
-  image: string;
+  Icon: LucideIcon;
+  features: string[];
 }[] = [
   {
     value: "ADMIN",
     label: "Administrateur",
     description:
-      "Peut ajouter et modifier les tâches, équipements, activités, et gérer les permissions des utilisateurs.",
-    image: "/administrator.png",
+      "Pilote la maintenance, gere les ressources et organise les utilisateurs de son usine.",
+    Icon: ShieldCheck,
+    features: [
+      "Creer et modifier les taches, plans, activites et equipements",
+      "Inviter les collegues et organiser les equipes",
+      "Gerer les fournisseurs, stocks, documents et tableaux de bord",
+    ],
+  },
+  {
+    value: "SUPERVISOR",
+    label: "Superviseur",
+    description:
+      "Suit la maintenance comme un administrateur, sans gerer les equipes ni les actions sensibles.",
+    Icon: Eye,
+    features: [
+      "Consulter le dashboard, les taches, les plans, les activites et les stocks",
+      "Suivre et modifier les informations operationnelles autorisees",
+      "Ne peut pas annuler, supprimer, archiver ni gerer les equipes",
+    ],
   },
   {
     value: "TECHNICIAN",
     label: "Technicien",
     description:
-      "Peut ajouter et assigner des tâches et activités. Ne peut pas modifier les équipements ni les permissions.",
-    image: "/technician.png",
+      "Realise les interventions affectees et renseigne le resultat terrain.",
+    Icon: Wrench,
+    features: [
+      "Voir uniquement ses taches et plans affectes",
+      "Creer et completer les activites de realisation",
+      "Consulter les pieces et documents necessaires a l'intervention",
+    ],
   },
   {
     value: "PRODUCTION",
     label: "Production",
     description:
-      "Peut créer des tâches et compléter des checklists. Accès en lecture seule au reste de l'application.",
-    image: "/production.png",
+      "Signale les pannes observees sur les machines et suit ses demandes.",
+    Icon: Factory,
+    features: [
+      "Creer une tache pour declarer une panne",
+      "Suivre l'etat de ses propres taches",
+      "Consulter son profil et ses notifications",
+    ],
   },
   {
     value: "SERVICE_PROVIDER",
     label: "Prestataire",
     description:
-      "Peut voir les activités des membres et créer des activités sur les tâches qui lui sont assignées.",
-    image: "/service-provider.png",
+      "Intervient sur les travaux qui lui sont affectes, meme hors equipe interne.",
+    Icon: BriefcaseBusiness,
+    features: [
+      "Voir les taches et plans qui lui sont assignes",
+      "Renseigner les activites realisees",
+      "Acceder aux informations utiles sans gerer les permissions",
+    ],
   },
 ];
 
@@ -56,8 +103,8 @@ function InviteColleaguePage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
 
-  const [step, setStep] = useState<"role" | "form">(isEdit ? "form" : "role");
   const [role, setRole] = useState<UserRole>("TECHNICIAN");
+  const [showRoleOptions, setShowRoleOptions] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -90,7 +137,7 @@ function InviteColleaguePage() {
         const user = users.find((item) => item.id === Number(id));
 
         if (!user) {
-          setError("Collègue introuvable.");
+          setError("Collegue introuvable.");
           return;
         }
 
@@ -104,7 +151,7 @@ function InviteColleaguePage() {
         setTagIds(user.tags.map((tag) => tag.id));
       } catch (requestError) {
         console.error(requestError);
-        setError("Impossible de charger ce collègue.");
+        setError("Impossible de charger ce collegue.");
       }
     })();
   }, [id, isEdit]);
@@ -156,13 +203,16 @@ function InviteColleaguePage() {
         const result = await inviteUser(payload);
         setCreatedCredentials({
           email: result.user.email,
-          password: result.temporaryPassword,
+          password: result.temporaryPassword ?? password,
         });
       }
     } catch (requestError) {
       console.error(requestError);
+      const axiosError = requestError as AxiosError<ApiErrorResponse>;
       setError(
-        "L'enregistrement a échoué. Vérifiez que l'email n'est pas déjà utilisé.",
+        axiosError.response?.data?.message ??
+          axiosError.response?.data?.error ??
+          "L'enregistrement a echoue. Verifiez que le backend est redemarre et que l'email n'est pas deja utilise.",
       );
     } finally {
       setSubmitting(false);
@@ -185,19 +235,22 @@ function InviteColleaguePage() {
     }
   }
 
+  const selectedRole = ROLES.find((item) => item.value === role) ?? ROLES[1];
+  const SelectedRoleIcon = selectedRole.Icon;
+
   if (createdCredentials) {
     return (
       <section className="supplier-modal-page">
         <button
           type="button"
           className="supplier-form-backdrop"
-          aria-label="Retour à l'équipe"
+          aria-label="Retour a l'equipe"
           onClick={() => navigate("/admin/teams")}
         />
 
         <aside className="supplier-form-drawer task-form-drawer">
           <div className="measure-drawer-header">
-            <h2>Collègue créé avec succès</h2>
+            <h2>Collegue cree avec succes</h2>
             <button
               type="button"
               className="measure-drawer-close"
@@ -211,8 +264,8 @@ function InviteColleaguePage() {
           <div className="measure-drawer-body">
             <div className="usine-credentials-box">
               <p>
-                Communiquez-lui ces identifiants —{" "}
-                <strong>ce mot de passe ne sera plus jamais affiché</strong> :
+                Communiquez-lui ces identifiants.{" "}
+                <strong>Ce mot de passe ne sera plus jamais affiche</strong> :
               </p>
 
               <div className="usine-credentials-row">
@@ -230,7 +283,7 @@ function InviteColleaguePage() {
                 className="usine-action-button"
                 onClick={() => void handleCopyCredentials()}
               >
-                {copied ? "Copié !" : "Copier les identifiants"}
+                {copied ? "Copie !" : "Copier les identifiants"}
               </button>
             </div>
           </div>
@@ -249,91 +302,27 @@ function InviteColleaguePage() {
     );
   }
 
-  if (step === "role") {
-    return (
-      <section className="supplier-modal-page">
-        <button
-          type="button"
-          className="supplier-form-backdrop"
-          aria-label="Retour à l'équipe"
-          onClick={() => navigate("/admin/teams")}
-        />
-
-        <aside className="supplier-form-drawer task-form-drawer team-role-drawer">
-          <div className="measure-drawer-header">
-            <button
-              type="button"
-              className="measure-drawer-back"
-              onClick={() => navigate("/admin/teams")}
-              aria-label="Retour à l'équipe"
-            >
-              <ArrowLeft size={22} />
-            </button>
-            <h2>Inviter un collègue</h2>
-            <button
-              type="button"
-              className="measure-drawer-close"
-              onClick={() => navigate("/admin/teams")}
-              aria-label="Fermer"
-            >
-              <X size={21} />
-            </button>
-          </div>
-
-          <div className="measure-drawer-body">
-            <div className="team-role-grid">
-              {ROLES.map((item) => (
-                <div className="team-role-card" key={item.value}>
-                  <img src={item.image} alt={item.label} />
-                  <h3>{item.label}</h3>
-                  <p>{item.description}</p>
-                  <button
-                    type="button"
-                    className="measure-primary-button"
-                    onClick={() => {
-                      setRole(item.value);
-                      setStep("form");
-                    }}
-                  >
-                    Sélectionner
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
-      </section>
-    );
-  }
-
-  const selectedRole = ROLES.find((item) => item.value === role) ?? ROLES[1];
-
   return (
     <section className="supplier-modal-page">
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour à l'équipe"
+        aria-label="Retour a l'equipe"
         onClick={() => navigate("/admin/teams")}
       />
 
       <aside className="supplier-form-drawer task-form-drawer">
-        <form
-          className="measure-drawer-content"
-          onSubmit={handleSubmit}
-        >
+        <form className="measure-drawer-content" onSubmit={handleSubmit}>
           <div className="measure-drawer-header">
             <button
               type="button"
               className="measure-drawer-back"
-              onClick={() =>
-                isEdit ? navigate("/admin/teams") : setStep("role")
-              }
+              onClick={() => navigate("/admin/teams")}
               aria-label="Retour"
             >
               <ArrowLeft size={22} />
             </button>
-            <h2>{isEdit ? "Modifier le collègue" : "Inviter un collègue"}</h2>
+            <h2>{isEdit ? "Modifier le collegue" : "Inviter un collegue"}</h2>
             <button
               type="button"
               className="measure-drawer-close"
@@ -347,15 +336,60 @@ function InviteColleaguePage() {
           <div className="measure-drawer-body">
             {error && <div className="measure-form-error">{error}</div>}
 
-            {!isEdit && (
-              <div className="team-role-summary">
-                <img src={selectedRole.image} alt={selectedRole.label} />
-                <div>
-                  <strong>{selectedRole.label}</strong>
-                  <button type="button" onClick={() => setStep("role")}>
-                    Changer de rôle
-                  </button>
-                </div>
+            <button
+              type="button"
+              className={`team-account-type-card ${
+                showRoleOptions ? "open" : ""
+              }`}
+              onClick={() => setShowRoleOptions((current) => !current)}
+            >
+              <span className="team-account-type-image">
+                <SelectedRoleIcon size={30} />
+              </span>
+              <span className="team-account-type-content">
+                <span>Type de compte</span>
+                <strong>{selectedRole.label}</strong>
+                <em>{selectedRole.description}</em>
+              </span>
+              <ChevronDown size={20} />
+            </button>
+
+            {showRoleOptions && (
+              <div className="team-role-inline-grid">
+                {ROLES.map((item) => {
+                  const isSelected = item.value === role;
+                  const RoleIcon = item.Icon;
+
+                  return (
+                    <button
+                      type="button"
+                      key={item.value}
+                      className={`team-role-inline-card ${
+                        isSelected ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setRole(item.value);
+                        setShowRoleOptions(false);
+                      }}
+                    >
+                      <span className="team-role-inline-head">
+                        <span className="team-role-logo">
+                          <RoleIcon size={26} />
+                        </span>
+                        <span>
+                          <strong>{item.label}</strong>
+                          <em>{item.description}</em>
+                        </span>
+                        {isSelected && <CheckCircle2 size={18} />}
+                      </span>
+                      <span className="team-role-feature-list">
+                        {item.features.map((feature) => (
+                          <span key={feature}>{feature}</span>
+                        ))}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -363,13 +397,13 @@ function InviteColleaguePage() {
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
                   <label>
-                    Prénom <span>*</span>
+                    Prenom <span>*</span>
                   </label>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Prénom du collègue"
+                    placeholder="Prenom du collegue"
                   />
                 </div>
 
@@ -381,7 +415,7 @@ function InviteColleaguePage() {
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Nom du collègue"
+                    placeholder="Nom du collegue"
                   />
                 </div>
               </div>
@@ -413,22 +447,6 @@ function InviteColleaguePage() {
                   }
                 />
               </div>
-
-              {isEdit && (
-                <div className="measure-form-group">
-                  <label>Rôle</label>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as UserRole)}
-                  >
-                    {ROLES.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div className="measure-form-group">
                 <label>Taux horaire (EUR)</label>

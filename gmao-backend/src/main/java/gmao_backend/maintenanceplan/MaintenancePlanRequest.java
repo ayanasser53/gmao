@@ -40,6 +40,8 @@ public record MaintenancePlanRequest(
 
         List<MaintenancePlanSparePartRequest> spareParts,
 
-        List<Long> assigneeIds
+        List<Long> assigneeIds,
+
+        List<Long> tagIds
 ) {
 }

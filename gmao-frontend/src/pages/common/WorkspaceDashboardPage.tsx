@@ -40,6 +40,7 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
   LATE: { label: "En retard", color: "#ff6b6b" },
   DONE: { label: "Terminee", color: "#34d1b3" },
   CANCELED: { label: "Annulee", color: "#5a5f6b" },
+  ARCHIVED: { label: "Archivee", color: "#8b95a1" },
 };
 
 function activitySpentMinutes(activity: ActivityItem): number {

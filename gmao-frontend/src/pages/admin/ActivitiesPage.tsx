@@ -191,7 +191,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
         setEquipment(equipmentData);
         setCostCenters(costCentersData);
       } catch {
-        setError("Impossible de charger les activités.");
+        setError("Impossible de charger les activites.");
       }
     }
 
@@ -327,16 +327,16 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
   function getExportOptions() {
     return {
-      title: "Liste des activités",
-      fileName: "activit?s",
+      title: "Liste des activites",
+      fileName: "activites",
       headers: [
         "Equipement",
         "Tache",
         "Activite",
         "Date",
         "Heure fin",
-        "Temps pass?",
-        "Co?t",
+        "Temps passe",
+        "Cout",
         "Compteur",
       ],
       rows: filteredActivities.map((activity) => [
@@ -362,7 +362,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
   function openTaskDetails(activity: Activity) {
     if (!Number.isFinite(activity.taskId)) {
-      setError("Impossible d'ouvrir la tâche liée à cette activité.");
+      setError("Impossible d'ouvrir la tache liee a cette activite.");
       return;
     }
 
@@ -426,7 +426,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Rechercher une activité..."
+            placeholder="Rechercher une activite..."
           />
         </div>
 
@@ -445,7 +445,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
           <div className="task-filter-grid">
             <div className="task-filter-field">
               <label>
-                <Users size={15} /> Assignés
+                <Users size={15} /> Assignes
               </label>
               <div className="task-filter-dropdown">
                 <button
@@ -532,7 +532,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
             <div className="task-filter-field">
               <label>
-                <CalendarDays size={15} /> Période
+                <CalendarDays size={15} /> Periode
               </label>
               <div className="activity-period-range">
                 <input
@@ -542,7 +542,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
                     setFilterStartDate(event.target.value)
                   }
                 />
-                <span aria-hidden="true">â†’</span>
+                <span aria-hidden="true">-&gt;</span>
                 <input
                   type="date"
                   value={filterEndDate}
@@ -553,7 +553,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
             <div className="task-filter-field">
               <label>
-                <Users size={15} /> Utilisateur de l'activité
+                <Users size={15} /> Utilisateur de l'activite
               </label>
               <div className="task-filter-dropdown">
                 <button
@@ -726,7 +726,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
             <div className="task-filter-field">
               <label>
-                <Wrench size={15} /> Équipements
+                <Wrench size={15} /> Equipements
               </label>
               <div className="task-filter-dropdown">
                 <button
@@ -816,7 +816,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
 
             <div className="task-filter-field">
               <label>
-                <MapPin size={15} /> Centre de coûts
+                <MapPin size={15} /> Centre de couts
               </label>
               <select
                 value={filterCostCenter}
@@ -854,7 +854,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
                 setFilterEndDate("");
               }}
             >
-              Réinitialiser les filtres
+              Reinitialiser les filtres
             </button>
           </div>
         </div>
@@ -870,7 +870,7 @@ function ActivitiesPage({ technicianMode = false, providerMode = false }: Activi
               <th>Activite</th>
               <th>Date</th>
               <th>Heure fin</th>
-              <th>Temps pass?</th>
+              <th>Temps passe</th>
             </tr>
           </thead>
 

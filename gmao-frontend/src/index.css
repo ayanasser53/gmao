@@ -6195,13 +6195,23 @@ button.linked-compact-row:hover {
 
 .table-actions-column {
   width: 160px;
-  text-align: right;
+  text-align: center;
+}
+
+.resource-table td:has(.table-actions) {
+  text-align: center;
+}
+
+.resource-table .table-status-cell {
+  text-align: center;
 }
 
 .table-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
+  min-height: 34px;
 }
 
 .table-actions button,
@@ -7818,6 +7828,7 @@ button.linked-compact-row:hover {
 .maintenance-agenda-dot.in_progress::before { background: #087fbd; }
 .maintenance-agenda-dot.late::before { background: #b42318; }
 .maintenance-agenda-dot.done::before { background: #198754; }
+.maintenance-agenda-dot.cancelled::before { background: #64748b; }
 
 .maintenance-agenda-grid {
   display: grid;
@@ -7977,6 +7988,13 @@ button.linked-compact-row:hover {
   color: #198754;
 }
 
+.maintenance-agenda-plan.cancelled {
+  border-color: #cbd5e1;
+  border-left-color: #64748b;
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .maintenance-agenda-empty {
   display: grid;
   min-height: 90px;
@@ -8078,7 +8096,24 @@ button.linked-compact-row:hover {
   cursor: pointer;
 }
 
+.maintenance-status-readonly {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
 .maintenance-status-select.planned {
+  background: #fff7d9;
+  color: #9a6a00;
+}
+
+.maintenance-status-readonly.planned {
   background: #fff7d9;
   color: #9a6a00;
 }
@@ -8088,7 +8123,17 @@ button.linked-compact-row:hover {
   color: #0078b8;
 }
 
+.maintenance-status-readonly.in_progress {
+  background: #e8f6ff;
+  color: #0078b8;
+}
+
 .maintenance-status-select.late {
+  background: #ffe7e7;
+  color: #d52828;
+}
+
+.maintenance-status-readonly.late {
   background: #ffe7e7;
   color: #d52828;
 }
@@ -8098,6 +8143,21 @@ button.linked-compact-row:hover {
   color: #238b32;
 }
 
+.maintenance-status-readonly.done {
+  background: #e7f8ea;
+  color: #238b32;
+}
+
+.maintenance-status-select.cancelled {
+  background: #eef2f7;
+  color: #475569;
+}
+
+.maintenance-status-readonly.cancelled {
+  background: #eef2f7;
+  color: #475569;
+}
+
 .maintenance-status-select:disabled {
   cursor: wait;
   opacity: 0.7;
@@ -8105,7 +8165,8 @@ button.linked-compact-row:hover {
 /* Maintenance done status final override */
 .status-pill.done,
 .status-badge.done,
-.maintenance-status-select.done {
+.maintenance-status-select.done,
+.maintenance-status-readonly.done {
   background: #dff6e8 !important;
   color: #198754 !important;
   border-color: #bce9cd !important;

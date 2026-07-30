@@ -3,6 +3,7 @@ package com.gmao.gmao_backend.team;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,11 +25,13 @@ public class TeamController {
         return ResponseEntity.ok(teamService.findById(id));
     }
 
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     @PostMapping
     public ResponseEntity<TeamResponse> create(@RequestBody TeamRequest request) {
         return ResponseEntity.ok(teamService.create(request));
     }
 
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<TeamResponse> update(
             @PathVariable Long id,
@@ -37,9 +40,13 @@ public class TeamController {
         return ResponseEntity.ok(teamService.update(id, request));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        teamService.delete(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/active")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
+    public ResponseEntity<TeamResponse> setActive(
+            @PathVariable Long id,
+            @RequestParam boolean active
+    ) {
+        return ResponseEntity.ok(teamService.setActive(id, active));
     }
+
 }

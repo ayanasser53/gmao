@@ -3,6 +3,7 @@ package com.gmao.gmao_backend.task;
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.activity.Activity;
 import com.gmao.gmao_backend.activity.ActivityResponse;
 
@@ -66,7 +67,7 @@ public class TaskMapper {
 
                 status,
 
-                mapAssignees(task.getAssignees()),
+                mapReporter(task),
 
                 mapAssignedTo(task.getAssignedTo()),
 
@@ -123,7 +124,7 @@ public class TaskMapper {
                         ? equipment.getCostCenter().getName()
                         : null,
 
-                mapAssignees(task.getAssignees()),
+                mapReporter(task),
 
                 mapAssignedTo(task.getAssignedTo()),
 
@@ -147,7 +148,8 @@ public class TaskMapper {
     private TaskStatus resolveDisplayStatus(Task task) {
         if (task.getStatus() == TaskStatus.CREATED
                 || task.getStatus() == TaskStatus.DONE
-                || task.getStatus() == TaskStatus.CANCELED) {
+                || task.getStatus() == TaskStatus.CANCELED
+                || task.getStatus() == TaskStatus.ARCHIVED) {
             return task.getStatus();
         }
 
@@ -225,6 +227,24 @@ public class TaskMapper {
                     );
                 })
                 .collect(Collectors.toSet());
+    }
+
+    private Set<TaskAssigneeResponse> mapReporter(Task task) {
+        Set<TaskAssigneeResponse> assignees = mapAssignees(task.getAssignees());
+        if (!assignees.isEmpty() || task.getCreatedBy() == null) {
+            return assignees;
+        }
+
+        User reporter = task.getCreatedBy();
+        return Set.of(new TaskAssigneeResponse(
+                null,
+                "USER",
+                reporter.getId(),
+                reporter.getFirstName() + " " + reporter.getLastName(),
+                reporter.getPhoto(),
+                null,
+                null
+        ));
     }
 
     private Set<TaskAssigneeResponse> mapAssignedTo(Set<TaskAssignedTo> assignedTo) {

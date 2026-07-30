@@ -4,5 +4,6 @@ public enum MaintenancePlanStatus {
     PLANNED,
     IN_PROGRESS,
     DONE,
-    LATE
+    LATE,
+    CANCELLED
 }

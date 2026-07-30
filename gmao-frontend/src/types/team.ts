@@ -15,6 +15,7 @@ export interface Team {
   id: number;
   name: string;
   description: string | null;
+  active: boolean;
   members: TeamMemberSummary[];
   tags: TeamTagSummary[];
   createdAt: string;

@@ -1,4 +1,9 @@
-export type MaintenancePlanStatus = "PLANNED" | "IN_PROGRESS" | "DONE" | "LATE";
+export type MaintenancePlanStatus =
+  | "PLANNED"
+  | "IN_PROGRESS"
+  | "DONE"
+  | "LATE"
+  | "CANCELLED";
 
 export type MaintenanceTriggerType =
   | "FIXED_DATE"
@@ -26,6 +31,12 @@ export interface MaintenancePlanAssignee {
   teamName: string | null;
 }
 
+export interface MaintenancePlanTag {
+  id: number;
+  name: string;
+  color: string;
+}
+
 export interface MaintenancePlan {
   id: number;
   equipmentId: number;
@@ -49,6 +60,7 @@ export interface MaintenancePlan {
   status: MaintenancePlanStatus;
   spareParts: MaintenancePlanSparePart[];
   assignees: MaintenancePlanAssignee[];
+  tags: MaintenancePlanTag[];
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -73,5 +85,6 @@ export interface MaintenancePlanPayload {
     quantity: number;
   }[];
   assigneeIds?: number[];
+  tagIds?: number[];
 }
 

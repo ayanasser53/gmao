@@ -195,22 +195,6 @@ function OperatorLayout() {
             <span className="admin-sidebar-link-label">Mes taches</span>
           </NavLink>
 
-          <NavLink
-            to="/operator/notifications"
-            className={({ isActive }) =>
-              [
-                "admin-sidebar-link",
-                isActive ? "admin-sidebar-link-active" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")
-            }
-          >
-            <span className="admin-sidebar-link-icon">
-              <Bell size={20} />
-            </span>
-            <span className="admin-sidebar-link-label">Notifications</span>
-          </NavLink>
         </nav>
 
         <div className="admin-sidebar-footer">

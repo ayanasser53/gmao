@@ -77,9 +77,9 @@ public class TaskService {
     }
 
     /**
-     * Tâches affectées à l'utilisateur courant, sur n'importe quelle usine.
-     * Utilisé par le portail prestataire (un prestataire peut intervenir
-     * sur plusieurs usines et n'a donc pas de liste "toutes les tâches de
+     * Taches affectees a l'utilisateur courant, sur n'importe quelle usine.
+     * Utilise par le portail prestataire (un prestataire peut intervenir
+     * sur plusieurs usines et n'a donc pas de liste "toutes les taches de
      * mon usine" pertinente).
      */
     @Transactional(readOnly = true)
@@ -217,7 +217,7 @@ public class TaskService {
                 .build();
 
         task.setAssignees(
-                resolveAssignees(task, request.assignees())
+                resolveReporterAssignee(task, currentUser)
         );
 
         task.setAssignedTo(
@@ -240,8 +240,8 @@ public class TaskService {
     }
 
     /**
-     * Prévient chaque utilisateur directement affecté (hors équipes) de la
-     * nouvelle tâche, sauf s'il en est lui-même l'auteur.
+     * Previent chaque utilisateur directement affecte (hors equipes) de la
+     * nouvelle tache, sauf s'il en est lui-meme l'auteur.
      */
     private void notifyAssignees(Task task, User actor) {
         java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
@@ -256,7 +256,7 @@ public class TaskService {
                 .forEach(user -> notificationService.notify(
                         user,
                         NotificationType.TASK_ASSIGNED,
-                        "Nouvelle tâche assignée",
+                        "Nouvelle tache assignee",
                         task.getDescription(),
                         "/tasks/" + task.getId()
                 ));
@@ -305,14 +305,15 @@ public class TaskService {
             if (request.status() == TaskStatus.LATE
                     || request.status() == TaskStatus.PLANNED
                     || request.status() == TaskStatus.CREATED
-                    || request.status() == TaskStatus.CANCELED) {
+                    || request.status() == TaskStatus.CANCELED
+                    || request.status() == TaskStatus.ARCHIVED) {
                 throw new IllegalArgumentException(
-                        "Les statuts « En retard », « Planifiée », « Créée » et « Annulée » sont calculés ou reserves et ne peuvent pas être définis via ce formulaire."
+                        "Les statuts En retard, Planifiee, Creee, Annulee et Archivee sont calcules ou reserves et ne peuvent pas etre definis via ce formulaire."
                 );
             }
 
-            // Une tache signalee par un operateur/prestataire (statut « Creee »)
-            // passe automatiquement en « Planifiee » des qu'elle est modifiee
+            // Une tache signalee par un operateur/prestataire (statut "Creee")
+            // passe automatiquement en "Planifiee" des qu'elle est modifiee
             // ici, c'est-a-dire des que l'admin la planifie/assigne via cette
             // fiche d'edition.
             task.setStatus(
@@ -323,12 +324,6 @@ public class TaskService {
         }
 
         task.setTags(resolveTags(request.tagIds()));
-
-        task.getAssignees().clear();
-
-        task.getAssignees().addAll(
-                resolveAssignees(task, request.assignees())
-        );
 
         task.getAssignedTo().clear();
 
@@ -374,9 +369,9 @@ public class TaskService {
     }
 
     /**
-     * Prévient uniquement les utilisateurs nouvellement affectés (absents
-     * de l'ancienne liste), pour ne pas re-notifier à chaque modification
-     * d'une tâche des personnes déjà affectées.
+     * Previent uniquement les utilisateurs nouvellement affectes (absents
+     * de l'ancienne liste), pour ne pas re-notifier a chaque modification
+     * d'une tache des personnes deja affectees.
      */
     private void notifyNewAssignees(Task task, java.util.Set<Long> previouslyAssignedUserIds, User actor) {
         java.util.Set<Long> notifiedUserIds = new java.util.HashSet<>();
@@ -392,7 +387,7 @@ public class TaskService {
                 .forEach(user -> notificationService.notify(
                         user,
                         NotificationType.TASK_ASSIGNED,
-                        "Nouvelle tâche assignée",
+                        "Nouvelle tache assignee",
                         task.getDescription(),
                         "/tasks/" + task.getId()
                 ));
@@ -404,30 +399,50 @@ public class TaskService {
                 || request.status() == TaskStatus.PLANNED
                 || request.status() == TaskStatus.CREATED) {
             throw new IllegalArgumentException(
-                    "Les statuts « En retard », « Planifiée » et « Créée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
+                    "Les statuts En retard, Planifiee et Creee sont calcules automatiquement et ne peuvent pas etre definis manuellement."
             );
         }
 
         Task task = findEntityById(id);
 
-        if (request.status() == TaskStatus.CANCELED) {
+        if (task.getStatus() == TaskStatus.ARCHIVED && request.status() != TaskStatus.ARCHIVED) {
+            throw new IllegalArgumentException(
+                    "Une tache archivee ne peut pas changer de statut."
+            );
+        }
+
+        if (task.getStatus() == TaskStatus.CANCELED
+                && request.status() != TaskStatus.CANCELED
+                && request.status() != TaskStatus.ARCHIVED) {
+            throw new IllegalArgumentException(
+                    "Une tache annulee ne peut pas etre remise en cours ou terminee."
+            );
+        }
+
+        if (request.status() == TaskStatus.CANCELED || request.status() == TaskStatus.ARCHIVED) {
             User actor = resolveCurrentUserOrNull();
 
             if (actor == null || actor.getRole() != Role.ADMIN) {
                 throw new org.springframework.security.access.AccessDeniedException(
-                        "Seul un administrateur peut annuler une tâche."
+                        "Seul un administrateur peut annuler ou archiver une tache."
                 );
             }
 
-            if (task.getStatus() == TaskStatus.DONE) {
+            if (request.status() == TaskStatus.ARCHIVED && task.getStatus() == TaskStatus.ARCHIVED) {
                 throw new IllegalArgumentException(
-                        "Une tâche déjà terminée ne peut pas être annulée."
+                        "Cette tache est deja archivee."
                 );
             }
 
-            if (task.getStatus() == TaskStatus.CANCELED) {
+            if (request.status() == TaskStatus.CANCELED && task.getStatus() == TaskStatus.DONE) {
                 throw new IllegalArgumentException(
-                        "Cette tâche est déjà annulée."
+                        "Une tache deja terminee ne peut pas etre annulee."
+                );
+            }
+
+            if (request.status() == TaskStatus.CANCELED && task.getStatus() == TaskStatus.CANCELED) {
+                throw new IllegalArgumentException(
+                        "Cette tache est deja annulee."
                 );
             }
         }
@@ -445,9 +460,8 @@ public class TaskService {
             notificationService.notify(
                     creator,
                     NotificationType.TASK_STATUS_CHANGED,
-                    "Statut de tâche mis à jour",
-                    task.getDescription() + " est maintenant « "
-                            + statusLabel(request.status()) + " ».",
+                    "Statut de tache mis a jour",
+                    task.getDescription() + " est maintenant " + statusLabel(request.status()) + ".",
                     "/tasks/" + task.getId()
             );
 
@@ -464,9 +478,8 @@ public class TaskService {
                 .forEach(user -> notificationService.notify(
                         user,
                         NotificationType.TASK_STATUS_CHANGED,
-                        "Statut de tâche mis à jour",
-                        task.getDescription() + " est maintenant « "
-                                + statusLabel(request.status()) + " ».",
+                        "Statut de tache mis a jour",
+                        task.getDescription() + " est maintenant " + statusLabel(request.status()) + ".",
                         "/tasks/" + task.getId()
                 ));
 
@@ -475,12 +488,13 @@ public class TaskService {
 
     private String statusLabel(TaskStatus status) {
         return switch (status) {
-            case CREATED -> "Créée";
-            case PLANNED -> "Planifiée";
+            case CREATED -> "Creee";
+            case PLANNED -> "Planifiee";
             case IN_PROGRESS -> "En cours";
             case LATE -> "En retard";
-            case DONE -> "Terminée";
-            case CANCELED -> "Annulée";
+            case DONE -> "Terminee";
+            case CANCELED -> "Annulee";
+            case ARCHIVED -> "Archivee";
         };
     }
 
@@ -502,9 +516,9 @@ public class TaskService {
             }
         }
 
-        // Un prestataire peut être affecté à une tâche en dehors de son
+        // Un prestataire peut etre affecte a une tache en dehors de son
         // usine de rattachement : on l'autorise s'il fait partie des
-        // personnes affectées à cette tâche précise.
+        // personnes affectees a cette tache precise.
         User currentUser = resolveCurrentUserOrNull();
 
         if (currentUser != null) {
@@ -516,7 +530,7 @@ public class TaskService {
             }
         }
 
-        throw new ResourceNotFoundException("Tâche introuvable.");
+        throw new ResourceNotFoundException("Tache introuvable.");
     }
 
     private Equipment resolveEquipment(Long equipmentId) {
@@ -524,7 +538,7 @@ public class TaskService {
                 .findByIdAndUsineId(equipmentId, currentUserProvider.requireUsineId())
                 .orElseThrow(
                         () -> new ResourceNotFoundException(
-                                "Équipement introuvable."
+                                "Equipement introuvable."
                         )
                 );
     }
@@ -573,7 +587,7 @@ public class TaskService {
 
             if (hasUser == hasTeam) {
                 throw new IllegalArgumentException(
-                        "Chaque assignation doit référencer soit un utilisateur, soit une équipe."
+                        "Chaque assignation doit referencer soit un utilisateur, soit une equipe."
                 );
             }
 
@@ -588,12 +602,18 @@ public class TaskService {
                                         "Utilisateur introuvable."
                                 )
                         );
+
+                if (!isExecutableRole(user)) {
+                    throw new IllegalArgumentException(
+                            "Une tache peut etre assignee uniquement a un technicien ou un prestataire."
+                    );
+                }
             } else {
                 team = teamRepository
                         .findById(assigneeRequest.teamId())
                         .orElseThrow(
                                 () -> new ResourceNotFoundException(
-                                        "Équipe introuvable."
+                                        "Equipe introuvable."
                                 )
                         );
             }
@@ -606,6 +626,22 @@ public class TaskService {
                             .build()
             );
         }
+
+        return assignees;
+    }
+
+    private Set<TaskAssignee> resolveReporterAssignee(Task task, User currentUser) {
+        if (currentUser == null) {
+            return new HashSet<>();
+        }
+
+        Set<TaskAssignee> assignees = new HashSet<>();
+        assignees.add(
+                TaskAssignee.builder()
+                        .task(task)
+                        .user(currentUser)
+                        .build()
+        );
 
         return assignees;
     }
@@ -626,7 +662,7 @@ public class TaskService {
 
             if (hasUser == hasTeam) {
                 throw new IllegalArgumentException(
-                        "Chaque assignation doit référencer soit un utilisateur, soit une équipe."
+                        "Chaque assignation doit referencer soit un utilisateur, soit une equipe."
                 );
             }
 
@@ -646,7 +682,7 @@ public class TaskService {
                         .findById(assigneeRequest.teamId())
                         .orElseThrow(
                                 () -> new ResourceNotFoundException(
-                                        "Équipe introuvable."
+                                        "Equipe introuvable."
                                 )
                         );
             }
@@ -661,6 +697,11 @@ public class TaskService {
         }
 
         return assignedTo;
+    }
+
+    private boolean isExecutableRole(User user) {
+        return user.getRole() == Role.TECHNICIAN
+                || user.getRole() == Role.SERVICE_PROVIDER;
     }
 
     private Set<TaskSparePart> resolveSpareParts(
@@ -678,7 +719,7 @@ public class TaskService {
                     .findById(line.sparePartId())
                     .orElseThrow(
                             () -> new ResourceNotFoundException(
-                                    "Pièce de rechange introuvable."
+                                    "Piece de rechange introuvable."
                             )
                     );
 

@@ -95,6 +95,7 @@ const defaultPayload: MaintenancePlanPayload = {
   status: "PLANNED",
   spareParts: [],
   assigneeIds: [],
+  tagIds: [],
 };
 
 type MaintenanceSchedulePreset =
@@ -140,6 +141,7 @@ function toPayload(plan: MaintenancePlan): MaintenancePlanPayload {
     assigneeIds: (plan.assignees ?? [])
       .map((assignee) => assignee.userId)
       .filter((userId): userId is number => userId != null),
+    tagIds: (plan.tags ?? []).map((tag) => tag.id),
   };
 }
 
@@ -240,6 +242,7 @@ export default function MaintenancePlanFormPage() {
             .map((assignee) => assignee.userId)
             .filter((userId): userId is number => userId != null),
         );
+        setLabelIds((plan.tags ?? []).map((tag) => tag.id));
       }
     } catch {
       setError("Impossible de charger les données.");
@@ -296,6 +299,10 @@ export default function MaintenancePlanFormPage() {
     return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
   }
 
+  function isExecutableUser(user: UserDetail) {
+    return user.role === "TECHNICIAN" || user.role === "SERVICE_PROVIDER";
+  }
+
   const AVATAR_COLORS = [
     "#087fbd",
     "#6b46c1",
@@ -325,7 +332,11 @@ export default function MaintenancePlanFormPage() {
     }
 
     const matchedUsers = users
-      .filter((user) => user.tags.some((tag) => assigneeLabelIds.includes(tag.id)))
+      .filter(
+        (user) =>
+          isExecutableUser(user) &&
+          user.tags.some((tag) => assigneeLabelIds.includes(tag.id)),
+      )
       .map((user) => user.id);
 
     setAssigneeIds(Array.from(new Set([...assigneeIds, ...matchedUsers])));
@@ -417,12 +428,14 @@ export default function MaintenancePlanFormPage() {
         await updateMaintenancePlan(Number(id), {
           ...form,
           assigneeIds,
+          tagIds: labelIds,
         });
       } else {
         const creationPayload: MaintenancePlanPayload = {
           ...form,
           status: "PLANNED",
           assigneeIds,
+          tagIds: labelIds,
         };
         await createMaintenancePlan(creationPayload);
       }
@@ -458,9 +471,10 @@ export default function MaintenancePlanFormPage() {
 
   const filteredAssigneeUsers = useMemo(() => {
     const value = assigneeSearch.trim().toLowerCase();
-    if (!value) return users;
+    const executableUsers = users.filter(isExecutableUser);
+    if (!value) return executableUsers;
 
-    return users.filter((user) =>
+    return executableUsers.filter((user) =>
       `${getUserName(user)} ${user.email}`.toLowerCase().includes(value),
     );
   }, [assigneeSearch, users]);

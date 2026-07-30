@@ -9,12 +9,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +30,16 @@ import java.util.Objects;
 public class SupplierCatalogService {
 
     private static final long IMPORTED_SUPPLIER_ID_OFFSET = 100_000L;
+    private static final long MAX_IMPORTED_IMAGE_SIZE = 5L * 1024L * 1024L;
+    private static final Set<String> ALLOWED_IMPORTED_IMAGE_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
 
     private final SupplierCatalogRepository supplierCatalogRepository;
     private final AppFileStorageService fileStorageService;
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     @Transactional(readOnly = true)
     public SupplierCatalogResponse findAll() {
@@ -66,11 +81,15 @@ public class SupplierCatalogService {
                     List<SupplierCatalogItem> matchingItems =
                             existingItems.computeIfAbsent(key, ignored -> new ArrayList<>());
 
-                    boolean alreadyExists = matchingItems
+                    Optional<SupplierCatalogItem> existingMatch = matchingItems
                             .stream()
-                            .anyMatch(existingItem -> hasSameCatalogData(existingItem, importedItem));
+                            .filter(existingItem -> hasSameCatalogData(existingItem, importedItem))
+                            .findFirst();
 
-                    if (!alreadyExists) {
+                    if (existingMatch.isPresent()) {
+                        fillMissingImportedImageData(existingMatch.get(), importedItem.getImage());
+                    } else {
+                        hydrateImportedImage(importedItem);
                         items.add(importedItem);
                         matchingItems.add(importedItem);
                     }
@@ -128,6 +147,8 @@ public class SupplierCatalogService {
     }
 
     private SupplierCatalogItem toEntity(SupplierCatalogRowRequest request) {
+        String image = trim(request.image());
+
         return SupplierCatalogItem.builder()
                 .equipmentName(trim(request.equipment()))
                 .category(trim(request.category()))
@@ -139,8 +160,121 @@ public class SupplierCatalogService {
                 .supplierSiren(trim(request.supplierSiren()))
                 .supplierPhone(trim(request.supplierPhone()))
                 .supplierDescription(trim(request.supplierDescription()))
-                .image(trim(request.image()))
+                .image(image)
                 .build();
+    }
+
+    private void fillMissingImportedImageData(SupplierCatalogItem existingItem, String imageUrl) {
+        if (existingItem.getImageData() != null && existingItem.getImageData().length > 0) {
+            return;
+        }
+
+        existingItem.setImage(trim(imageUrl));
+        hydrateImportedImage(existingItem);
+    }
+
+    private void hydrateImportedImage(SupplierCatalogItem item) {
+        DatabaseFile databaseFile = downloadImage(item.getImage()).orElse(null);
+
+        if (databaseFile == null) {
+            return;
+        }
+
+        item.setImageName(databaseFile.fileName());
+        item.setImageContentType(databaseFile.contentType());
+        item.setImageSize((long) databaseFile.data().length);
+        item.setImageData(databaseFile.data());
+    }
+
+    private Optional<DatabaseFile> downloadImage(String rawUrl) {
+        String imageUrl = trim(rawUrl);
+
+        if (imageUrl == null || !isRemoteUrl(imageUrl)) {
+            return Optional.empty();
+        }
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = httpClient.send(
+                    request,
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return Optional.empty();
+            }
+
+            byte[] data = response.body();
+
+            if (data == null || data.length == 0 || data.length > MAX_IMPORTED_IMAGE_SIZE) {
+                return Optional.empty();
+            }
+
+            String contentType = response.headers()
+                    .firstValue("Content-Type")
+                    .map(value -> value.split(";")[0].trim().toLowerCase(Locale.ROOT))
+                    .orElseGet(() -> guessContentType(imageUrl));
+
+            if (!ALLOWED_IMPORTED_IMAGE_TYPES.contains(contentType)) {
+                return Optional.empty();
+            }
+
+            return Optional.of(new DatabaseFile(fileNameFromUrl(imageUrl, contentType), contentType, data));
+        } catch (IllegalArgumentException | IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+
+            return Optional.empty();
+        }
+    }
+
+    private boolean isRemoteUrl(String value) {
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.startsWith("http://") || normalized.startsWith("https://");
+    }
+
+    private String guessContentType(String imageUrl) {
+        String normalized = imageUrl.toLowerCase(Locale.ROOT);
+
+        if (normalized.contains(".jpg") || normalized.contains(".jpeg")) {
+            return "image/jpeg";
+        }
+
+        if (normalized.contains(".webp")) {
+            return "image/webp";
+        }
+
+        return "image/png";
+    }
+
+    private String fileNameFromUrl(String imageUrl, String contentType) {
+        String path = URI.create(imageUrl).getPath();
+        String fileName = path == null || path.isBlank()
+                ? "catalog-image"
+                : path.substring(path.lastIndexOf('/') + 1);
+
+        if (fileName == null || fileName.isBlank()) {
+            fileName = "catalog-image";
+        }
+
+        if (!fileName.contains(".")) {
+            fileName = fileName + extensionForContentType(contentType);
+        }
+
+        return fileName;
+    }
+
+    private String extensionForContentType(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/webp" -> ".webp";
+            default -> ".png";
+        };
     }
 
     private String catalogItemKey(SupplierCatalogItem item) {

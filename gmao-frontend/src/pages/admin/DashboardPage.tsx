@@ -8,7 +8,6 @@ import {
   Boxes,
   CalendarCheck,
   Clock,
-  ClipboardList,
   Gauge,
   MapPin,
   PackageSearch,
@@ -61,22 +60,24 @@ interface DonutSegment {
 }
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
-  CREATED: { label: "Créée", color: "#6b46c1" },
-  PLANNED: { label: "Planifiée", color: "#ffb020" },
+  CREATED: { label: "Cr\u00e9\u00e9e", color: "#6b46c1" },
+  PLANNED: { label: "Planifi\u00e9e", color: "#b68a14" },
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
-  DONE: { label: "Terminée", color: "#34d1b3" },
-  CANCELED: { label: "Annulée", color: "#5a5f6b" },
+  DONE: { label: "Termin\u00e9e", color: "#2f855a" },
+  CANCELED: { label: "Annul\u00e9e", color: "#5a5f6b" },
+  ARCHIVED: { label: "Archiv\u00e9e", color: "#8b95a1" },
 };
 
 const PLAN_STATUS_META: Record<
   MaintenancePlanStatus,
   { label: string; color: string }
 > = {
-  PLANNED: { label: "Planifié", color: "#ffb020" },
+  PLANNED: { label: "Planifi\u00e9", color: "#b68a14" },
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
-  DONE: { label: "Terminé", color: "#34d1b3" },
+  DONE: { label: "Termin\u00e9", color: "#2f855a" },
+  CANCELLED: { label: "Annul\u00e9", color: "#8b95a1" },
 };
 
 function activityCost(activity: Activity): number {
@@ -106,6 +107,17 @@ function formatMoney(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+}
+
+function daysBetween(firstDate: string, secondDate: string): number | null {
+  const first = new Date(firstDate);
+  const second = new Date(secondDate);
+
+  if (Number.isNaN(first.getTime()) || Number.isNaN(second.getTime())) {
+    return null;
+  }
+
+  return Math.max(0, Math.round((second.getTime() - first.getTime()) / 86400000));
 }
 
 /**
@@ -745,6 +757,12 @@ function DashboardPage() {
   const navigate = useNavigate();
   const email = getAuthenticatedEmail();
   const role = getAuthenticatedRole();
+  const displayRole =
+    role === "SUPERVISOR"
+      ? "Superviseur"
+      : role === "SUPERADMIN"
+        ? "Super administrateur"
+        : "Administrateur";
 
   const [equipmentCount, setEquipmentCount] = useState(0);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
@@ -809,6 +827,7 @@ function DashboardPage() {
       LATE: 0,
       DONE: 0,
       CANCELED: 0,
+      ARCHIVED: 0,
     };
 
     tasks.forEach((task) => {
@@ -828,6 +847,7 @@ function DashboardPage() {
       IN_PROGRESS: 0,
       LATE: 0,
       DONE: 0,
+      CANCELLED: 0,
     };
 
     plans.forEach((plan) => {
@@ -887,26 +907,94 @@ function DashboardPage() {
   const byEquipment = useMemo(() => {
     const map = new Map<
       string,
-      { minutes: number; cost: number; activityCount: number }
+      {
+        minutes: number;
+        cost: number;
+        activityCount: number;
+        doneMinutes: number;
+        doneCount: number;
+      }
     >();
 
     activities.forEach((activity) => {
-      const key = activity.equipmentName?.trim() || "Sans équipement";
+      const key = activity.equipmentName?.trim() || "Sans \u00e9quipement";
       const current = map.get(key) ?? {
         minutes: 0,
         cost: 0,
         activityCount: 0,
+        doneMinutes: 0,
+        doneCount: 0,
       };
 
       current.minutes += activitySpentMinutes(activity);
       current.cost += activityCost(activity);
       current.activityCount += 1;
 
+      if (activity.status === "DONE") {
+        current.doneMinutes += activitySpentMinutes(activity);
+        current.doneCount += 1;
+      }
+
       map.set(key, current);
     });
 
     return map;
   }, [activities]);
+
+  const equipmentTaskDates = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    tasks.forEach((task) => {
+      const key =
+        (task as unknown as { equipmentName?: string }).equipmentName?.trim() ||
+        task.equipment?.name?.trim() ||
+        "Sans \u00e9quipement";
+      const dates = map.get(key) ?? [];
+
+      dates.push(task.startDate);
+      map.set(key, dates);
+    });
+
+    return map;
+  }, [tasks]);
+
+  const mttrMinutes = useMemo(() => {
+    const doneActivities = activities.filter((activity) => activity.status === "DONE");
+
+    if (doneActivities.length === 0) {
+      return 0;
+    }
+
+    const total = doneActivities.reduce(
+      (sum, activity) => sum + activitySpentMinutes(activity),
+      0,
+    );
+
+    return total / doneActivities.length;
+  }, [activities]);
+
+  const mtbfDays = useMemo(() => {
+    const gaps: number[] = [];
+
+    equipmentTaskDates.forEach((dates) => {
+      const sortedDates = [...dates].sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+      );
+
+      for (let index = 1; index < sortedDates.length; index += 1) {
+        const gap = daysBetween(sortedDates[index - 1], sortedDates[index]);
+        if (gap !== null) {
+          gaps.push(gap);
+        }
+      }
+    });
+
+    if (gaps.length === 0) {
+      return 0;
+    }
+
+    return gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+  }, [equipmentTaskDates]);
 
   const timePerMachine: BarItem[] = useMemo(() => {
     const entries = Array.from(byEquipment.entries())
@@ -939,6 +1027,64 @@ function DashboardPage() {
       suffix: " EUR",
     }));
   }, [byEquipment]);
+
+  const mttrPerMachine: BarItem[] = useMemo(() => {
+    const entries = Array.from(byEquipment.entries())
+      .map(([name, data]) => ({
+        name,
+        minutes: data.doneCount > 0 ? data.doneMinutes / data.doneCount : 0,
+      }))
+      .filter((entry) => entry.minutes > 0)
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 10);
+
+    const max = entries.length > 0 ? entries[0].minutes : 1;
+
+    return entries.map(({ name, minutes }) => ({
+      label: name,
+      value: Math.round((minutes / 60) * 10) / 10,
+      max: Math.round((max / 60) * 10) / 10 || 1,
+      color: "#7a8f3a",
+      suffix: " h",
+    }));
+  }, [byEquipment]);
+
+  const mtbfPerMachine: BarItem[] = useMemo(() => {
+    const entries = Array.from(equipmentTaskDates.entries())
+      .map(([name, dates]) => {
+        const sortedDates = [...dates].sort(
+          (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+        );
+        const gaps: number[] = [];
+
+        for (let index = 1; index < sortedDates.length; index += 1) {
+          const gap = daysBetween(sortedDates[index - 1], sortedDates[index]);
+          if (gap !== null) {
+            gaps.push(gap);
+          }
+        }
+
+        const average =
+          gaps.length > 0
+            ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length
+            : 0;
+
+        return { name, days: average };
+      })
+      .filter((entry) => entry.days > 0)
+      .sort((a, b) => b.days - a.days)
+      .slice(0, 10);
+
+    const max = entries.length > 0 ? entries[0].days : 1;
+
+    return entries.map(({ name, days }) => ({
+      label: name,
+      value: Math.round(days * 10) / 10,
+      max: Math.round(max * 10) / 10 || 1,
+      color: "#60712f",
+      suffix: " j",
+    }));
+  }, [equipmentTaskDates]);
 
   // --- Top 10 équipements (par temps passé) ---
 
@@ -995,7 +1141,7 @@ function DashboardPage() {
     tasksList.forEach((task) => {
       keyOf(task).forEach((key) => {
         const current =
-          map.get(key) ?? { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0 };
+          map.get(key) ?? { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0, ARCHIVED: 0 };
         current[task.status] += 1;
         map.set(key, current);
       });
@@ -1190,7 +1336,27 @@ function DashboardPage() {
 
   const advancedKpis: AdvancedKpi[] = [
     {
-      title: "Coût moyen / activité",
+      title: "Co\u00fbt total",
+      displayValue: `${formatMoney(totalActivityCost)} EUR`,
+      icon: <PiggyBank size={26} />,
+    },
+    {
+      title: "Temps total pass\u00e9",
+      displayValue: formatHoursMinutes(totalSpentMinutes),
+      icon: <Clock size={26} />,
+    },
+    {
+      title: "MTTR",
+      displayValue: formatHoursMinutes(mttrMinutes),
+      icon: <Gauge size={26} />,
+    },
+    {
+      title: "MTBF",
+      displayValue: `${Math.round(mtbfDays * 10) / 10} j`,
+      icon: <CalendarCheck size={26} />,
+    },
+    {
+      title: "Co\u00fbt moyen / activit\u00e9",
       displayValue: `${formatMoney(averageCostPerActivity)} EUR`,
       icon: <TrendingUp size={26} />,
     },
@@ -1205,17 +1371,17 @@ function DashboardPage() {
       icon: <PiggyBank size={26} />,
     },
     {
-      title: "Tâches en retard",
+      title: "T\u00e2ches en retard",
       displayValue: String(lateTasksCount),
       icon: <AlertTriangle size={26} />,
     },
     {
-      title: "Taux de complétion",
+      title: "Taux de compl\u00e9tion",
       displayValue: `${completionRate}%`,
       icon: <Gauge size={26} />,
     },
     {
-      title: "Pièces en stock bas",
+      title: "Pi\u00e8ces en stock bas",
       displayValue: String(lowStockItems.length),
       icon: <PackageSearch size={26} />,
     },
@@ -1223,35 +1389,47 @@ function DashboardPage() {
 
   const heroKpis = [
     {
-      title: "Tâches",
-      value: loading ? "…" : String(tasks.length),
+      title: "T\u00e2ches",
+      value: loading ? "\u2026" : String(tasks.length),
       icon: <Wrench size={28} />,
-      className: "dashboard-hero-card-tasks",
+      className: "dashboard-hero-card-total",
     },
     {
-      title: "Activités",
-      value: loading ? "…" : String(activities.length),
+      title: "Activit\u00e9s",
+      value: loading ? "\u2026" : String(activities.length),
       icon: <ActivityIcon size={28} />,
-      className: "dashboard-hero-card-activities",
+      className: "dashboard-hero-card-operations",
     },
     {
-      title: "Temps passé",
-      value: loading ? "…" : formatHoursMinutes(totalSpentMinutes),
+      title: "Temps total pass\u00e9",
+      value: loading ? "\u2026" : formatHoursMinutes(totalSpentMinutes),
       icon: <Clock size={28} />,
       className: "dashboard-hero-card-time",
     },
     {
-      title: "Temps moyen d'intervention",
-      value: loading ? "…" : formatHoursMinutes(averageMinutesPerActivity),
+      title: "Co\u00fbt total",
+      value: loading ? "\u2026" : `${formatMoney(totalActivityCost)} EUR`,
+      icon: <PiggyBank size={28} />,
+      className: "dashboard-hero-card-cost",
+    },
+    {
+      title: "MTTR",
+      value: loading ? "\u2026" : formatHoursMinutes(mttrMinutes),
       icon: <Gauge size={28} />,
-      className: "dashboard-hero-card-avg",
+      className: "dashboard-hero-card-repair",
+    },
+    {
+      title: "MTBF",
+      value: loading ? "\u2026" : `${Math.round(mtbfDays * 10) / 10} j`,
+      icon: <CalendarCheck size={28} />,
+      className: "dashboard-hero-card-reliability",
     },
   ];
 
   const resourceCards: DashboardCard[] = [
-    { title: "Équipements", value: equipmentCount, icon: <Wrench size={22} /> },
-    { title: "Pièces de rechange", value: spareParts.length, icon: <Boxes size={22} /> },
-    { title: "Équipes", value: teamsCount, icon: <Users size={22} /> },
+    { title: "\u00c9quipements", value: equipmentCount, icon: <Wrench size={22} /> },
+    { title: "Pi\u00e8ces de rechange", value: spareParts.length, icon: <Boxes size={22} /> },
+    { title: "\u00c9quipes", value: teamsCount, icon: <Users size={22} /> },
     { title: "Plans de maintenance", value: plans.length, icon: <CalendarCheck size={22} /> },
     { title: "Commandes d'achat", value: purchaseOrdersCount, icon: <ShoppingCart size={22} /> },
   ];
@@ -1261,7 +1439,7 @@ function DashboardPage() {
       <div className="admin-page-heading">
         <div>
           <span className="section-label">Tableau de bord</span>
-          <h1>Bienvenue, Administrateur</h1>
+          <h1>Bienvenue, {displayRole}</h1>
           <p>
             {email} — {role}
           </p>
@@ -1327,7 +1505,7 @@ function DashboardPage() {
             {dashboardSection === "apercu" && (
               <>
                 <article className="dashboard-gauge-card">
-                  <h2>Tâches par statut</h2>
+                  <h2>{"T\u00e2ches par statut"}</h2>
 
                   <div className="dashboard-status-chips">
                     {taskStatusSegments.map((segment) => (
@@ -1350,10 +1528,10 @@ function DashboardPage() {
                 </article>
 
                 <article className="dashboard-chart-card dashboard-chart-card-wide">
-                  <h2>
-                    <TrendingUp size={18} />
-                    Évolution des activités
-                  </h2>
+                    <h2>
+                      <TrendingUp size={18} />
+                      {"\u00c9volution des activit\u00e9s"}
+                    </h2>
                   <TrendChart
                     points={activityTrend}
                     period={trendPeriod}
@@ -1369,10 +1547,10 @@ function DashboardPage() {
                   <div className="dashboard-chart-card-header">
                     <h2>
                       <Clock size={18} />
-                      Temps passé par machine
+                      {"Temps total pass\u00e9 par \u00e9quipement"}
                     </h2>
                     <span className="dashboard-total-cost">
-                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> équipements
+                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> {"\u00e9quipements"}
                     </span>
                   </div>
                   <SimpleBarChart items={timePerMachine} />
@@ -1382,10 +1560,10 @@ function DashboardPage() {
                   <div className="dashboard-chart-card-header">
                     <h2>
                       <PiggyBank size={18} />
-                      Coût par machine
+                      {"Co\u00fbt total par \u00e9quipement"}
                     </h2>
                     <span className="dashboard-total-cost">
-                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> équipements
+                      Top 10 sur <strong>{byEquipment.size.toLocaleString("fr-FR")}</strong> {"\u00e9quipements"}
                     </span>
                   </div>
                   <SimpleBarChart items={costPerMachine} />
@@ -1394,8 +1572,34 @@ function DashboardPage() {
                 <article className="dashboard-chart-card dashboard-chart-card-wide">
                   <div className="dashboard-chart-card-header">
                     <h2>
+                      <Gauge size={18} />
+                      {"MTTR par \u00e9quipement"}
+                    </h2>
+                    <span className="dashboard-total-cost">
+                      Moyenne : <strong>{formatHoursMinutes(mttrMinutes)}</strong>
+                    </span>
+                  </div>
+                  <SimpleBarChart items={mttrPerMachine} />
+                </article>
+
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>
+                      <CalendarCheck size={18} />
+                      {"MTBF par \u00e9quipement"}
+                    </h2>
+                    <span className="dashboard-total-cost">
+                      Moyenne : <strong>{Math.round(mtbfDays * 10) / 10} j</strong>
+                    </span>
+                  </div>
+                  <SimpleBarChart items={mtbfPerMachine} />
+                </article>
+
+                <article className="dashboard-chart-card dashboard-chart-card-wide">
+                  <div className="dashboard-chart-card-header">
+                    <h2>
                       <AlertTriangle size={18} />
-                      Pièces en stock bas
+                      {"Pi\u00e8ces en stock bas"}
                     </h2>
                     <button
                       type="button"
@@ -1408,7 +1612,7 @@ function DashboardPage() {
 
                   {lowStockItems.length === 0 ? (
                     <p className="dashboard-empty-hint">
-                      Aucune pièce en dessous du stock minimum. 👍
+                      {"Aucune pi\u00e8ce en dessous du stock minimum."}
                     </p>
                   ) : (
                     <SimpleBarChart items={lowStockBars} />
@@ -1417,7 +1621,7 @@ function DashboardPage() {
 
                 <article className="dashboard-chart-card dashboard-chart-card-wide">
                   <div className="dashboard-chart-card-header">
-                    <h2>Coût des activités (top 10)</h2>
+                    <h2>{"Co\u00fbt des activit\u00e9s (top 10)"}</h2>
                     <span className="dashboard-total-cost">
                       Total : <strong>{formatMoney(totalActivityCost)} EUR</strong>
                     </span>

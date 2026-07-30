@@ -239,7 +239,7 @@ async function readDocumentPreview(document: RealizationDocument) {
 }
 
 function getDetailStatus(plan: MaintenancePlan) {
-  if (plan.status === "DONE") return { className: "done", label: "Terminé" };
+  if (plan.status === "DONE") return { className: "done", label: "Termine" };
   if (plan.status === "LATE") return { className: "late", label: "En retard" };
   if (plan.status === "IN_PROGRESS") {
     return { className: "in_progress", label: "En cours" };
@@ -253,11 +253,11 @@ function getDetailStatus(plan: MaintenancePlan) {
 
   if (plan.status === "PLANNED") {
     if (due && due <= today) return { className: "late", label: "En retard" };
-    return { className: "planned", label: "Planifié" };
+    return { className: "planned", label: "Planifie" };
   }
 
   if (due && due <= today) return { className: "late", label: "En retard" };
-  if (due && due > today) return { className: "planned", label: "Planifié" };
+  if (due && due > today) return { className: "planned", label: "Planifie" };
 
   return { className: "in_progress", label: "En cours" };
 }
@@ -281,6 +281,10 @@ function planToPayload(plan: MaintenancePlan) {
       sparePartId: sparePart.sparePartId,
       quantity: sparePart.quantity,
     })),
+    assigneeIds: (plan.assignees ?? [])
+      .map((assignee) => assignee.userId)
+      .filter((userId): userId is number => userId != null),
+    tagIds: (plan.tags ?? []).map((tag) => tag.id),
   };
 }
 
@@ -511,7 +515,7 @@ export default function MaintenancePlanDetailsPage() {
       setCameraError("");
 
       if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraError("La caméra n'est pas disponible sur ce navigateur.");
+        setCameraError("La camera n'est pas disponible sur ce navigateur.");
         return;
       }
 
@@ -526,7 +530,7 @@ export default function MaintenancePlanDetailsPage() {
         await cameraVideoRef.current.play();
       }
     } catch {
-      setCameraError("Impossible d'ouvrir la caméra. Vérifiez l'autorisation du navigateur.");
+      setCameraError("Impossible d'ouvrir la camera. Verifiez l'autorisation du navigateur.");
     }
   }
 
@@ -698,12 +702,12 @@ export default function MaintenancePlanDetailsPage() {
     setSuccessMessage("");
 
     if (!realizationDescription.trim()) {
-      setError("La description de la réalisation est obligatoire.");
+      setError("La description de la realisation est obligatoire.");
       return;
     }
 
     if (!realizationDate || !realizationEndTime) {
-      setError("La date et l'heure de fin de réalisation sont obligatoires.");
+      setError("La date et l'heure de fin de realisation sont obligatoires.");
       return;
     }
 
@@ -712,9 +716,9 @@ export default function MaintenancePlanDetailsPage() {
       saveRealizationDraft(plan.id);
       const updated = await updateMaintenancePlanStatus(plan.id, "DONE");
       setPlan({ ...updated, spareParts: updated.spareParts || plan.spareParts });
-      setSuccessMessage("Votre plan est validé.");
+      setSuccessMessage("Votre plan est valide.");
     } catch {
-      setError("Impossible de valider cette réalisation.");
+      setError("Impossible de valider cette realisation.");
     }
   }
 
@@ -737,7 +741,7 @@ export default function MaintenancePlanDetailsPage() {
             sparePartId: selectedSparePartId,
             sparePartName:
               spareParts.find((item) => item.id === selectedSparePartId)?.name ||
-              "Pièce détachée",
+              "Piece detachee",
             sparePartCode:
               spareParts.find((item) => item.id === selectedSparePartId)?.code ||
               null,
@@ -772,7 +776,7 @@ export default function MaintenancePlanDetailsPage() {
       setShowSpareSelector(false);
     } catch {
       setPlan(plan);
-      setError("Impossible d'ajouter la pièce détachée au plan.");
+      setError("Impossible d'ajouter la piece detachee au plan.");
     }
   }
 
@@ -795,7 +799,7 @@ export default function MaintenancePlanDetailsPage() {
 
       setPlan({ ...updated, spareParts: updated.spareParts || [] });
     } catch {
-      setError("Impossible de retirer la pièce détachée du plan.");
+      setError("Impossible de retirer la piece detachee du plan.");
     }
   }
 
@@ -864,7 +868,7 @@ export default function MaintenancePlanDetailsPage() {
           <div className="details-row">
             <History size={22} />
             <div>
-              <span>Périodicité</span>
+              <span>Periodicite</span>
               <strong>{plan.frequencyLabel}</strong>
             </div>
           </div>
@@ -872,7 +876,7 @@ export default function MaintenancePlanDetailsPage() {
           <div className="details-row">
             <CalendarClock size={22} />
             <div>
-              <span>Prochaine échéance</span>
+              <span>Prochaine echeance</span>
               <strong className="status-pill status-late">
                 {formatDate(plan.nextDueDate)}
               </strong>
@@ -882,8 +886,23 @@ export default function MaintenancePlanDetailsPage() {
           <div className="details-row">
             <Users size={22} />
             <div>
-              <span>Assignés</span>
-              <strong>Aucun assigné.</strong>
+              <span>Assignes</span>
+              {plan.assignees?.length ? (
+                <div className="task-chip-list">
+                  {plan.assignees.map((assignee) => (
+                    <span
+                      className="task-chip"
+                      key={`${assignee.type}-${assignee.userId ?? assignee.teamId ?? assignee.id}`}
+                    >
+                      {assignee.type === "USER"
+                        ? assignee.userFullName || "Utilisateur"
+                        : assignee.teamName || "Equipe"}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <strong>Aucun assigne.</strong>
+              )}
             </div>
           </div>
 
@@ -891,22 +910,32 @@ export default function MaintenancePlanDetailsPage() {
             <Tags size={22} />
             <div>
               <span>Labels</span>
-              <strong>Aucun label.</strong>
-            </div>
-          </div>
-
-          <div className="details-row">
-            <FileText size={22} />
-            <div>
-              <span>Checklist</span>
-              <strong>Aucune checklist associée.</strong>
+              {plan.tags?.length ? (
+                <div className="task-chip-list">
+                  {plan.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="task-filter-tag-chip"
+                      style={{
+                        color: tag.color || "#617287",
+                        borderColor: tag.color || "#cfdbe6",
+                        background: `${tag.color || "#617287"}1a`,
+                      }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <strong>Aucun label.</strong>
+              )}
             </div>
           </div>
         </div>
 
         <aside className="details-side">
           <section className="details-card">
-            <h3>Équipement</h3>
+            <h3>Equipement</h3>
 
             <button
               type="button"
@@ -922,7 +951,7 @@ export default function MaintenancePlanDetailsPage() {
               )}
 
               <div>
-                <span>Nom de l'équipement</span>
+                <span>Nom de l'equipement</span>
                 <strong>{plan.equipmentName}</strong>
               </div>
             </button>
@@ -930,7 +959,7 @@ export default function MaintenancePlanDetailsPage() {
             <div className="details-row compact">
               <MapPin size={20} />
               <div>
-                <span>Centre de coûts</span>
+                <span>Centre de couts</span>
                 <strong>{plan.costCenter || "-"}</strong>
               </div>
             </div>
@@ -940,7 +969,7 @@ export default function MaintenancePlanDetailsPage() {
             <div className="details-row compact">
               <Scale size={20} />
               <div>
-                <span>Réglementaire</span>
+                <span>Reglementaire</span>
                 <strong>{plan.regulatory ? "Oui" : "Non"}</strong>
               </div>
             </div>
@@ -948,7 +977,7 @@ export default function MaintenancePlanDetailsPage() {
             <div className="details-row compact">
               <History size={20} />
               <div>
-                <span>Déclencheur</span>
+                <span>Declencheur</span>
                 <strong>{plan.triggerLabel}</strong>
               </div>
             </div>
@@ -956,7 +985,7 @@ export default function MaintenancePlanDetailsPage() {
             <div className="details-row compact">
               <Clock size={20} />
               <div>
-                <span>Temps de maintenance planifié</span>
+                <span>Temps de maintenance planifie</span>
                 <strong>
                   {formatDuration(
                     plan.plannedMaintenanceHours,
@@ -969,7 +998,7 @@ export default function MaintenancePlanDetailsPage() {
             <div className="details-row compact">
               <Clock size={20} />
               <div>
-                <span>Temps d'arrêt planifié</span>
+                <span>Temps d'arret planifie</span>
                 <strong>
                   {formatDuration(
                     plan.plannedStoppedHours,
@@ -984,12 +1013,12 @@ export default function MaintenancePlanDetailsPage() {
 
       <section className="details-card full maintenance-spare-card">
         <div className="section-title-row">
-          <h3>Pièces détachées à prévoir</h3>
+          <h3>Pieces detachees a prevoir</h3>
           <button
             type="button"
             className="icon-link-button"
             onClick={() => setShowSpareSelector((current) => !current)}
-            aria-label="Ajouter une pièce détachée"
+            aria-label="Ajouter une piece detachee"
           >
             <Plus size={20} />
           </button>
@@ -1003,7 +1032,7 @@ export default function MaintenancePlanDetailsPage() {
                 setSelectedSparePartId(Number(event.target.value))
               }
             >
-              <option value={0}>Sélectionner une pièce détachée</option>
+              <option value={0}>Selectionner une piece detachee</option>
               {availableSpareParts.map((sparePart) => (
                 <option key={sparePart.id} value={sparePart.id}>
                   {sparePart.name}
@@ -1018,7 +1047,7 @@ export default function MaintenancePlanDetailsPage() {
               onChange={(event) =>
                 setSelectedQuantity(Math.max(1, Number(event.target.value)))
               }
-              aria-label="Quantité à prévoir"
+              aria-label="Quantite a prevoir"
             />
 
             <button
@@ -1033,7 +1062,7 @@ export default function MaintenancePlanDetailsPage() {
         )}
 
         {plan.spareParts.length === 0 ? (
-          <p>Aucune pièce détachée liée.</p>
+          <p>Aucune piece detachee liee.</p>
         ) : (
           <div className="maintenance-spare-list">
             {plan.spareParts.map((sparePart) => {
@@ -1052,7 +1081,7 @@ export default function MaintenancePlanDetailsPage() {
                   <div>
                     <strong>{sparePart.sparePartName}</strong>
                     <span>
-                      Code : {sparePart.sparePartCode || "Non défini"} · À prévoir : {sparePart.quantity}
+                      Code : {sparePart.sparePartCode || "Non defini"} - A prevoir : {sparePart.quantity}
                     </span>
                   </div>
 
@@ -1060,7 +1089,7 @@ export default function MaintenancePlanDetailsPage() {
                     type="button"
                     className="icon-link-button danger"
                     onClick={() => removeSparePart(sparePart.sparePartId)}
-                    aria-label="Retirer la pièce détachée"
+                    aria-label="Retirer la piece detachee"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -1073,7 +1102,7 @@ export default function MaintenancePlanDetailsPage() {
 
       <section className="details-card full maintenance-realization-card">
         <div className="maintenance-realization-header">
-          <h3>Réalisation</h3>
+          <h3>Realisation</h3>
         </div>
 
         <div className="measure-form-group">
@@ -1093,7 +1122,7 @@ export default function MaintenancePlanDetailsPage() {
         <div className="maintenance-realization-grid three">
           <div className="measure-form-group">
             <label htmlFor="realization-date">
-              Réalisée le <span>*</span>
+              Realisee le <span>*</span>
             </label>
             <input
               id="realization-date"
@@ -1105,7 +1134,7 @@ export default function MaintenancePlanDetailsPage() {
 
           <div className="measure-form-group">
             <label htmlFor="realization-end-time">
-              Heure de fin de réalisation <span>*</span>
+              Heure de fin de realisation <span>*</span>
             </label>
             <input
               id="realization-end-time"
@@ -1117,7 +1146,7 @@ export default function MaintenancePlanDetailsPage() {
 
           <div className="measure-form-group">
             <label htmlFor="realization-actor">
-              Réalisée par <span>*</span>
+              Realisee par <span>*</span>
             </label>
             <select
               id="realization-actor"
@@ -1140,7 +1169,7 @@ export default function MaintenancePlanDetailsPage() {
 
         <div className="maintenance-realization-section-title">
           <Clock size={20} />
-          <h4>Temps passé</h4>
+          <h4>Temps passe</h4>
         </div>
 
         <div className="maintenance-realization-grid two">
@@ -1200,7 +1229,7 @@ export default function MaintenancePlanDetailsPage() {
             onClick={() => setRealizationTab("sparePart")}
           >
             <Package size={18} />
-            Pièce détachée
+            Piece detachee
           </button>
           <button
             type="button"
@@ -1208,7 +1237,7 @@ export default function MaintenancePlanDetailsPage() {
             onClick={() => setRealizationTab("additionalCost")}
           >
             <Coins size={18} />
-            Coût additionnel
+            Cout additionnel
           </button>
         </div>
 
@@ -1223,7 +1252,7 @@ export default function MaintenancePlanDetailsPage() {
                 value={realizationMeasureId}
                 onChange={(event) => setRealizationMeasureId(event.target.value)}
               >
-                <option value="">Sélectionner une mesure</option>
+                <option value="">Selectionner une mesure</option>
                 {measures.map((measure) => (
                   <option key={measure.id} value={measure.id}>
                     {measure.name} ({measure.unitSymbol})
@@ -1246,7 +1275,7 @@ export default function MaintenancePlanDetailsPage() {
 
             <div className="measure-form-group">
               <label htmlFor="realization-measure-date">
-                Date du relevé <span>*</span>
+                Date du releve <span>*</span>
               </label>
               <input
                 id="realization-measure-date"
@@ -1274,14 +1303,14 @@ export default function MaintenancePlanDetailsPage() {
           <div className="maintenance-realization-grid two">
             <div className="measure-form-group">
               <label htmlFor="realization-spare-part">
-                Pièce détachée <span>*</span>
+                Piece detachee <span>*</span>
               </label>
               <select
                 id="realization-spare-part"
                 value={realizationSparePartId}
                 onChange={(event) => setRealizationSparePartId(event.target.value)}
               >
-                <option value="">Sélectionner une pièce détachée</option>
+                <option value="">Selectionner une piece detachee</option>
                 {spareParts.map((sparePart) => (
                   <option key={sparePart.id} value={sparePart.id}>
                     {sparePart.name}
@@ -1291,7 +1320,7 @@ export default function MaintenancePlanDetailsPage() {
             </div>
 
             <div className="measure-form-group">
-              <label htmlFor="realization-spare-quantity">Quantité</label>
+              <label htmlFor="realization-spare-quantity">Quantite</label>
               <input
                 id="realization-spare-quantity"
                 type="number"
@@ -1309,7 +1338,7 @@ export default function MaintenancePlanDetailsPage() {
           <div className="maintenance-realization-grid two">
             <div className="measure-form-group">
               <label htmlFor="realization-additional-cost">
-                Coût additionnel <span>*</span>
+                Cout additionnel <span>*</span>
               </label>
               <div className="maintenance-currency-field">
                 <input
@@ -1323,7 +1352,7 @@ export default function MaintenancePlanDetailsPage() {
             </div>
 
             <div className="measure-form-group">
-              <label htmlFor="realization-additional-cost-label">Libellé</label>
+              <label htmlFor="realization-additional-cost-label">Libelle</label>
               <input
                 id="realization-additional-cost-label"
                 value={realizationAdditionalCostLabel}
@@ -1351,7 +1380,7 @@ export default function MaintenancePlanDetailsPage() {
           />
           <UploadCloud size={24} />
           <span>
-            Déposer un fichier ici ou <strong>parcourir</strong>
+            Deposer un fichier ici ou <strong>parcourir</strong>
           </span>
         </label>
 
@@ -1396,7 +1425,7 @@ export default function MaintenancePlanDetailsPage() {
           </button>
           <button type="button" className="measure-primary-button" onClick={validateRealization}>
             <CheckCircle2 size={18} />
-            Valider cette réalisation
+            Valider cette realisation
           </button>
         </div>
       </section>
@@ -1469,7 +1498,7 @@ export default function MaintenancePlanDetailsPage() {
                   aria-label={`Telecharger ${selectedDocument.name}`}
                 >
                   <Download size={18} />
-                  Télécharger
+                  Telecharger
                 </a>
                 <button
                   type="button"

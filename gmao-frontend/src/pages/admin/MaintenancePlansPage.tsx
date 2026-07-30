@@ -7,21 +7,19 @@ import {
   Download,
   History,
   MapPin,
-  Pencil,
   Plus,
   Search,
   SlidersHorizontal,
   Tag as TagIcon,
-  Trash2,
   Users,
   Wrench,
+  XCircle,
 } from "lucide-react";
 import type {
   MaintenancePlan,
   MaintenancePlanStatus,
 } from "../../types/maintenancePlan";
 import {
-  deleteMaintenancePlan,
   getMaintenancePlans,
   getMyMaintenancePlans,
   getAssignedToMeMaintenancePlans,
@@ -31,6 +29,7 @@ import { getCostCenters } from "../../services/costCenterService";
 import { getEquipment } from "../../services/equipmentService";
 import { getTags } from "../../services/tagService";
 import { getUsers } from "../../services/userService";
+import { getAuthenticatedRole } from "../../services/authService";
 import type { CostCenter } from "../../types/costCenter";
 import type { Equipment } from "../../types/equipment";
 import type { Tag } from "../../types/tag";
@@ -42,7 +41,7 @@ import "./task-styles.css";
 
 const BACKEND_URL = "http://localhost:8090";
 
-type DisplayStatus = "planned" | "in_progress" | "late" | "done";
+type DisplayStatus = "planned" | "in_progress" | "late" | "done" | "cancelled";
 type MaintenanceTab = "all" | DisplayStatus;
 type MaintenanceFilterDropdown =
   | "trigger"
@@ -91,6 +90,12 @@ const STATUS_TABS = [
     label: "Terminé",
     className: "tab-done",
     icon: History,
+  },
+  {
+    status: "cancelled",
+    label: "Annulé",
+    className: "tab-cancelled",
+    icon: XCircle,
   },
 ] as const;
 
@@ -180,6 +185,7 @@ function getPlanDateKey(plan: MaintenancePlan) {
 
 function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   if (plan.status === "DONE") return "done";
+  if (plan.status === "CANCELLED") return "cancelled";
   if (plan.status === "LATE") return "late";
   if (plan.status === "IN_PROGRESS") return "in_progress";
 
@@ -192,6 +198,7 @@ function getDisplayStatus(plan: MaintenancePlan): DisplayStatus {
 
 function getStatusLabel(status: DisplayStatus) {
   if (status === "done") return "Terminé";
+  if (status === "cancelled") return "Annulé";
   if (status === "late") return "En retard";
   if (status === "planned") return "Planifié";
   return "En cours";
@@ -247,13 +254,6 @@ function formatPlanCounter(
   return "-";
 }
 
-function getStoredStatus(status: DisplayStatus): MaintenancePlanStatus {
-  if (status === "done") return "DONE";
-  if (status === "late") return "LATE";
-  if (status === "planned") return "PLANNED";
-  return "IN_PROGRESS";
-}
-
 function getUserName(user: UserSummary): string {
   return (
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
@@ -300,6 +300,8 @@ export default function MaintenancePlansPage({
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
   const restrictedMode = technicianMode || providerMode;
+  const canUseSensitivePlanActions =
+    !restrictedMode && getAuthenticatedRole() === "ADMIN";
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
@@ -353,17 +355,6 @@ export default function MaintenancePlansPage({
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("Supprimer ce plan de maintenance ?")) return;
-
-    try {
-      await deleteMaintenancePlan(id);
-      setPlans((current) => current.filter((plan) => plan.id !== id));
-    } catch {
-      setError("Impossible de supprimer ce plan de maintenance.");
-    }
-  }
-
   async function handleStatusChange(
     plan: MaintenancePlan,
     status: MaintenancePlanStatus,
@@ -389,6 +380,7 @@ export default function MaintenancePlansPage({
       in_progress: 0,
       late: 0,
       done: 0,
+      cancelled: 0,
     };
 
     visiblePlans.forEach((plan) => {
@@ -871,7 +863,7 @@ export default function MaintenancePlansPage({
               <th>Déclencheur</th>
               <th>Prochaine échéance</th>
               <th>Statut</th>
-              {!restrictedMode && (
+              {canUseSensitivePlanActions && (
                 <th className="table-actions-column">Actions</th>
               )}
             </tr>
@@ -881,7 +873,7 @@ export default function MaintenancePlansPage({
             {filteredPlans.length === 0 ? (
               <tr>
                 <td
-                  colSpan={restrictedMode ? 6 : 7}
+                  colSpan={canUseSensitivePlanActions ? 7 : 6}
                   className="resource-table-empty"
                 >
                   {activeTab === "all"
@@ -937,52 +929,29 @@ export default function MaintenancePlansPage({
                       </span>
                     </td>
 
-                    <td>
-                      <select
-                        className={`maintenance-status-select ${displayStatus}`}
-                        value={displayStatus}
-                        disabled={updatingStatusId === plan.id}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) =>
-                          handleStatusChange(
-                            plan,
-                            getStoredStatus(event.target.value as DisplayStatus),
-                          )
-                        }
-                        aria-label="Modifier le statut du plan"
-                      >
-                        <option value="planned">Planifié</option>
-                        <option value="in_progress">En cours</option>
-                        <option value="late">En retard</option>
-                        <option value="done">Terminé</option>
-                      </select>
+                    <td className="table-status-cell">
+                      <span className={`maintenance-status-readonly ${displayStatus}`}>
+                        {getStatusLabel(displayStatus)}
+                      </span>
                     </td>
 
-                    {!restrictedMode && (
+                    {canUseSensitivePlanActions && (
                       <td>
                         <div className="table-actions">
-                          <button
-                            type="button"
-                            title="Modifier"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`${basePath}/maintenance-plans/${plan.id}/edit`);
-                            }}
-                          >
-                            <Pencil size={18} />
-                          </button>
+                          {plan.status !== "CANCELLED" && (
+                            <button
+                              type="button"
+                              title="Annuler"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleStatusChange(plan, "CANCELLED");
+                              }}
+                              disabled={updatingStatusId === plan.id}
+                            >
+                              <XCircle size={18} />
+                            </button>
+                          )}
 
-                          <button
-                            type="button"
-                            className="danger-action"
-                            title="Supprimer"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDelete(plan.id);
-                            }}
-                          >
-                            <Trash2 size={18} />
-                          </button>
                         </div>
                       </td>
                     )}
@@ -996,4 +965,3 @@ export default function MaintenancePlansPage({
     </section>
   );
 }
-

@@ -26,6 +26,7 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   LATE: { label: "En retard", className: "task-status-late" },
   DONE: { label: "Terminee", className: "task-status-done" },
   CANCELED: { label: "Annulee", className: "task-status-canceled" },
+  ARCHIVED: { label: "Archivee", className: "task-status-archived" },
 };
 
 type TaskTab = "ALL" | TaskStatus;

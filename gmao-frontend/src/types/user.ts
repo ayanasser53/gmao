@@ -10,6 +10,7 @@ export interface UserSummary {
 export type UserRole =
   | "SUPERADMIN"
   | "ADMIN"
+  | "SUPERVISOR"
   | "TECHNICIAN"
   | "PRODUCTION"
   | "SERVICE_PROVIDER";

@@ -459,7 +459,7 @@
 
 .task-status-cards {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin: 20px 0 22px;
 }
@@ -520,6 +520,11 @@
   background: #ddf6e9;
 }
 
+.task-status-cards button.tab-cancelled svg {
+  color: #64748b;
+  background: #eef2f7;
+}
+
 .task-status-cards button.tab-all.active {
   background: #e5f5fc;
   border-color: #0b84c6;
@@ -548,6 +553,12 @@
   background: #ddf6e9;
   border-color: #198754;
   box-shadow: inset 4px 0 0 #198754;
+}
+
+.task-status-cards button.tab-cancelled.active {
+  background: #eef2f7;
+  border-color: #64748b;
+  box-shadow: inset 4px 0 0 #64748b;
 }
 
 @media (max-width: 900px) {
@@ -630,6 +641,11 @@
 .task-status-canceled {
   color: #5a5f6b;
   background: #e7e8eb;
+}
+
+.task-status-archived {
+  color: #475569;
+  background: #eef2f7;
 }
 
 .task-status-select.task-status-canceled {
@@ -2180,7 +2196,7 @@ button.task-linked-row:disabled {
 .dashboard-chart-card {
   padding: 22px;
   background: #ffffff;
-  border: 1px solid #cddceb;
+  border: 1px solid #d8e3c1;
   border-radius: 10px;
 }
 
@@ -2198,7 +2214,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-chart-card h2 svg {
-  color: #a3660f;
+  color: #6f7f38;
 }
 
 .dashboard-chart-card-header {
@@ -2213,7 +2229,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-chart-link {
-  color: #087fbd;
+  color: #556b2f;
   background: transparent;
   border: 0;
   font-size: 13px;
@@ -2231,7 +2247,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-total-cost strong {
-  color: #12365c;
+  color: #556b2f;
 }
 
 .dashboard-empty-hint {
@@ -2371,7 +2387,7 @@ button.task-linked-row:disabled {
   gap: 12px;
   padding: 16px 18px;
   background: #ffffff;
-  border: 1px solid #cddceb;
+  border: 1px solid #d8e3c1;
   border-radius: 10px;
 }
 
@@ -2381,8 +2397,8 @@ button.task-linked-row:disabled {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
-  color: #087fbd;
-  background: #eaf6fc;
+  color: #556b2f;
+  background: #eef4df;
   border-radius: 10px;
 }
 

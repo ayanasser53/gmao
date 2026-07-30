@@ -1,4 +1,5 @@
 import {
+  Archive,
   Ban,
   CalendarClock,
   CalendarDays,
@@ -85,6 +86,7 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   LATE: { label: "En retard", className: "task-status-late" },
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   CANCELED: { label: "Annulée", className: "task-status-canceled" },
+  ARCHIVED: { label: "Archivée", className: "task-status-archived" },
 };
 
 type TaskTab = "ALL" | TaskStatus;
@@ -159,7 +161,8 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
   const currentUserId = getAuthenticatedUserId();
-  const isAdmin = getAuthenticatedRole() === "ADMIN";
+  const authenticatedRole = getAuthenticatedRole();
+  const canUseSensitiveTaskActions = authenticatedRole === "ADMIN";
 
   // Le prestataire n'a pas de vue "toutes les tâches de mon usine" : ses
   // tâches lui sont déjà filtrées côté serveur (assigné, toutes usines
@@ -172,7 +175,6 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
   const [activeTab, setActiveTab] = useState<TaskTab>("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -262,7 +264,6 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
       setError("Impossible de mettre à jour le statut.");
     } finally {
       setStatusUpdating(null);
-      setEditingStatusId(null);
     }
   }
 
@@ -286,6 +287,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
       LATE: visibleTasks.filter((task) => task.status === "LATE").length,
       DONE: visibleTasks.filter((task) => task.status === "DONE").length,
       CANCELED: visibleTasks.filter((task) => task.status === "CANCELED").length,
+      ARCHIVED: visibleTasks.filter((task) => task.status === "ARCHIVED").length,
     };
   }, [tasks, restrictedMode, currentUserId]);
 
@@ -991,7 +993,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
                 />
-                <span>→</span>
+                <span>â†’</span>
                 <input
                   type="date"
                   value={filterEndDate}
@@ -1085,6 +1087,15 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
           Annulée
           <span>{statusCounts.CANCELED}</span>
         </button>
+        <button
+          type="button"
+          className={`tab-cancelled ${activeTab === "ARCHIVED" ? "active" : ""}`}
+          onClick={() => setActiveTab("ARCHIVED")}
+        >
+          <Archive size={18} />
+          Archivée
+          <span>{statusCounts.ARCHIVED}</span>
+        </button>
       </div>
 
       {loading && <div className="resource-loading">Chargement...</div>}
@@ -1104,13 +1115,14 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                 <th>Centre de coût</th>
                 <th>Signalé par</th>
                 <th>Statut</th>
+                {canUseSensitiveTaskActions && <th className="table-actions-column">Actions</th>}
               </tr>
             </thead>
 
             <tbody>
               {filteredTasks.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="resource-table-empty">
+                  <td colSpan={canUseSensitiveTaskActions ? 7 : 6} className="resource-table-empty">
                     {activeTab === "ALL"
                       ? "Aucune tâche trouvée."
                       : `Aucune tâche avec le statut "${STATUS_META[activeTab].label}".`}
@@ -1121,11 +1133,6 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
               {filteredTasks.map((task) => {
                 const status = STATUS_META[task.status];
                 const equipmentImage = getEquipmentImageUrl(task.equipment);
-                const selectedStatus =
-                  task.status === "LATE" || task.status === "PLANNED" || task.status === "CREATED"
-                    ? "IN_PROGRESS"
-                    : task.status;
-
                 return (
                   <tr
                     key={task.id}
@@ -1201,41 +1208,41 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                       )}
                     </td>
 
-                    <td onClick={(event) => event.stopPropagation()}>
-                      {editingStatusId === task.id ? (
-                        <select
-                          autoFocus
-                          className={`task-status-select ${STATUS_META[selectedStatus].className}`}
-                          value={selectedStatus}
-                          disabled={statusUpdating === task.id}
-                          onBlur={() => setEditingStatusId(null)}
-                          onChange={(event) =>
-                            handleStatusChange(
-                              task.id,
-                              event.target.value as TaskStatus,
-                            )
-                          }
-                        >
-                          <option value="IN_PROGRESS">En cours</option>
-                          <option value="DONE">Terminée</option>
-                          {isAdmin && task.status !== "DONE" && (
-                            <option value="CANCELED">Annulée</option>
-                          )}
-                        </select>
-                      ) : task.status === "CANCELED" ? (
-                        <span className={`task-status-badge ${status.className}`}>
-                          {status.label}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`task-status-badge task-status-editable ${status.className}`}
-                          onClick={() => setEditingStatusId(task.id)}
-                        >
-                          {status.label}
-                        </button>
-                      )}
+                    <td className="table-status-cell">
+                      <span className={`task-status-badge ${status.className}`}>
+                        {status.label}
+                      </span>
                     </td>
+
+                    {canUseSensitiveTaskActions && (
+                      <td onClick={(event) => event.stopPropagation()}>
+                        <div className="table-actions">
+                          {task.status !== "DONE" &&
+                            task.status !== "CANCELED" &&
+                            task.status !== "ARCHIVED" && (
+                              <button
+                                type="button"
+                                title="Annuler"
+                                disabled={statusUpdating === task.id}
+                                onClick={() => handleStatusChange(task.id, "CANCELED")}
+                              >
+                                <Ban size={18} />
+                              </button>
+                            )}
+
+                          {task.status !== "ARCHIVED" && (
+                            <button
+                              type="button"
+                              title="Archiver"
+                              disabled={statusUpdating === task.id}
+                              onClick={() => handleStatusChange(task.id, "ARCHIVED")}
+                            >
+                              <Archive size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -1248,5 +1255,3 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
 }
 
 export default TaskListPage;
-
-

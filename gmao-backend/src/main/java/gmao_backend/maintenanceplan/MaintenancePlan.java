@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.maintenanceplan;
 
 import com.gmao.gmao_backend.equipment.Equipment;
+import com.gmao.gmao_backend.tag.Tag;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -77,6 +78,15 @@ public class MaintenancePlan {
     @Builder.Default
     @OneToMany(mappedBy = "maintenancePlan", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MaintenancePlanAssignee> assignees = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany
+    @JoinTable(
+            name = "maintenance_plan_tags",
+            joinColumns = @JoinColumn(name = "maintenance_plan_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;

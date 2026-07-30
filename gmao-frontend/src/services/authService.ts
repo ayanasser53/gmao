@@ -18,13 +18,20 @@ export async function loginAdmin(
   return response.data;
 }
 
+function normalizeRole(role: string | null | undefined): string {
+  return (role ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+}
+
 export function saveAuthentication(authData: AuthResponse): void {
   clearImpersonatedUsine();
 
   localStorage.setItem("token", authData.token);
   localStorage.setItem("userId", String(authData.userId));
   localStorage.setItem("email", authData.email);
-  localStorage.setItem("role", authData.role);
+  localStorage.setItem("role", normalizeRole(authData.role));
 
   if (authData.usineId !== null) {
     localStorage.setItem("usineId", String(authData.usineId));
@@ -57,7 +64,7 @@ export function getAuthenticatedEmail(): string {
 }
 
 export function getAuthenticatedRole(): string {
-  return localStorage.getItem("role") ?? "";
+  return normalizeRole(localStorage.getItem("role"));
 }
 
 export function isSuperAdmin(): boolean {

@@ -9,8 +9,11 @@ import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.sparepart.SparePartRepository;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovement;
 import com.gmao.gmao_backend.sparepart.SparePartStockMovementRepository;
+import com.gmao.gmao_backend.tag.Tag;
+import com.gmao.gmao_backend.tag.TagRepository;
 import com.gmao.gmao_backend.user.User;
 import com.gmao.gmao_backend.user.UserRepository;
+import com.gmao.gmao_backend.user.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +34,7 @@ public class MaintenancePlanService {
     private final SparePartRepository sparePartRepository;
     private final SparePartStockMovementRepository stockMovementRepository;
     private final UserRepository userRepository;
+    private final TagRepository tagRepository;
     private final CurrentUserProvider currentUserProvider;
     private final NotificationService notificationService;
 
@@ -60,8 +64,7 @@ public class MaintenancePlanService {
     }
 
     /**
-     * Mes plans de maintenance, toutes usines confondues. Utilisé par le
-     * portail prestataire (peut intervenir sur plusieurs usines).
+     * Mes plans de maintenance, toutes usines confondues. Utilise par le portail prestataire.
      */
     public List<MaintenancePlanResponse> findMineAnyUsine() {
         User currentUser = currentUserProvider.getUser();
@@ -74,7 +77,7 @@ public class MaintenancePlanService {
 
     public MaintenancePlanResponse create(MaintenancePlanRequest request) {
         Equipment equipment = equipmentRepository.findByIdAndUsineId(request.equipmentId(), currentUserProvider.requireUsineId())
-                .orElseThrow(() -> new RuntimeException("Équipement introuvable"));
+                .orElseThrow(() -> new RuntimeException("Equipement introuvable"));
 
         MaintenancePlan plan = MaintenancePlan.builder()
                 .equipment(equipment)
@@ -95,6 +98,7 @@ public class MaintenancePlanService {
 
         applySpareParts(plan, request.spareParts());
         applyAssignees(plan, request.assigneeIds());
+        applyTags(plan, request.tagIds());
 
         MaintenancePlan savedPlan = maintenancePlanRepository.save(plan);
 
@@ -107,8 +111,12 @@ public class MaintenancePlanService {
         MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
 
+        if (plan.getStatus() == MaintenancePlanStatus.CANCELLED) {
+            throw new IllegalArgumentException("Un plan de maintenance annule ne peut pas etre modifie.");
+        }
+
         Equipment equipment = equipmentRepository.findByIdAndUsineId(request.equipmentId(), currentUserProvider.requireUsineId())
-                .orElseThrow(() -> new RuntimeException("Équipement introuvable"));
+                .orElseThrow(() -> new RuntimeException("Equipement introuvable"));
 
         plan.setEquipment(equipment);
         plan.setEquipmentOnly(request.equipmentOnly());
@@ -123,8 +131,19 @@ public class MaintenancePlanService {
         plan.setPlannedMaintenanceMinutes(request.plannedMaintenanceMinutes());
         plan.setPlannedStoppedHours(request.plannedStoppedHours());
         plan.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
-        plan.setStatus(resolveSavedStatus(request.status()));
+
+        MaintenancePlanStatus nextStatus = resolveSavedStatus(request.status());
+
+        if (nextStatus == MaintenancePlanStatus.CANCELLED
+                && currentUserProvider.getUser().getRole() != Role.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Seul un administrateur peut annuler un plan de maintenance."
+            );
+        }
+
+        plan.setStatus(nextStatus);
         applySpareParts(plan, request.spareParts());
+        applyTags(plan, request.tagIds());
 
         java.util.Set<Long> previouslyAssignedUserIds = plan.getAssignees()
                 .stream()
@@ -143,9 +162,7 @@ public class MaintenancePlanService {
     }
 
     /**
-     * Prévient uniquement les utilisateurs nouvellement affectés à ce plan
-     * (absents de l'ancienne liste), sauf s'il s'agit de l'auteur de
-     * l'action lui-même.
+     * Previent uniquement les utilisateurs nouvellement affectes a ce plan.
      */
     private void notifyNewAssignees(
             MaintenancePlan plan,
@@ -164,7 +181,7 @@ public class MaintenancePlanService {
                 .forEach(user -> notificationService.notify(
                         user,
                         NotificationType.MAINTENANCE_PLAN_ASSIGNED,
-                        "Plan de maintenance assigné",
+                        "Plan de maintenance assigne",
                         plan.getDescription(),
                         "/maintenance-plans/" + plan.getId()
                 ));
@@ -175,6 +192,29 @@ public class MaintenancePlanService {
 
         MaintenancePlanStatus previousStatus = plan.getStatus();
         MaintenancePlanStatus nextStatus = resolveSavedStatus(status);
+
+        if (nextStatus == MaintenancePlanStatus.CANCELLED) {
+            User actor = currentUserProvider.getUser();
+
+            if (actor.getRole() != Role.ADMIN) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Seul un administrateur peut annuler un plan de maintenance."
+                );
+            }
+
+            List<MaintenancePlan> seriesPlans = findPlanSeries(plan);
+            if (seriesPlans.isEmpty()) {
+                seriesPlans = List.of(plan);
+            }
+            seriesPlans.forEach(seriesPlan -> seriesPlan.setStatus(MaintenancePlanStatus.CANCELLED));
+            maintenancePlanRepository.saveAll(seriesPlans);
+
+            if (previousStatus != MaintenancePlanStatus.CANCELLED) {
+                notifyAssigneesOfStatusChange(plan, nextStatus);
+            }
+
+            return toResponse(plan);
+        }
 
         plan.setStatus(nextStatus);
         MaintenancePlan savedPlan = maintenancePlanRepository.save(plan);
@@ -200,9 +240,25 @@ public class MaintenancePlanService {
         return toResponse(savedPlan);
     }
 
+    private List<MaintenancePlan> findPlanSeries(MaintenancePlan plan) {
+        return maintenancePlanRepository.findSeriesBySignature(
+                plan.getEquipment().getId(),
+                plan.getEquipment().getUsine().getId(),
+                plan.isEquipmentOnly(),
+                plan.getDescription(),
+                plan.isRegulatory(),
+                plan.getTriggerType(),
+                plan.getFrequencyValue(),
+                plan.getFrequencyUnit(),
+                plan.getPlannedMaintenanceHours(),
+                plan.getPlannedMaintenanceMinutes(),
+                plan.getPlannedStoppedHours(),
+                plan.getPlannedStoppedMinutes()
+        );
+    }
+
     /**
-     * Prévient chaque affecté (hors auteur de l'action) qu'un plan de
-     * maintenance a changé de statut.
+     * Previent chaque affecte qu'un plan de maintenance a change de statut.
      */
     private void notifyAssigneesOfStatusChange(MaintenancePlan plan, MaintenancePlanStatus status) {
         User actor = currentUserProvider.getUser();
@@ -215,27 +271,25 @@ public class MaintenancePlanService {
                 .forEach(user -> notificationService.notify(
                         user,
                         NotificationType.MAINTENANCE_PLAN_DUE,
-                        "Plan de maintenance mis à jour",
-                        "« " + plan.getDescription() + " » est maintenant « "
-                                + planStatusLabel(status) + " ».",
+                        "Plan de maintenance mis a jour",
+                        "\"" + plan.getDescription() + "\" est maintenant \""
+                                + planStatusLabel(status) + "\".",
                         "/maintenance-plans/" + plan.getId()
                 ));
     }
 
     private String planStatusLabel(MaintenancePlanStatus status) {
         return switch (status) {
-            case PLANNED -> "Planifié";
+            case PLANNED -> "Planifie";
             case IN_PROGRESS -> "En cours";
             case LATE -> "En retard";
-            case DONE -> "Terminé";
+            case DONE -> "Termine";
+            case CANCELLED -> "Annule";
         };
     }
 
     /**
-     * Décrémente le stock de chaque pièce détachée liée au plan de
-     * maintenance, et enregistre un mouvement de stock associé, au moment
-     * où le plan passe au statut "Terminé". Reproduit exactement le
-     * comportement déjà en place pour les activités.
+     * Decremente le stock des pieces liees quand le plan passe au statut termine.
      */
     private void consumeSpareParts(MaintenancePlan plan) {
         for (MaintenancePlanSparePart line : plan.getSpareParts()) {
@@ -274,9 +328,7 @@ public class MaintenancePlanService {
     }
 
     /**
-     * Résout un plan par id, d'abord dans l'usine de l'utilisateur courant,
-     * puis, à défaut, s'il en fait partie des affectés (cas d'un
-     * prestataire intervenant sur une autre usine).
+     * Resout un plan par id dans l'usine courante ou parmi les plans affectes.
      */
     private MaintenancePlan resolvePlan(Long id) {
         Long usineId = currentUserProvider.getUsineIdOrNull();
@@ -318,7 +370,7 @@ public class MaintenancePlanService {
             }
 
             SparePart sparePart = sparePartRepository.findById(item.sparePartId())
-                    .orElseThrow(() -> new RuntimeException("Pièce détachée introuvable"));
+                    .orElseThrow(() -> new RuntimeException("Piece detachee introuvable"));
 
             plan.getSpareParts().add(
                     MaintenancePlanSparePart.builder()
@@ -338,12 +390,42 @@ public class MaintenancePlanService {
         }
 
         userRepository.findAllById(assigneeIds)
-                .forEach(user -> plan.getAssignees().add(
-                        MaintenancePlanAssignee.builder()
-                                .maintenancePlan(plan)
-                                .user(user)
-                                .build()
-                ));
+                .forEach(user -> {
+                    if (!isExecutableRole(user)) {
+                        throw new IllegalArgumentException(
+                                "Un plan de maintenance peut etre assigne uniquement a un technicien ou un prestataire."
+                        );
+                    }
+
+                    plan.getAssignees().add(
+                            MaintenancePlanAssignee.builder()
+                                    .maintenancePlan(plan)
+                                    .user(user)
+                                    .build()
+                    );
+                });
+    }
+
+    private boolean isExecutableRole(User user) {
+        return user.getRole() == Role.TECHNICIAN
+                || user.getRole() == Role.SERVICE_PROVIDER;
+    }
+
+    private void applyTags(MaintenancePlan plan, List<Long> tagIds) {
+        plan.getTags().clear();
+
+        if (tagIds == null || tagIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> uniqueIds = new HashSet<>(tagIds);
+        List<Tag> tags = tagRepository.findAllById(uniqueIds);
+
+        if (tags.size() != uniqueIds.size()) {
+            throw new IllegalArgumentException("Un ou plusieurs labels sont introuvables.");
+        }
+
+        plan.getTags().addAll(tags);
     }
 
     private MaintenancePlanResponse toResponse(MaintenancePlan plan) {
@@ -379,6 +461,14 @@ public class MaintenancePlanService {
                 plan.getAssignees()
                         .stream()
                         .map(this::toAssigneeResponse)
+                        .toList(),
+                plan.getTags()
+                        .stream()
+                        .map(tag -> new MaintenancePlanResponse.TagResponse(
+                                tag.getId(),
+                                tag.getName(),
+                                tag.getColor()
+                        ))
                         .toList(),
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
@@ -437,6 +527,10 @@ public class MaintenancePlanService {
         LocalDate today = LocalDate.now();
 
         for (MaintenancePlan source : existingPlans) {
+            if (source.getStatus() == MaintenancePlanStatus.CANCELLED) {
+                continue;
+            }
+
             if (!isRecurringPlan(source) || source.getNextDueDate() == null) {
                 continue;
             }
@@ -471,8 +565,7 @@ public class MaintenancePlanService {
     }
 
     /**
-     * Prévient chaque utilisateur directement affecté (hors équipes) qu'un
-     * plan de maintenance vient de passer en retard.
+     * Previent chaque utilisateur directement affecte qu'un plan de maintenance vient de passer en retard.
      */
     private void notifyAssigneesOfLatePlan(MaintenancePlan plan) {
         plan.getAssignees()
@@ -483,12 +576,16 @@ public class MaintenancePlanService {
                         user,
                         NotificationType.MAINTENANCE_PLAN_DUE,
                         "Plan de maintenance en retard",
-                        "« " + plan.getDescription() + " » est maintenant en retard.",
+                        "\"" + plan.getDescription() + "\" est maintenant en retard.",
                         "/maintenance-plans/" + plan.getId()
                 ));
     }
 
     private void createNextOccurrenceIfMissing(MaintenancePlan source, LocalDate today) {
+        if (source.getStatus() == MaintenancePlanStatus.CANCELLED) {
+            return;
+        }
+
         if (!isRecurringPlan(source) || source.getNextDueDate() == null) {
             return;
         }

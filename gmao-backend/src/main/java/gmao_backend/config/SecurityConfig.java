@@ -74,25 +74,29 @@ public class SecurityConfig {
                         // Les techniciens, comme les operateurs et prestataires, peuvent
                         // signaler une tache sans champs de planification ni d'assignement.
                         .requestMatchers(HttpMethod.POST, "/api/tasks")
-                        .hasAnyRole("ADMIN", "PRODUCTION", "SERVICE_PROVIDER", "TECHNICIAN")
+                        .hasAnyRole("ADMIN", "SUPERVISOR", "PRODUCTION", "SERVICE_PROVIDER", "TECHNICIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/tasks/*")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "SUPERVISOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/tasks/*")
                         .hasRole("ADMIN")
 
                         // Seuls les roles maintenance pilotent l'avancement des taches
                         .requestMatchers(HttpMethod.PATCH, "/api/tasks/*/status")
-                        .hasAnyRole("ADMIN", "TECHNICIAN", "SERVICE_PROVIDER")
+                        .hasAnyRole("ADMIN", "SUPERVISOR", "TECHNICIAN", "SERVICE_PROVIDER")
 
                         // Les plans sont crees et structures par l'administrateur.
                         .requestMatchers(HttpMethod.POST, "/api/maintenance-plans")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "SUPERVISOR")
                         .requestMatchers(HttpMethod.PUT, "/api/maintenance-plans/*")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "SUPERVISOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/maintenance-plans/*")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/maintenance-plans/*/status")
-                        .hasAnyRole("ADMIN", "TECHNICIAN", "SERVICE_PROVIDER")
+                        .hasAnyRole("ADMIN", "SUPERVISOR")
+
+                        // Le superviseur consulte et pilote, mais ne supprime pas.
+                        .requestMatchers(HttpMethod.DELETE, "/api/**")
+                        .hasAnyRole("SUPERADMIN", "ADMIN")
 
                         // Toutes les autres routes demandent un JWT
                         .anyRequest().authenticated()

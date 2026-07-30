@@ -21,7 +21,10 @@ import {
   type TagOption,
 } from "../../services/taskService";
 
-import { getAuthenticatedUserId } from "../../services/authService";
+import {
+  getAuthenticatedEmail,
+  getAuthenticatedUserId,
+} from "../../services/authService";
 import { getEquipment } from "../../services/equipmentService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
@@ -104,11 +107,24 @@ function TaskCreatePage() {
   const [assignSearch, setAssignSearch] = useState("");
   const [assignMode, setAssignMode] = useState<"manual" | "tags">("manual");
   const [assignTagIds, setAssignTagIds] = useState<number[]>([]);
-  const [showReportedByDropdown, setShowReportedByDropdown] = useState(false);
   const [showAssignSection, setShowAssignSection] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const executableUserIds = useMemo(
+    () =>
+      new Set(
+        userDetails
+          .filter(
+            (user) =>
+              user.role === "TECHNICIAN" ||
+              user.role === "SERVICE_PROVIDER",
+          )
+          .map((user) => user.id),
+      ),
+    [userDetails],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -140,13 +156,22 @@ function TaskCreatePage() {
       const currentUserOption = userList.find(
         (option) => option.id === currentUserId,
       );
+      const currentUserDetail = userDetailList.find(
+        (user) => user.id === currentUserId,
+      );
 
-      if (currentUserOption) {
+      if (currentUserOption || currentUserDetail || currentUserId) {
+        const currentUserLabel =
+          currentUserOption?.label ||
+          (currentUserDetail
+            ? `${currentUserDetail.firstName} ${currentUserDetail.lastName}`.trim()
+            : getAuthenticatedEmail());
+
         setAssignees([
           {
-            key: `user-${currentUserOption.id}`,
-            userId: currentUserOption.id,
-            label: currentUserOption.label,
+            key: `user-${currentUserId}`,
+            userId: currentUserId ?? undefined,
+            label: currentUserLabel,
           },
         ]);
       }
@@ -167,19 +192,6 @@ function TaskCreatePage() {
         ? current.filter((tagId) => tagId !== id)
         : [...current, id],
     );
-  }
-
-  function addAssignee(userId: number): void {
-    const option = userOptions.find((option) => option.id === userId);
-
-    if (!option || assignees.some((a) => a.userId === userId)) {
-      return;
-    }
-
-    setAssignees((current) => [
-      ...current,
-      { key: `user-${userId}`, userId, label: option.label },
-    ]);
   }
 
   function addAssignedUser(userId: number): void {
@@ -262,7 +274,6 @@ function TaskCreatePage() {
 
       if (createAnother) {
         setDescription("");
-        setAssignees([]);
         setLinks([]);
         setFiles([]);
         setTagIds([]);
@@ -280,14 +291,18 @@ function TaskCreatePage() {
   const filteredUserOptions = useMemo(() => {
     const query = assignSearch.trim().toLowerCase();
 
+    const executableUsers = userOptions.filter((option) =>
+      executableUserIds.has(option.id),
+    );
+
     if (!query) {
-      return userOptions;
+      return executableUsers;
     }
 
-    return userOptions.filter((option) =>
+    return executableUsers.filter((option) =>
       option.label.toLowerCase().includes(query),
     );
-  }, [userOptions, assignSearch]);
+  }, [userOptions, executableUserIds, assignSearch]);
 
   const filteredTeamOptions = useMemo(() => {
     const query = assignSearch.trim().toLowerCase();
@@ -312,8 +327,10 @@ function TaskCreatePage() {
     }
 
     const matchedUsers = userDetails
-      .filter((user) =>
-        user.tags.some((tag) => assignTagIds.includes(tag.id)),
+      .filter(
+        (user) =>
+          executableUserIds.has(user.id) &&
+          user.tags.some((tag) => assignTagIds.includes(tag.id)),
       )
       .map((user) => ({
         key: `user-${user.id}`,
@@ -332,7 +349,7 @@ function TaskCreatePage() {
       }));
 
     setAssignedTo([...matchedTeams, ...matchedUsers]);
-  }, [assignMode, assignTagIds, userDetails, teamOptions]);
+  }, [assignMode, assignTagIds, userDetails, teamOptions, executableUserIds]);
 
   return (
     <section className="supplier-modal-page">
@@ -491,67 +508,16 @@ function TaskCreatePage() {
 
               <div className="task-chip-list">
                 {assignees.length === 0 && (
-                  <p className="task-empty-hint">Personne renseignée pour l'instant.</p>
+                  <p className="task-empty-hint">
+                    Le compte connecté sera utilisé automatiquement.
+                  </p>
                 )}
 
                 {assignees.map((assignee) => (
                   <span className="task-chip" key={assignee.key}>
                     {assignee.label}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAssignees((current) =>
-                          current.filter((a) => a.key !== assignee.key),
-                        )
-                      }
-                      aria-label={`Retirer ${assignee.label}`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
                   </span>
                 ))}
-              </div>
-
-              <div className="task-filter-dropdown">
-                <button
-                  type="button"
-                  className="task-filter-dropdown-trigger"
-                  onClick={() =>
-                    setShowReportedByDropdown((current) => !current)
-                  }
-                >
-                  + Sélectionner un utilisateur
-                </button>
-
-                {showReportedByDropdown && (
-                  <div className="task-filter-dropdown-panel">
-                    {userOptions.length === 0 && (
-                      <p className="task-empty-hint">
-                        Aucun collègue disponible.
-                      </p>
-                    )}
-
-                    {userOptions.map((option) => (
-                      <button
-                        type="button"
-                        key={option.id}
-                        className="task-filter-dropdown-row"
-                        onClick={() => {
-                          addAssignee(option.id);
-                          setShowReportedByDropdown(false);
-                        }}
-                      >
-                        <span
-                          className="task-filter-avatar"
-                          style={{ background: avatarColor(option.id) }}
-                        >
-                          {initials(option.label)}
-                        </span>
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 

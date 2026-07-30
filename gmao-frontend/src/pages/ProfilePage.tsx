@@ -17,6 +17,7 @@ import type { UserDetail, UserRole } from "../types/user";
 const ROLE_LABELS: Record<UserRole, string> = {
   SUPERADMIN: "Super administrateur",
   ADMIN: "Administrateur",
+  SUPERVISOR: "Superviseur",
   TECHNICIAN: "Technicien",
   PRODUCTION: "Operateur",
   SERVICE_PROVIDER: "Prestataire",

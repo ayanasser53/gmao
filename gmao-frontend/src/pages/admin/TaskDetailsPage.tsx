@@ -124,6 +124,7 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }>
     LATE: { label: "En retard", className: "task-status-late" },
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
     CANCELED: { label: "Annulée", className: "task-status-canceled" },
+    ARCHIVED: { label: "Archivée", className: "task-status-archived" },
   };
 
 const AVATAR_COLORS = [
@@ -184,10 +185,9 @@ function TaskDetailsPage() {
   const [tagOptions, setTagOptions] = useState<TagOption[]>([]);
 
   const [editingField, setEditingField] = useState<
-    "date" | "reportedBy" | "assignedTo" | "labels" | "description" | null
+    "date" | "assignedTo" | "labels" | "description" | null
   >(null);
   const [saving, setSaving] = useState(false);
-  const [showReportedByDropdown, setShowReportedByDropdown] = useState(false);
   const [showAssignedToDropdown, setShowAssignedToDropdown] = useState(false);
 
   const [sparePartOptions, setSparePartOptions] = useState<SparePart[]>([]);
@@ -205,17 +205,18 @@ function TaskDetailsPage() {
   const [editStartHour, setEditStartHour] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editEndHour, setEditEndHour] = useState("");
-  const [editReportedBy, setEditReportedBy] = useState<
-    { userId?: number; teamId?: number; label: string }[]
-  >([]);
   const [editAssignedTo, setEditAssignedTo] = useState<
     { userId?: number; teamId?: number; label: string }[]
   >([]);
   const [editTagIds, setEditTagIds] = useState<number[]>([]);
   const [editDescription, setEditDescription] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [validating, setValidating] = useState(false);
 
-  const isAdmin = getAuthenticatedRole() === "ADMIN";
+  const authenticatedRole = getAuthenticatedRole();
+  const canValidateTask =
+    authenticatedRole === "ADMIN" || authenticatedRole === "SUPERVISOR";
+  const canUseSensitiveTaskActions = authenticatedRole === "ADMIN";
 
   useEffect(() => {
     async function loadTaskDetails() {
@@ -258,20 +259,12 @@ function TaskDetailsPage() {
       return;
     }
 
-    setShowReportedByDropdown(false);
     setShowAssignedToDropdown(false);
 
     setEditStartDate(task.startDate);
     setEditStartHour(task.startHour ?? "");
     setEditEndDate(task.endDate);
     setEditEndHour(task.endHour ?? "");
-    setEditReportedBy(
-      task.assignees.map((a) => ({
-        userId: a.userId ?? undefined,
-        teamId: a.teamId ?? undefined,
-        label: a.type === "USER" ? a.userFullName ?? "" : a.teamName ?? "",
-      })),
-    );
     setEditAssignedTo(
       task.assignedTo.map((a) => ({
         userId: a.userId ?? undefined,
@@ -388,7 +381,7 @@ function TaskDetailsPage() {
   }
 
   async function handleCancelTask(): Promise<void> {
-    if (!task || !isAdmin) {
+    if (!task || !canUseSensitiveTaskActions) {
       return;
     }
 
@@ -414,9 +407,46 @@ function TaskDetailsPage() {
     }
   }
 
+  async function handleValidateTask(): Promise<void> {
+    if (!task || !canValidateTask) {
+      return;
+    }
+
+    if (!window.confirm("Confirmez-vous la validation de cette tâche ?")) {
+      return;
+    }
+
+    setValidating(true);
+
+    try {
+      const updated = await updateTaskStatus(task.id, "DONE");
+      setTask(updated);
+      setError("");
+    } catch (requestError) {
+      console.error(requestError);
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "La validation a échoué. Réessayez.";
+      setError(message);
+    } finally {
+      setValidating(false);
+    }
+  }
+
   const equipmentImage = useMemo(
     () => getFileUrl(task?.equipment?.image),
     [task?.equipment?.image],
+  );
+
+  const executableUserOptions = useMemo(
+    () =>
+      userOptions.filter(
+        (user) =>
+          user.role === "TECHNICIAN" ||
+          user.role === "SERVICE_PROVIDER",
+      ),
+    [userOptions],
   );
 
   const taskPreviewDocuments = useMemo<PreviewDocument[]>(() => {
@@ -489,17 +519,35 @@ function TaskDetailsPage() {
               {status.label}
             </span>
 
-            {isAdmin && task.status !== "DONE" && task.status !== "CANCELED" && (
-              <button
-                type="button"
-                className="resource-secondary-button"
-                onClick={() => void handleCancelTask()}
-                disabled={cancelling}
-              >
-                <Ban size={16} />
-                {cancelling ? "Annulation..." : "Annuler la tâche"}
-              </button>
-            )}
+            {canValidateTask &&
+              task.status !== "DONE" &&
+              task.status !== "CANCELED" &&
+              task.status !== "ARCHIVED" && (
+                <button
+                  type="button"
+                  className="resource-secondary-button"
+                  onClick={() => void handleValidateTask()}
+                  disabled={validating || cancelling}
+                >
+                  <CheckCircle2 size={16} />
+                  {validating ? "Validation..." : "Valider la tâche"}
+                </button>
+              )}
+
+            {canUseSensitiveTaskActions &&
+              task.status !== "DONE" &&
+              task.status !== "CANCELED" &&
+              task.status !== "ARCHIVED" && (
+                <button
+                  type="button"
+                  className="resource-secondary-button"
+                  onClick={() => void handleCancelTask()}
+                  disabled={cancelling || validating}
+                >
+                  <Ban size={16} />
+                  {cancelling ? "Annulation..." : "Annuler la tâche"}
+                </button>
+              )}
           </div>
         </div>
       </div>
@@ -617,117 +665,8 @@ function TaskDetailsPage() {
             <div className="task-detail-item">
               <Users size={21} />
               <div>
-                <span>
-                  Signalé par
-                  <button
-                    type="button"
-                    className={`task-detail-edit-btn-inline ${
-                      editingField === "reportedBy" ? "active" : ""
-                    }`}
-                    onClick={() => toggleEditing("reportedBy")}
-                    disabled={saving}
-                    aria-label="Modifier signalé par"
-                  >
-                    {editingField === "reportedBy" ? (
-                      <X size={13} />
-                    ) : (
-                      <Pencil size={13} />
-                    )}
-                  </button>
-                </span>
-                {editingField === "reportedBy" ? (
-                  <div className="task-inline-edit task-inline-edit-column">
-                    <div className="task-chip-list">
-                      {editReportedBy.map((item) => (
-                        <span
-                          className="task-chip"
-                          key={item.userId ?? item.teamId}
-                        >
-                          {item.label}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = editReportedBy.filter(
-                                (i) => i !== item,
-                              );
-                              setEditReportedBy(next);
-                              void savePatch(
-                                {
-                                  assignees: next.map((i) => ({
-                                    userId: i.userId,
-                                    teamId: i.teamId,
-                                  })),
-                                },
-                                false,
-                              );
-                            }}
-                          >
-                            <X size={12} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="task-filter-dropdown">
-                      <button
-                        type="button"
-                        className="task-filter-dropdown-trigger"
-                        onClick={() =>
-                          setShowReportedByDropdown((current) => !current)
-                        }
-                      >
-                        + Ajouter un utilisateur
-                      </button>
-
-                      {showReportedByDropdown && (
-                        <div className="task-filter-dropdown-panel">
-                          {userOptions
-                            .filter(
-                              (user) =>
-                                !editReportedBy.some(
-                                  (i) => i.userId === user.id,
-                                ),
-                            )
-                            .map((user) => (
-                              <button
-                                type="button"
-                                key={user.id}
-                                className="task-filter-dropdown-row"
-                                onClick={() => {
-                                  const next = [
-                                    ...editReportedBy,
-                                    {
-                                      userId: user.id,
-                                      label: `${user.firstName} ${user.lastName}`,
-                                    },
-                                  ];
-                                  setEditReportedBy(next);
-                                  setShowReportedByDropdown(false);
-                                  void savePatch(
-                                    {
-                                      assignees: next.map((i) => ({
-                                        userId: i.userId,
-                                        teamId: i.teamId,
-                                      })),
-                                    },
-                                    false,
-                                  );
-                                }}
-                              >
-                                <span
-                                  className="task-filter-avatar"
-                                  style={{ background: avatarColor(user.id) }}
-                                >
-                                  {initials(user.firstName, user.lastName)}
-                                </span>
-                                {user.firstName} {user.lastName}
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : task.assignees.length > 0 ? (
+                <span>Signalé par</span>
+                {task.assignees.length > 0 ? (
                   <div className="task-avatar-list">
                     {task.assignees.map((assignee) => (
                       <span
@@ -878,7 +817,7 @@ function TaskDetailsPage() {
                               </button>
                             ))}
 
-                          {userOptions.filter(
+                          {executableUserOptions.filter(
                             (user) =>
                               !editAssignedTo.some((i) => i.userId === user.id),
                           ).length > 0 && (
@@ -887,7 +826,7 @@ function TaskDetailsPage() {
                             </p>
                           )}
 
-                          {userOptions
+                          {executableUserOptions
                             .filter(
                               (user) =>
                                 !editAssignedTo.some(
@@ -1486,4 +1425,3 @@ function TaskDetailsPage() {
 }
 
 export default TaskDetailsPage;
-

@@ -7,6 +7,7 @@ public record TeamResponse(
         Long id,
         String name,
         String description,
+        boolean active,
         List<TeamMemberSummary> members,
         List<TeamTagSummary> tags,
         LocalDateTime createdAt,

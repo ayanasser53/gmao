@@ -27,7 +27,14 @@ public record MaintenancePlanResponse(
         MaintenancePlanStatus status,
         List<MaintenancePlanSparePartResponse> spareParts,
         List<MaintenancePlanAssigneeResponse> assignees,
+        List<TagResponse> tags,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
+    public record TagResponse(
+            Long id,
+            String name,
+            String color
+    ) {
+    }
 }
