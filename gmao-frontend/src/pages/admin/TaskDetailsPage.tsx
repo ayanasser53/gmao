@@ -111,6 +111,7 @@ function money(value: number | null | undefined, currency?: string | null) {
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> =
   {
     PLANNED: { label: "Planifiée", className: "task-status-planned" },
+    CREATED: { label: "Créée", className: "task-status-created" },
     DONE: { label: "Terminée", className: "task-status-done" },
     LATE: { label: "En retard", className: "task-status-late" },
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
@@ -345,8 +346,8 @@ function TaskDetailsPage() {
       links: [],
       notifyAssignees: false,
       status:
-        task.status === "LATE" || task.status === "PLANNED"
-          ? "IN_PROGRESS"
+        task.status === "LATE"
+          ? "PLANNED"
           : task.status,
       removeDocumentIds: [],
       ...patch,

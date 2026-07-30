@@ -19,6 +19,7 @@ import "../admin/task-styles.css";
 const BACKEND_URL = "http://localhost:8090";
 
 const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
+  CREATED: { label: "Creee", className: "task-status-created" },
   PLANNED: { label: "Planifiee", className: "task-status-planned" },
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   LATE: { label: "En retard", className: "task-status-late" },
@@ -100,6 +101,7 @@ function OperatorTasksPage() {
   const statusCounts = useMemo(
     () => ({
       ALL: tasks.length,
+      CREATED: tasks.filter((task) => task.status === "CREATED").length,
       PLANNED: tasks.filter((task) => task.status === "PLANNED").length,
       IN_PROGRESS: tasks.filter((task) => task.status === "IN_PROGRESS").length,
       LATE: tasks.filter((task) => task.status === "LATE").length,

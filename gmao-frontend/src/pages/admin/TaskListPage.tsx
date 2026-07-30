@@ -78,6 +78,7 @@ function formatDate(value: string): string {
 }
 
 const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
+  CREATED: { label: "Créée", className: "task-status-created" },
   PLANNED: { label: "Planifiée", className: "task-status-planned" },
   DONE: { label: "Terminée", className: "task-status-done" },
   LATE: { label: "En retard", className: "task-status-late" },
@@ -276,6 +277,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
 
     return {
       ALL: visibleTasks.length,
+      CREATED: visibleTasks.filter((task) => task.status === "CREATED").length,
       PLANNED: visibleTasks.filter((task) => task.status === "PLANNED").length,
       IN_PROGRESS: visibleTasks.filter((task) => task.status === "IN_PROGRESS").length,
       LATE: visibleTasks.filter((task) => task.status === "LATE").length,
@@ -1098,8 +1100,10 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                 const status = STATUS_META[task.status];
                 const equipmentImage = getEquipmentImageUrl(task.equipment);
                 const selectedStatus =
-                  task.status === "LATE" || task.status === "PLANNED"
-                    ? "IN_PROGRESS"
+                  task.status === "LATE"
+                    ? "PLANNED"
+                    : task.status === "CREATED"
+                    ? "PLANNED"
                     : task.status;
 
                 return (
@@ -1192,6 +1196,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                             )
                           }
                         >
+                          <option value="PLANNED">Planifi�e</option>
                           <option value="IN_PROGRESS">En cours</option>
                           <option value="DONE">Terminée</option>
                         </select>

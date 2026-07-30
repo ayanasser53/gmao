@@ -206,7 +206,7 @@ public class TaskService {
                 .plannedStoppedMinutes(request.plannedStoppedMinutes())
 
                 .status(currentUser != null && currentUser.getRole() == Role.PRODUCTION
-                        ? TaskStatus.PLANNED
+                        ? TaskStatus.CREATED
                         : TaskStatus.IN_PROGRESS)
 
                 .tags(resolveTags(request.tagIds()))
@@ -293,7 +293,7 @@ public class TaskService {
 
         task.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
 
-        if (request.status() == TaskStatus.LATE || request.status() == TaskStatus.PLANNED) {
+        if (request.status() == TaskStatus.LATE) {
             throw new IllegalArgumentException(
                     "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
             );
@@ -379,7 +379,7 @@ public class TaskService {
 
     @Transactional
     public TaskResponse updateStatus(Long id, UpdateTaskStatusRequest request) {
-        if (request.status() == TaskStatus.LATE || request.status() == TaskStatus.PLANNED) {
+        if (request.status() == TaskStatus.LATE) {
             throw new IllegalArgumentException(
                     "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
             );
@@ -430,6 +430,7 @@ public class TaskService {
 
     private String statusLabel(TaskStatus status) {
         return switch (status) {
+            case CREATED -> "Créée";
             case PLANNED -> "Planifiée";
             case IN_PROGRESS -> "En cours";
             case LATE -> "En retard";

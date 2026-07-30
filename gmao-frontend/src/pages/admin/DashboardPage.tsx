@@ -61,6 +61,7 @@ interface DonutSegment {
 }
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
+  CREATED: { label: "Créée", color: "#64748b" },
   PLANNED: { label: "PlanifiÃ©e", color: "#ffb020" },
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
@@ -801,6 +802,7 @@ function DashboardPage() {
 
   const taskStatusSegments: DonutSegment[] = useMemo(() => {
     const counts: Record<TaskStatus, number> = {
+      CREATED: 0,
       PLANNED: 0,
       IN_PROGRESS: 0,
       LATE: 0,
@@ -991,7 +993,7 @@ function DashboardPage() {
     tasksList.forEach((task) => {
       keyOf(task).forEach((key) => {
         const current =
-          map.get(key) ?? { PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0 };
+          map.get(key) ?? { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0 };
         current[task.status] += 1;
         map.set(key, current);
       });

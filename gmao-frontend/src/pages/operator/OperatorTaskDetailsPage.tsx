@@ -22,6 +22,7 @@ import "../admin/task-styles.css";
 const BACKEND_URL = "http://localhost:8090";
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
+  CREATED: { label: "Creee", className: "task-status-created" },
   PLANNED: { label: "Planifiee", className: "task-status-planned" },
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   LATE: { label: "En retard", className: "task-status-late" },

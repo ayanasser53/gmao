@@ -182,6 +182,11 @@ public class ActivityService {
         saveActivityDetails(savedActivity, request);
         saveDocuments(savedActivity, documents);
 
+        if (activity.getStatus() == ActivityStatus.IN_PROGRESS && task.getStatus() != TaskStatus.DONE) {
+            task.setStatus(TaskStatus.IN_PROGRESS);
+            taskRepository.save(task);
+        }
+
         return toResponse(savedActivity);
     }
 

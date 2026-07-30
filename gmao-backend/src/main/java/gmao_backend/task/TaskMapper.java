@@ -3,7 +3,6 @@ package com.gmao.gmao_backend.task;
 import com.gmao.gmao_backend.equipment.Equipment;
 import com.gmao.gmao_backend.sparepart.SparePart;
 import com.gmao.gmao_backend.tag.Tag;
-import com.gmao.gmao_backend.user.Role;
 import com.gmao.gmao_backend.activity.Activity;
 import com.gmao.gmao_backend.activity.ActivityResponse;
 
@@ -23,7 +22,7 @@ public class TaskMapper {
     }
 
     public TaskResponse toOperatorResponse(Task task) {
-        return toResponse(task, task.getStatus());
+        return toResponse(task, resolveDisplayStatus(task));
     }
 
     private TaskResponse toResponse(Task task, TaskStatus status) {
@@ -90,7 +89,7 @@ public class TaskMapper {
     }
 
     public TaskListItemResponse toOperatorListItemResponse(Task task) {
-        return toListItemResponse(task, task.getStatus());
+        return toListItemResponse(task, resolveDisplayStatus(task));
     }
 
     private TaskListItemResponse toListItemResponse(Task task, TaskStatus status) {
@@ -141,11 +140,11 @@ public class TaskMapper {
      * marked DONE is never considered late or planned.
      */
     private TaskStatus resolveDisplayStatus(Task task) {
-        if (task.getCreatedBy() != null && task.getCreatedBy().getRole() == Role.PRODUCTION) {
-            return task.getStatus();
-        }
-
-        if (task.getStatus() == TaskStatus.PLANNED || task.getStatus() == TaskStatus.DONE) {
+        if (task.getStatus() == TaskStatus.CREATED
+                || task.getStatus() == TaskStatus.IN_PROGRESS
+                || task.getStatus() == TaskStatus.DONE
+                || task.getStatus() == TaskStatus.LATE
+                || task.getStartDate() == null) {
             return task.getStatus();
         }
 
@@ -155,19 +154,9 @@ public class TaskMapper {
 
         LocalDateTime startDateTime = task.getStartDate().atTime(startTime);
 
-        if (startDateTime.isAfter(LocalDateTime.now())) {
-            return TaskStatus.PLANNED;
-        }
-
-        LocalTime endTime = task.isAllDay() || task.getEndHour() == null
-                ? LocalTime.of(23, 59)
-                : task.getEndHour();
-
-        LocalDateTime deadline = task.getEndDate().atTime(endTime);
-
-        return deadline.isBefore(LocalDateTime.now())
+        return startDateTime.isBefore(LocalDateTime.now())
                 ? TaskStatus.LATE
-                : TaskStatus.IN_PROGRESS;
+                : TaskStatus.PLANNED;
     }
 
     private TaskEquipmentResponse toEquipmentResponse(Equipment equipment) {

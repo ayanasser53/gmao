@@ -627,6 +627,16 @@
   background-color: #ddf6e9;
 }
 
+.task-status-created {
+  color: #475569;
+  background: #eef2f7;
+}
+
+.task-status-select.task-status-created {
+  color: #475569;
+  background-color: #eef2f7;
+}
+
 .task-status-planned {
   color: #a3660f;
   background: #fdf1dc;

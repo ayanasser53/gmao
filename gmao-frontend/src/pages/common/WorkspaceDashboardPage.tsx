@@ -34,6 +34,7 @@ interface WorkspaceDashboardPageProps {
 }
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
+  CREATED: { label: "Creee", color: "#64748b" },
   PLANNED: { label: "Planifiee", color: "#ffb020" },
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
@@ -78,7 +79,7 @@ function statusCount(tasks: TaskListItem[], status: TaskStatus): number {
 
 function DashboardStatusList({ tasks }: { tasks: TaskListItem[] }) {
   const total = tasks.length || 1;
-  const statuses: TaskStatus[] = ["PLANNED", "IN_PROGRESS", "LATE", "DONE"];
+  const statuses: TaskStatus[] = ["CREATED", "PLANNED", "IN_PROGRESS", "LATE", "DONE"];
 
   return (
     <div className="dashboard-bar-chart">

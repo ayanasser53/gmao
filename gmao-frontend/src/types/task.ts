@@ -1,4 +1,4 @@
-export type TaskStatus = "PLANNED" | "IN_PROGRESS" | "DONE" | "LATE";
+export type TaskStatus = "CREATED" | "PLANNED" | "IN_PROGRESS" | "DONE" | "LATE";
 
 export interface TaskEquipmentSummary {
   id: number;
