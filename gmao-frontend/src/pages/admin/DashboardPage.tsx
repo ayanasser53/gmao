@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -39,6 +39,7 @@ import { getPurchaseOrders } from "../../services/purchaseOrderService";
 import type { TaskListItem, TaskStatus } from "../../types/task";
 import type { Activity } from "../../types/activity";
 import type { SparePart } from "../../types/sparePart";
+import type { Equipment } from "../../types/equipment";
 import type {
   MaintenancePlan,
   MaintenancePlanStatus,
@@ -46,6 +47,8 @@ import type {
 
 import "./task-styles.css";
 import "./DashboardPage.css";
+
+const BACKEND_URL = "http://localhost:8090";
 
 interface DashboardCard {
   title: string;
@@ -107,6 +110,14 @@ function formatMoney(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+}
+
+function getEquipmentImageUrl(equipment: Equipment | null): string | null {
+  if (!equipment) {
+    return null;
+  }
+
+  return `${BACKEND_URL}/api/equipment/${equipment.id}/image`;
 }
 
 function daysBetween(firstDate: string, secondDate: string): number | null {
@@ -765,6 +776,7 @@ function DashboardPage() {
         : "Administrateur";
 
   const [equipmentCount, setEquipmentCount] = useState(0);
+  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
@@ -777,6 +789,11 @@ function DashboardPage() {
   const [analysisDimension, setAnalysisDimension] = useState<AnalysisDimension>("users");
   const [analysisFiltersOpen, setAnalysisFiltersOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState<DashboardSection>("apercu");
+  const [maintenanceMetric, setMaintenanceMetric] = useState<
+    "stops" | "defective" | "mtbf" | "mttr"
+  >("stops");
+  const [dashboardMonth, setDashboardMonth] = useState("ALL");
+  const [dashboardYear, setDashboardYear] = useState("ALL");
 
   useEffect(() => {
     async function loadDashboard() {
@@ -802,6 +819,7 @@ function DashboardPage() {
           getPurchaseOrders().catch(() => []),
         ]);
 
+        setEquipmentList(equipmentData);
         setEquipmentCount(equipmentData.length);
         setTasks(tasksData);
         setActivities(activitiesData);
@@ -945,12 +963,8 @@ function DashboardPage() {
     const map = new Map<string, string[]>();
 
     tasks.forEach((task) => {
-      const key =
-        (task as unknown as { equipmentName?: string }).equipmentName?.trim() ||
-        task.equipment?.name?.trim() ||
-        "Sans \u00e9quipement";
+      const key = task.equipment?.name?.trim() || "Sans \u00e9quipement";
       const dates = map.get(key) ?? [];
-
       dates.push(task.startDate);
       map.set(key, dates);
     });
@@ -960,10 +974,7 @@ function DashboardPage() {
 
   const mttrMinutes = useMemo(() => {
     const doneActivities = activities.filter((activity) => activity.status === "DONE");
-
-    if (doneActivities.length === 0) {
-      return 0;
-    }
+    if (doneActivities.length === 0) return 0;
 
     const total = doneActivities.reduce(
       (sum, activity) => sum + activitySpentMinutes(activity),
@@ -983,16 +994,11 @@ function DashboardPage() {
 
       for (let index = 1; index < sortedDates.length; index += 1) {
         const gap = daysBetween(sortedDates[index - 1], sortedDates[index]);
-        if (gap !== null) {
-          gaps.push(gap);
-        }
+        if (gap !== null) gaps.push(gap);
       }
     });
 
-    if (gaps.length === 0) {
-      return 0;
-    }
-
+    if (gaps.length === 0) return 0;
     return gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
   }, [equipmentTaskDates]);
 
@@ -1044,7 +1050,7 @@ function DashboardPage() {
       label: name,
       value: Math.round((minutes / 60) * 10) / 10,
       max: Math.round((max / 60) * 10) / 10 || 1,
-      color: "#7a8f3a",
+      color: "#4f8fc4",
       suffix: " h",
     }));
   }, [byEquipment]);
@@ -1059,9 +1065,7 @@ function DashboardPage() {
 
         for (let index = 1; index < sortedDates.length; index += 1) {
           const gap = daysBetween(sortedDates[index - 1], sortedDates[index]);
-          if (gap !== null) {
-            gaps.push(gap);
-          }
+          if (gap !== null) gaps.push(gap);
         }
 
         const average =
@@ -1081,7 +1085,7 @@ function DashboardPage() {
       label: name,
       value: Math.round(days * 10) / 10,
       max: Math.round(max * 10) / 10 || 1,
-      color: "#60712f",
+      color: "#6ea6cf",
       suffix: " j",
     }));
   }, [equipmentTaskDates]);
@@ -1392,13 +1396,13 @@ function DashboardPage() {
       title: "T\u00e2ches",
       value: loading ? "\u2026" : String(tasks.length),
       icon: <Wrench size={28} />,
-      className: "dashboard-hero-card-total",
+      className: "dashboard-hero-card-primary",
     },
     {
       title: "Activit\u00e9s",
       value: loading ? "\u2026" : String(activities.length),
       icon: <ActivityIcon size={28} />,
-      className: "dashboard-hero-card-operations",
+      className: "dashboard-hero-card-secondary",
     },
     {
       title: "Temps total pass\u00e9",
@@ -1416,7 +1420,7 @@ function DashboardPage() {
       title: "MTTR",
       value: loading ? "\u2026" : formatHoursMinutes(mttrMinutes),
       icon: <Gauge size={28} />,
-      className: "dashboard-hero-card-repair",
+      className: "dashboard-hero-card-metric",
     },
     {
       title: "MTBF",
@@ -1433,6 +1437,765 @@ function DashboardPage() {
     { title: "Plans de maintenance", value: plans.length, icon: <CalendarCheck size={22} /> },
     { title: "Commandes d'achat", value: purchaseOrdersCount, icon: <ShoppingCart size={22} /> },
   ];
+
+  const dashboardEquipment = equipmentList[0] ?? null;
+  const dashboardEquipmentImage = getEquipmentImageUrl(dashboardEquipment);
+  const dashboardTasks = dashboardEquipment
+    ? tasks.filter((task) => task.equipment?.id === dashboardEquipment.id)
+    : tasks;
+  const dashboardActivities = dashboardEquipment
+    ? activities.filter(
+        (activity) =>
+          activity.equipmentName?.trim().toLowerCase() ===
+          dashboardEquipment.name.trim().toLowerCase(),
+      )
+    : activities;
+  const dashboardTaskIds = new Set(dashboardTasks.map((task) => task.id));
+  const dashboardTaskStatusSegments = (Object.keys(TASK_STATUS_META) as TaskStatus[]).map(
+    (status) => ({
+      label: TASK_STATUS_META[status].label,
+      value: dashboardTasks.filter((task) => task.status === status).length,
+      color: TASK_STATUS_META[status].color,
+    }),
+  );
+  const dashboardTotalMinutes = dashboardActivities.reduce(
+    (total, activity) => total + activitySpentMinutes(activity),
+    0,
+  );
+  const dashboardTotalCost = dashboardActivities.reduce(
+    (total, activity) => total + activityCost(activity),
+    0,
+  );
+  const dashboardAverageCost =
+    dashboardTasks.length > 0 ? dashboardTotalCost / dashboardTasks.length : 0;
+  const dashboardAverageMinutes =
+    dashboardTasks.length > 0 ? dashboardTotalMinutes / dashboardTasks.length : 0;
+  const dashboardDoneActivities = dashboardActivities.filter(
+    (activity) => activity.status === "DONE",
+  );
+  const dashboardMttrMinutes =
+    dashboardDoneActivities.length > 0
+      ? dashboardDoneActivities.reduce(
+          (total, activity) => total + activitySpentMinutes(activity),
+          0,
+        ) / dashboardDoneActivities.length
+      : 0;
+  const dashboardTaskDateGaps = [...dashboardTasks]
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .map((task, index, sorted) =>
+      index === 0 ? null : daysBetween(sorted[index - 1].startDate, task.startDate),
+    )
+    .filter((gap): gap is number => gap !== null);
+  const dashboardMtbfDays =
+    dashboardTaskDateGaps.length > 0
+      ? dashboardTaskDateGaps.reduce((total, gap) => total + gap, 0) /
+        dashboardTaskDateGaps.length
+      : 0;
+
+  const dashboardCostByTask: BarItem[] = (() => {
+    const rows = dashboardActivities
+      .filter((activity) => dashboardTaskIds.has(activity.taskId))
+      .map((activity) => ({
+        label: activity.taskDescription || `T\u00e2che #${activity.taskId}`,
+        value: activityCost(activity),
+      }))
+      .filter((row) => row.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+    const max = rows.length > 0 ? rows[0].value : 1;
+
+    return rows.map((row) => ({
+      label: row.label,
+      value: Math.round(row.value),
+      max,
+      color: "#b5792d",
+      suffix: " EUR",
+    }));
+  })();
+
+  const dashboardTimeByTask: BarItem[] = (() => {
+    const rows = dashboardActivities
+      .filter((activity) => dashboardTaskIds.has(activity.taskId))
+      .map((activity) => ({
+        label: activity.taskDescription || `T\u00e2che #${activity.taskId}`,
+        value: activitySpentMinutes(activity),
+      }))
+      .filter((row) => row.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+    const max = rows.length > 0 ? rows[0].value : 1;
+
+    return rows.map((row) => ({
+      label: row.label,
+      value: Math.round((row.value / 60) * 10) / 10,
+      max: Math.round((max / 60) * 10) / 10 || 1,
+      color: "#1ca39a",
+      suffix: " h",
+    }));
+  })();
+
+  const detailKpis = [
+    { title: "T\u00e2ches", value: String(dashboardTasks.length), icon: <Wrench size={24} />, tone: "purple" },
+    { title: "Activit\u00e9s", value: String(dashboardActivities.length), icon: <ActivityIcon size={24} />, tone: "coral" },
+    { title: "Temps total pass\u00e9", value: formatHoursMinutes(dashboardTotalMinutes), icon: <Clock size={24} />, tone: "mint" },
+    { title: "Co\u00fbt total", value: `${formatMoney(dashboardTotalCost)} EUR`, icon: <PiggyBank size={24} />, tone: "amber" },
+    { title: "Co\u00fbt moyen / t\u00e2che", value: `${formatMoney(dashboardAverageCost)} EUR`, icon: <TrendingUp size={24} />, tone: "gold" },
+    { title: "Temps moyen / t\u00e2che", value: formatHoursMinutes(dashboardAverageMinutes), icon: <Timer size={24} />, tone: "teal" },
+    { title: "MTTR (r\u00e9paration moyenne)", value: formatHoursMinutes(dashboardMttrMinutes), icon: <Gauge size={24} />, tone: "orange" },
+    { title: "MTBF (entre 2 interventions)", value: `${Math.round(dashboardMtbfDays * 10) / 10} j`, icon: <CalendarCheck size={24} />, tone: "blue" },
+  ];
+
+  const allMonthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateParts = (date?: string | null) => {
+    if (!date) return null;
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return { month: parsed.getMonth(), year: parsed.getFullYear() };
+  };
+  const dashboardDateParts = [
+    ...dashboardTasks.flatMap((task) => [dateParts(task.startDate), dateParts(task.endDate)]),
+    ...dashboardActivities.map((activity) => dateParts(activity.performedDate)),
+  ].filter((part): part is { month: number; year: number } => Boolean(part));
+  const availableYears = Array.from(new Set(dashboardDateParts.map((part) => part.year))).sort(
+    (a, b) => b - a,
+  );
+  const selectedDashboardYear = dashboardYear === "ALL" ? null : Number(dashboardYear);
+  const availableMonthIndexes = Array.from(
+    new Set(
+      dashboardDateParts
+        .filter((part) => selectedDashboardYear === null || part.year === selectedDashboardYear)
+        .map((part) => part.month),
+    ),
+  ).sort((a, b) => a - b);
+  useEffect(() => {
+    if (dashboardMonth !== "ALL" && !availableMonthIndexes.includes(Number(dashboardMonth))) {
+      setDashboardMonth("ALL");
+    }
+  }, [availableMonthIndexes, dashboardMonth]);
+  const selectedDashboardMonth = dashboardMonth === "ALL" ? null : Number(dashboardMonth);
+  const chartMonthIndexes =
+    selectedDashboardMonth === null
+      ? availableMonthIndexes
+      : availableMonthIndexes.includes(selectedDashboardMonth)
+        ? [selectedDashboardMonth]
+        : [];
+  const monthLabels = chartMonthIndexes.map((monthIndex) => allMonthLabels[monthIndex]);
+  const dateMatchesDashboardPeriod = (
+    date?: string | null,
+    monthIndex?: number,
+    yearOverride = selectedDashboardYear,
+  ) => {
+    const parts = dateParts(date);
+    if (!parts) return false;
+    if (yearOverride !== null && parts.year !== yearOverride) return false;
+    if (monthIndex !== undefined && parts.month !== monthIndex) return false;
+    if (selectedDashboardMonth !== null && monthIndex === undefined && parts.month !== selectedDashboardMonth) {
+      return false;
+    }
+    return true;
+  };
+  const filteredDashboardTasks = dashboardTasks.filter((task) =>
+    dateMatchesDashboardPeriod(task.startDate),
+  );
+  const filteredDashboardActivities = dashboardActivities.filter((activity) =>
+    dateMatchesDashboardPeriod(activity.performedDate),
+  );
+  const filteredTotalMinutes = filteredDashboardActivities.reduce(
+    (total, activity) => total + activitySpentMinutes(activity),
+    0,
+  );
+  const filteredTotalCost = filteredDashboardActivities.reduce(
+    (total, activity) => total + activityCost(activity),
+    0,
+  );
+  const filteredDoneActivities = filteredDashboardActivities.filter(
+    (activity) => activity.status === "DONE",
+  );
+  const filteredAverageMinutes =
+    filteredDashboardActivities.length > 0
+      ? filteredTotalMinutes / filteredDashboardActivities.length
+      : 0;
+  const filteredMttrMinutes =
+    filteredDoneActivities.length > 0
+      ? filteredDoneActivities.reduce((total, activity) => total + activitySpentMinutes(activity), 0) /
+        filteredDoneActivities.length
+      : 0;
+  const monthlyTaskCounts = chartMonthIndexes.map((monthIndex) =>
+    dashboardTasks.filter((task) => dateMatchesDashboardPeriod(task.startDate, monthIndex)).length,
+  );
+  const monthlyLateTasks = chartMonthIndexes.map((monthIndex) =>
+    dashboardTasks.filter(
+      (task) => dateMatchesDashboardPeriod(task.startDate, monthIndex) && task.status === "LATE",
+    ).length,
+  );
+  const monthlyDoneTasks = chartMonthIndexes.map((monthIndex) =>
+    dashboardTasks.filter(
+      (task) => dateMatchesDashboardPeriod(task.startDate, monthIndex) && task.status === "DONE",
+    ).length,
+  );
+  const monthlyPlannedTasks = chartMonthIndexes.map((monthIndex) =>
+    dashboardTasks.filter(
+      (task) =>
+        dateMatchesDashboardPeriod(task.startDate, monthIndex) &&
+        (task.status === "PLANNED" || task.status === "CREATED"),
+    ).length,
+  );
+  const monthlyActivityMinutes = chartMonthIndexes.map((monthIndex) =>
+    dashboardActivities
+      .filter((activity) => dateMatchesDashboardPeriod(activity.performedDate, monthIndex))
+      .reduce((total, activity) => total + activitySpentMinutes(activity), 0),
+  );
+  const monthlyActivityCounts = chartMonthIndexes.map((monthIndex) =>
+    dashboardActivities.filter((activity) => dateMatchesDashboardPeriod(activity.performedDate, monthIndex)).length,
+  );
+  const monthlyDowntimeHours = chartMonthIndexes.map((monthIndex, index) => {
+    const plannedMinutes = dashboardTasks
+      .filter((task) => dateMatchesDashboardPeriod(task.startDate, monthIndex))
+      .reduce(
+        (total, task) =>
+          total +
+          task.plannedMaintenanceHours * 60 +
+          task.plannedMaintenanceMinutes,
+        0,
+      );
+    const activityMinutes = monthlyActivityMinutes[index] || 0;
+    return Math.max(0, Math.round(((plannedMinutes || activityMinutes) / 60) * 10) / 10);
+  });
+  const monthlyMaintenanceCost = chartMonthIndexes.map((monthIndex) =>
+    dashboardActivities
+      .filter((activity) => dateMatchesDashboardPeriod(activity.performedDate, monthIndex))
+      .reduce((total, activity) => total + activityCost(activity), 0),
+  );
+  const monthlyPreviousCost = chartMonthIndexes.map((monthIndex) =>
+    selectedDashboardYear === null
+      ? 0
+      : dashboardActivities
+          .filter((activity) =>
+            dateMatchesDashboardPeriod(activity.performedDate, monthIndex, selectedDashboardYear - 1),
+          )
+          .reduce((total, activity) => total + activityCost(activity), 0),
+  );
+  const equipmentIssueRows = Array.from(
+    filteredDashboardTasks.reduce((map, task) => {
+      const name = task.equipment?.name || "Equipement non defini";
+      map.set(name, (map.get(name) || 0) + 1);
+      return map;
+    }, new Map<string, number>()),
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const maxEquipmentIssues = Math.max(...equipmentIssueRows.map(([, value]) => value), 1);
+  const equipmentRepairRows = Array.from(
+    filteredDashboardActivities.reduce((map, activity) => {
+      const name = activity.equipmentName || "Equipement non defini";
+      map.set(name, (map.get(name) || 0) + activitySpentMinutes(activity));
+      return map;
+    }, new Map<string, number>()),
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const statusTotal = Math.max(filteredDashboardTasks.length, 1);
+  const downtimePercent = Math.min(
+    35,
+    Math.max(
+      4,
+      Math.round(
+        (filteredTotalMinutes /
+          Math.max(
+            1,
+            filteredTotalMinutes + statusTotal * 720,
+          )) *
+          100,
+      ),
+    ),
+  );
+  const availabilityPercent = Math.max(0, 100 - downtimePercent);
+  const mtbfDisplay = Math.max(0, Math.round((dashboardMtbfDays || 0) * 24));
+  const mttrDisplay = Math.max(0, Math.round(filteredMttrMinutes || dashboardMttrMinutes));
+  const defectiveEquipmentCount = new Set(
+    filteredDashboardTasks
+      .filter((task) => task.status === "LATE" || task.status === "IN_PROGRESS")
+      .map((task) => task.equipment?.id)
+      .filter(Boolean),
+  ).size;
+  const kpiSparklineValues = [
+    monthlyTaskCounts,
+    equipmentIssueRows.map(([, value]) => value),
+    monthlyDowntimeHours,
+    monthlyActivityMinutes.map((value) => Math.round(value / 60)),
+  ].map((values) => (values.length > 0 && values.some((value) => value > 0) ? values : [1, 2, 1, 3, 2, 4]));
+  const metricConfigs = {
+    stops: {
+      label: "Nombre d'arrêt",
+      title: "Nombre d'heures d'arrêt",
+      values: monthlyDowntimeHours,
+      color: "#73b8ca",
+    },
+    defective: {
+      label: "Equipements defectueux",
+      title: "Equipements defectueux",
+      values: monthlyLateTasks.map((value, index) => value + monthlyTaskCounts[index]),
+      color: "#357f9a",
+    },
+    mtbf: {
+      label: "MTBF",
+      title: "MTBF",
+      values: monthlyTaskCounts.map((value) =>
+        value > 0 ? Math.max(1, Math.round(((dashboardMtbfDays || 1) * 24) / value)) : 0,
+      ),
+      color: "#84c9c6",
+    },
+    mttr: {
+      label: "MTTR",
+      title: "MTTR",
+      values: monthlyActivityMinutes.map((value, index) =>
+        monthlyActivityCounts[index] > 0 ? Math.round(value / monthlyActivityCounts[index]) : 0,
+      ),
+      color: "#2b6f83",
+    },
+  };
+  const activeMetric = metricConfigs[maintenanceMetric];
+  const maxActiveMetric = Math.max(...activeMetric.values, 1);
+  const cleanDashboardText = (text: string) =>
+    text.replace(/\u00c3\u00aa/g, "e").replace(/\u00c3\u00a9/g, "e");
+  const maxMonthlyCost = Math.max(...monthlyMaintenanceCost, ...monthlyPreviousCost, 1);
+  const workOrderMax = Math.max(
+    ...monthlyPlannedTasks,
+    ...monthlyDoneTasks,
+    ...monthlyLateTasks,
+    1,
+  );
+  const taskCountByUser = new Map<string, number>();
+  filteredDashboardTasks.forEach((task) => {
+    const assignees = task.assignedTo?.length ? task.assignedTo : task.assignees;
+    assignees?.forEach((assignee) => {
+      const name = assignee.userFullName || assignee.teamName || "Non assigne";
+      taskCountByUser.set(name, (taskCountByUser.get(name) || 0) + 1);
+    });
+  });
+  const employeeTaskRows = Array.from(taskCountByUser.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const maxEmployeeTasks = Math.max(...employeeTaskRows.map(([, value]) => value), 1);
+  const teamEfficiency = Math.min(
+    99,
+    Math.max(10, Math.round((filteredDoneActivities.length / Math.max(1, filteredDashboardActivities.length)) * 100)),
+  );
+  const employeeEfficiencyRows = employeeTaskRows.map(([name, value], index) => ({
+    name,
+    value: Math.max(10, Math.min(99, Math.round(teamEfficiency - index * 8 + value * 3))),
+  }));
+  const sparkPath = (values: number[], width = 240, height = 58) => {
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const span = Math.max(1, max - min);
+    return values
+      .map((value, index) => {
+        const x = values.length === 1 ? width : (index / (values.length - 1)) * width;
+        const y = height - ((value - min) / span) * (height - 8) - 4;
+        return `${x},${y}`;
+      })
+      .join(" ");
+  };
+  const formatLargeAmount = (value: number) => {
+    if (value >= 1000000) return `${Math.round((value / 1000000) * 10) / 10}M`;
+    if (value >= 1000) return `${Math.round((value / 1000) * 10) / 10}K`;
+    return String(Math.round(value));
+  };
+  const monthGridStyle = {
+    gridTemplateColumns: `repeat(${Math.max(monthLabels.length, 1)}, minmax(34px, 1fr))`,
+  } as CSSProperties;
+
+  const videoDashboard = (
+    <section className="admin-dashboard admin-dashboard-video">
+      <div className="maintenance-video-shell">
+        <aside className="maintenance-kpi-rail" aria-label="Main KPIs">
+          <h2>MAIN KPIS</h2>
+          {[
+            {
+              label: "Nombre d'arrêt",
+              value: filteredDashboardTasks.length,
+              icon: <AlertTriangle size={24} />,
+              values: kpiSparklineValues[0],
+            },
+            {
+              label: "Equipements defectueux",
+              value: defectiveEquipmentCount,
+              icon: <Wrench size={24} />,
+              values: kpiSparklineValues[1],
+            },
+            {
+              label: "MTBF",
+              value: mtbfDisplay,
+              icon: <CalendarCheck size={24} />,
+              values: kpiSparklineValues[2],
+            },
+            {
+              label: "MTTR",
+              value: mttrDisplay,
+              icon: <Clock size={24} />,
+              values: kpiSparklineValues[3],
+            },
+          ].map((item) => (
+            <article className="maintenance-rail-kpi" key={item.label}>
+              <div className="maintenance-rail-kpi-header">
+                <span>{cleanDashboardText(item.label)}</span>
+                <div className="maintenance-rail-icon">{item.icon}</div>
+              </div>
+              <strong>{item.value}</strong>
+              <svg viewBox="0 0 240 70" role="img" aria-label={cleanDashboardText(item.label)}>
+                <polygon
+                  points={`0,70 ${sparkPath(item.values)} 240,70`}
+                  className="maintenance-spark-area"
+                />
+                <polyline points={sparkPath(item.values)} className="maintenance-spark-line" />
+                <line x1="0" y1="62" x2="240" y2="62" className="maintenance-spark-base" />
+              </svg>
+            </article>
+          ))}
+        </aside>
+
+        <div className="maintenance-video-content">
+          <div className="maintenance-video-topbar">
+            <div>
+              <h1>Indicateurs de Maintenance</h1>
+              <p>Vue generale de la performance maintenance de votre usine</p>
+            </div>
+            <div className="maintenance-video-filters">
+              <label>
+                <span>MOIS</span>
+                <select value={dashboardMonth} onChange={(event) => setDashboardMonth(event.target.value)}>
+                  <option value="ALL">All</option>
+                  {availableMonthIndexes.map((monthIndex) => (
+                    <option value={String(monthIndex)} key={monthIndex}>
+                      {allMonthLabels[monthIndex]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>ANNEE</span>
+                <select value={dashboardYear} onChange={(event) => setDashboardYear(event.target.value)}>
+                  <option value="ALL">All</option>
+                  {availableYears.map((year) => (
+                    <option value={String(year)} key={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          {error && <div className="resource-error-message">{error}</div>}
+
+          <article className="maintenance-video-card maintenance-indicator-card">
+            <div className="maintenance-metric-tabs">
+              {(Object.keys(metricConfigs) as Array<keyof typeof metricConfigs>).map((key) => (
+                <button
+                  className={maintenanceMetric === key ? "is-active" : ""}
+                  key={key}
+                  type="button"
+                  onClick={() => setMaintenanceMetric(key)}
+                >
+                  {cleanDashboardText(metricConfigs[key].label)}
+                </button>
+              ))}
+            </div>
+            <div className="maintenance-month-chart">
+              <h3>{cleanDashboardText(activeMetric.title)}</h3>
+              {monthLabels.length === 0 ? (
+                <p className="maintenance-empty-state">Aucune donnee disponible pour cette periode.</p>
+              ) : (
+                <div className="maintenance-column-chart" style={monthGridStyle}>
+                  {monthLabels.map((month, index) => {
+                    const value = activeMetric.values[index] || 0;
+                    const height = Math.max(8, (value / maxActiveMetric) * 100);
+                    return (
+                      <div className="maintenance-column-item" key={month}>
+                        <span>{Math.round(value)}</span>
+                        <i style={{ height: `${height}%`, backgroundColor: activeMetric.color }} />
+                        <em>{month}</em>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </article>
+
+          <div className="maintenance-video-grid two">
+            <article className="maintenance-video-card">
+              <h3>Disponibilite et Temps d'arret</h3>
+              <div className="maintenance-donut-wrap">
+                <div
+                  className="maintenance-donut-ring"
+                  style={{
+                    background: `conic-gradient(#2b6f83 0 ${availabilityPercent}%, #9fd9d5 ${availabilityPercent}% 100%)`,
+                  }}
+                />
+                <div className="maintenance-donut-caption">
+                  <span>Disponibilite {availabilityPercent}%</span>
+                  <span>Temps d'arret {downtimePercent}%</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="maintenance-video-card">
+              <h3>Heures d'arret dues a un equipement</h3>
+              <div className="maintenance-horizontal-bars">
+                {(equipmentIssueRows.length ? equipmentIssueRows : [["Aucune donnee", 0] as [string, number]]).map(
+                  ([name, value]) => (
+                    <div className="maintenance-horizontal-row" key={name}>
+                      <span title={name}>{name}</span>
+                      <i>
+                        <b style={{ width: `${Math.max(5, (value / maxEquipmentIssues) * 100)}%` }} />
+                      </i>
+                      <strong>{value}</strong>
+                    </div>
+                  ),
+                )}
+              </div>
+            </article>
+          </div>
+
+          <div className="maintenance-video-topbar compact">
+            <div>
+              <h1>Performance de Maintenance</h1>
+              <p>COUTS, TEMPS DE REPARATION, ETAT DES TACHES</p>
+            </div>
+          </div>
+
+          <div className="maintenance-video-grid performance">
+            <article className="maintenance-video-card maintenance-cost-card">
+              <h3>Cout de Maintenance</h3>
+              <strong className="maintenance-ytd">{formatLargeAmount(filteredTotalCost || 0)} EUR</strong>
+              {monthLabels.length === 0 ? (
+                <p className="maintenance-empty-state">Aucune donnee disponible pour cette periode.</p>
+              ) : (
+                <div className="maintenance-area-chart" style={monthGridStyle}>
+                  {monthLabels.map((month, index) => {
+                    const current = monthlyMaintenanceCost[index] || 0;
+                    const previous = monthlyPreviousCost[index] || 0;
+                    return (
+                      <div className="maintenance-area-column" key={month}>
+                        <span style={{ height: `${Math.max(2, (current / maxMonthlyCost) * 100)}%` }} />
+                        <i style={{ height: `${Math.max(2, (previous / maxMonthlyCost) * 100)}%` }} />
+                        <em>{month}</em>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </article>
+
+            <article className="maintenance-video-card maintenance-repair-table-card">
+              <h3>Temps Moyen de Maintenance par Equipement</h3>
+              <strong className="maintenance-green-number">
+                {formatHoursMinutes(
+                  equipmentRepairRows.length
+                    ? equipmentRepairRows.reduce((total, [, value]) => total + value, 0) /
+                        equipmentRepairRows.length
+                    : 0,
+                )}
+              </strong>
+              <div className="maintenance-table-like">
+                <div>
+                  <span>Equipement</span>
+                  <span>Temps de reparation</span>
+                </div>
+                {(equipmentRepairRows.length ? equipmentRepairRows : [["Aucune donnee", 0] as [string, number]]).map(
+                  ([name, minutes]) => (
+                    <p key={name}>
+                      <span>{name}</span>
+                      <strong>{formatHoursMinutes(minutes)}</strong>
+                    </p>
+                  ),
+                )}
+              </div>
+            </article>
+          </div>
+
+          <article className="maintenance-video-card maintenance-workorders-card">
+            <h3>Ordres de travail : Planifies, Termines et En retard</h3>
+            {monthLabels.length === 0 ? (
+              <p className="maintenance-empty-state">Aucune donnee disponible pour cette periode.</p>
+            ) : (
+              <div className="maintenance-workorders-chart" style={monthGridStyle}>
+                {monthLabels.map((month, index) => (
+                  <div className="maintenance-workorders-month" key={month}>
+                    <div className="maintenance-workorders-bars">
+                      <span
+                        className="planned"
+                        style={{ height: `${Math.max(4, (monthlyPlannedTasks[index] / workOrderMax) * 100)}%` }}
+                      />
+                      <span
+                        className="done"
+                        style={{ height: `${Math.max(4, (monthlyDoneTasks[index] / workOrderMax) * 100)}%` }}
+                      />
+                      <i
+                        className="late"
+                        style={{ bottom: `${Math.max(10, (monthlyLateTasks[index] / workOrderMax) * 82)}%` }}
+                      />
+                    </div>
+                    <em>{month}</em>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <div className="maintenance-video-topbar compact">
+            <div>
+              <h1>Performance de l'Equipe</h1>
+              <p>EFFICACITE, TEMPS D'INTERVENTION, RESOLUTION, NOMBRE DE TACHES</p>
+            </div>
+          </div>
+
+          <div className="maintenance-team-kpis">
+            <article>Heures de maintenance planifiees<strong>{formatLargeAmount(filteredTotalMinutes / 60)}</strong></article>
+            <article>Duree de Maintenance en Temps Reel<strong>{formatLargeAmount(monthlyActivityMinutes.reduce((a, b) => a + b, 0) / 60)}</strong></article>
+            <article>Temps d'intervention moyen<strong>{formatHoursMinutes(filteredAverageMinutes)}</strong></article>
+            <article>Temps Moyen de Maintenance par Equipement<strong>{formatHoursMinutes(filteredMttrMinutes)}</strong></article>
+          </div>
+
+          <div className="maintenance-video-grid two">
+            <article className="maintenance-video-card maintenance-gauge-card">
+              <h3>Efficacite de l'Equipe</h3>
+              <div
+                className="maintenance-gauge"
+                style={{ "--value": `${teamEfficiency}%` } as CSSProperties}
+              >
+                <strong>{teamEfficiency}%</strong>
+              </div>
+            </article>
+
+            <article className="maintenance-video-card">
+              <h3>Nombre de taches par employe(e)</h3>
+              <div className="maintenance-horizontal-bars team">
+                {(employeeTaskRows.length ? employeeTaskRows : [["Aucun collaborateur", 0] as [string, number]]).map(
+                  ([name, value]) => (
+                    <div className="maintenance-horizontal-row" key={name}>
+                      <span title={name}>{name}</span>
+                      <i>
+                        <b style={{ width: `${Math.max(5, (value / maxEmployeeTasks) * 100)}%` }} />
+                      </i>
+                      <strong>{value}</strong>
+                    </div>
+                  ),
+                )}
+              </div>
+            </article>
+          </div>
+
+          <article className="maintenance-video-card maintenance-efficiency-card">
+            <h3>Efficacite par Employe(e)</h3>
+            <div className="maintenance-efficiency-bars">
+              {(employeeEfficiencyRows.length
+                ? employeeEfficiencyRows
+                : [{ name: "Aucun collaborateur", value: 0 }]
+              ).map((row) => (
+                <div key={row.name}>
+                  <span style={{ height: `${Math.max(5, row.value)}%` }} />
+                  <strong>{row.value}%</strong>
+                  <em title={row.name}>{row.name}</em>
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+
+  return videoDashboard;
+
+  return (
+    <section className="admin-dashboard admin-dashboard-exact">
+      <div className="admin-page-heading">
+        <div>
+          <span className="section-label">Tableau de bord</span>
+          <h1>Bienvenue, {displayRole}</h1>
+          <p>
+            {email} — {role}
+          </p>
+        </div>
+      </div>
+
+      {error && <div className="resource-error-message">{error}</div>}
+
+      {!loading && (
+        <div className="equipment-dashboard-panel">
+          <div className="equipment-dashboard-header">
+            <div className="equipment-dashboard-media">
+              {dashboardEquipmentImage ? (
+                <img
+                  src={dashboardEquipmentImage ?? undefined}
+                  alt={dashboardEquipment?.name ?? "\u00c9quipement"}
+                />
+              ) : (
+                <Wrench size={28} />
+              )}
+            </div>
+
+            <div>
+              <span className="equipment-dashboard-eyebrow">
+                {"D\u00e9tail \u00e9quipement"}
+              </span>
+              <h2>{dashboardEquipment?.name ?? "Tous les \u00e9quipements"}</h2>
+              <p>
+                {dashboardEquipment?.itemCode ??
+                  dashboardEquipment?.costCenterName ??
+                  "Vue globale"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="equipment-dashboard-close"
+              onClick={() => navigate("/admin/dashboard")}
+              aria-label="Fermer"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="equipment-dashboard-kpis">
+            {detailKpis.map((kpi) => (
+              <article className="equipment-dashboard-kpi" key={kpi.title}>
+                <div className={`equipment-dashboard-kpi-icon tone-${kpi.tone}`}>
+                  {kpi.icon}
+                </div>
+                <div>
+                  <span>{kpi.title}</span>
+                  <strong>{kpi.value}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="equipment-dashboard-charts">
+            <article className="equipment-dashboard-chart-card">
+              <h3>{"T\u00e2ches par statut"}</h3>
+              <DonutChart segments={dashboardTaskStatusSegments} />
+            </article>
+
+            <article className="equipment-dashboard-chart-card">
+              <h3>{"Co\u00fbt par t\u00e2che"}</h3>
+              <SimpleBarChart items={dashboardCostByTask} />
+            </article>
+
+            <article className="equipment-dashboard-chart-card">
+              <h3>{"Temps pass\u00e9 par t\u00e2che"}</h3>
+              <SimpleBarChart items={dashboardTimeByTask} />
+            </article>
+          </div>
+        </div>
+      )}
+
+      {loading && <div className="resource-empty-state">Chargement du tableau de bord...</div>}
+    </section>
+  );
 
   return (
     <section className="admin-dashboard">

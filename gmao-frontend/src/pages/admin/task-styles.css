@@ -2196,7 +2196,7 @@ button.task-linked-row:disabled {
 .dashboard-chart-card {
   padding: 22px;
   background: #ffffff;
-  border: 1px solid #d8e3c1;
+  border: 1px solid #cddceb;
   border-radius: 10px;
 }
 
@@ -2214,7 +2214,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-chart-card h2 svg {
-  color: #6f7f38;
+  color: #a3660f;
 }
 
 .dashboard-chart-card-header {
@@ -2229,7 +2229,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-chart-link {
-  color: #556b2f;
+  color: #087fbd;
   background: transparent;
   border: 0;
   font-size: 13px;
@@ -2247,7 +2247,7 @@ button.task-linked-row:disabled {
 }
 
 .dashboard-total-cost strong {
-  color: #556b2f;
+  color: #12365c;
 }
 
 .dashboard-empty-hint {
@@ -2387,7 +2387,7 @@ button.task-linked-row:disabled {
   gap: 12px;
   padding: 16px 18px;
   background: #ffffff;
-  border: 1px solid #d8e3c1;
+  border: 1px solid #cddceb;
   border-radius: 10px;
 }
 
@@ -2397,8 +2397,8 @@ button.task-linked-row:disabled {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
-  color: #556b2f;
-  background: #eef4df;
+  color: #087fbd;
+  background: #eaf6fc;
   border-radius: 10px;
 }
 
