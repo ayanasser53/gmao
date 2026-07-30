@@ -71,9 +71,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/activities/documents/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/activities/documents/*/preview").permitAll()
 
-                        // Les techniciens traitent les taches affectees, mais ne les creent pas.
+                        // Les techniciens, comme les operateurs et prestataires, peuvent
+                        // signaler une tache sans champs de planification ni d'assignement.
                         .requestMatchers(HttpMethod.POST, "/api/tasks")
-                        .hasAnyRole("ADMIN", "PRODUCTION")
+                        .hasAnyRole("ADMIN", "PRODUCTION", "SERVICE_PROVIDER", "TECHNICIAN")
                         .requestMatchers(HttpMethod.PUT, "/api/tasks/*")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/tasks/*")

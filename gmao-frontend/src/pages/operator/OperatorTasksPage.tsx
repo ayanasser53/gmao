@@ -1,4 +1,5 @@
 import {
+  Ban,
   CalendarClock,
   CalendarDays,
   ClipboardList,
@@ -11,7 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getMyCreatedTasks } from "../../services/taskService";
+import { getAssignedToMeTasks, getMyCreatedTasks } from "../../services/taskService";
 import type { TaskListItem, TaskStatus } from "../../types/task";
 
 import "../admin/task-styles.css";
@@ -24,6 +25,7 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   LATE: { label: "En retard", className: "task-status-late" },
   DONE: { label: "Terminee", className: "task-status-done" },
+  CANCELED: { label: "Annulee", className: "task-status-canceled" },
 };
 
 type TaskTab = "ALL" | TaskStatus;
@@ -48,7 +50,23 @@ function formatDate(value: string): string {
   });
 }
 
-function OperatorTasksPage() {
+interface OperatorTasksPageProps {
+  /** "created" liste les taches que l'utilisateur a signalees (creees).
+   *  "assigned" liste les taches qui lui sont affectees pour execution. */
+  dataSource?: "created" | "assigned";
+  title?: string;
+  /** Prefixe utilise pour naviguer vers la fiche d'une tache (sans le /id). */
+  detailPathPrefix?: string;
+  /** Chemin du bouton "Creer une tache", uniquement pour dataSource="created". */
+  createPath?: string;
+}
+
+function OperatorTasksPage({
+  dataSource = "created",
+  title = "Mes taches",
+  detailPathPrefix = "/operator/tasks",
+  createPath = "/operator/tasks/new",
+}: OperatorTasksPageProps) {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [search, setSearch] = useState("");
@@ -61,7 +79,10 @@ function OperatorTasksPage() {
 
     async function load(): Promise<void> {
       try {
-        const nextTasks = await getMyCreatedTasks();
+        const nextTasks =
+          dataSource === "created"
+            ? await getMyCreatedTasks()
+            : await getAssignedToMeTasks();
 
         if (!canceled) {
           setTasks(nextTasks);
@@ -96,7 +117,7 @@ function OperatorTasksPage() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, []);
+  }, [dataSource]);
 
   const statusCounts = useMemo(
     () => ({
@@ -106,6 +127,7 @@ function OperatorTasksPage() {
       IN_PROGRESS: tasks.filter((task) => task.status === "IN_PROGRESS").length,
       LATE: tasks.filter((task) => task.status === "LATE").length,
       DONE: tasks.filter((task) => task.status === "DONE").length,
+      CANCELED: tasks.filter((task) => task.status === "CANCELED").length,
     }),
     [tasks],
   );
@@ -139,18 +161,20 @@ function OperatorTasksPage() {
         <div className="suppliers-heading-content">
           <div className="suppliers-title">
             <ClipboardList size={28} />
-            <h1>Mes taches</h1>
+            <h1>{title}</h1>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="resource-primary-button"
-          onClick={() => navigate("/operator/tasks/new")}
-        >
-          <Plus size={17} />
-          Creer une tache
-        </button>
+        {dataSource === "created" && (
+          <button
+            type="button"
+            className="resource-primary-button"
+            onClick={() => navigate(createPath)}
+          >
+            <Plus size={17} />
+            Creer une tache
+          </button>
+        )}
       </div>
 
       <div className="resource-toolbar">
@@ -174,6 +198,15 @@ function OperatorTasksPage() {
           <ClipboardList size={18} />
           Tout
           <span>{statusCounts.ALL}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-planned ${activeTab === "CREATED" ? "active" : ""}`}
+          onClick={() => setActiveTab("CREATED")}
+        >
+          <ClipboardList size={18} />
+          Creee
+          <span>{statusCounts.CREATED}</span>
         </button>
         <button
           type="button"
@@ -210,6 +243,15 @@ function OperatorTasksPage() {
           <History size={18} />
           Terminee
           <span>{statusCounts.DONE}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-late ${activeTab === "CANCELED" ? "active" : ""}`}
+          onClick={() => setActiveTab("CANCELED")}
+        >
+          <Ban size={18} />
+          Annulee
+          <span>{statusCounts.CANCELED}</span>
         </button>
       </div>
 
@@ -248,7 +290,7 @@ function OperatorTasksPage() {
                   <tr
                     key={task.id}
                     className="supplier-clickable-row"
-                    onClick={() => navigate(`/operator/tasks/${task.id}`)}
+                    onClick={() => navigate(`${detailPathPrefix}/${task.id}`)}
                   >
                     <td className="resource-table-id-cell">#{task.id}</td>
                     <td>

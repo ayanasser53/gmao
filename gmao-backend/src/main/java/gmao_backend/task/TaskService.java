@@ -205,7 +205,10 @@ public class TaskService {
 
                 .plannedStoppedMinutes(request.plannedStoppedMinutes())
 
-                .status(currentUser != null && currentUser.getRole() == Role.PRODUCTION
+                .status(currentUser != null
+                        && (currentUser.getRole() == Role.PRODUCTION
+                                || currentUser.getRole() == Role.SERVICE_PROVIDER
+                                || currentUser.getRole() == Role.TECHNICIAN)
                         ? TaskStatus.CREATED
                         : TaskStatus.IN_PROGRESS)
 
@@ -293,13 +296,31 @@ public class TaskService {
 
         task.setPlannedStoppedMinutes(request.plannedStoppedMinutes());
 
-        if (request.status() == TaskStatus.LATE) {
-            throw new IllegalArgumentException(
-                    "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
+        // Une tache annulee reste annulee : ce formulaire d'edition generique
+        // ne peut pas la reactiver (seule l'action dediee "Annuler" gere ce
+        // statut, et uniquement pour un administrateur).
+        if (task.getStatus() == TaskStatus.CANCELED) {
+            task.setStatus(TaskStatus.CANCELED);
+        } else {
+            if (request.status() == TaskStatus.LATE
+                    || request.status() == TaskStatus.PLANNED
+                    || request.status() == TaskStatus.CREATED
+                    || request.status() == TaskStatus.CANCELED) {
+                throw new IllegalArgumentException(
+                        "Les statuts « En retard », « Planifiée », « Créée » et « Annulée » sont calculés ou reserves et ne peuvent pas être définis via ce formulaire."
+                );
+            }
+
+            // Une tache signalee par un operateur/prestataire (statut « Creee »)
+            // passe automatiquement en « Planifiee » des qu'elle est modifiee
+            // ici, c'est-a-dire des que l'admin la planifie/assigne via cette
+            // fiche d'edition.
+            task.setStatus(
+                    task.getStatus() == TaskStatus.CREATED
+                            ? TaskStatus.PLANNED
+                            : request.status()
             );
         }
-
-        task.setStatus(request.status());
 
         task.setTags(resolveTags(request.tagIds()));
 
@@ -379,13 +400,37 @@ public class TaskService {
 
     @Transactional
     public TaskResponse updateStatus(Long id, UpdateTaskStatusRequest request) {
-        if (request.status() == TaskStatus.LATE) {
+        if (request.status() == TaskStatus.LATE
+                || request.status() == TaskStatus.PLANNED
+                || request.status() == TaskStatus.CREATED) {
             throw new IllegalArgumentException(
-                    "Les statuts « En retard » et « Planifiée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
+                    "Les statuts « En retard », « Planifiée » et « Créée » sont calculés automatiquement et ne peuvent pas être définis manuellement."
             );
         }
 
         Task task = findEntityById(id);
+
+        if (request.status() == TaskStatus.CANCELED) {
+            User actor = resolveCurrentUserOrNull();
+
+            if (actor == null || actor.getRole() != Role.ADMIN) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Seul un administrateur peut annuler une tâche."
+                );
+            }
+
+            if (task.getStatus() == TaskStatus.DONE) {
+                throw new IllegalArgumentException(
+                        "Une tâche déjà terminée ne peut pas être annulée."
+                );
+            }
+
+            if (task.getStatus() == TaskStatus.CANCELED) {
+                throw new IllegalArgumentException(
+                        "Cette tâche est déjà annulée."
+                );
+            }
+        }
 
         task.setStatus(request.status());
 
@@ -435,6 +480,7 @@ public class TaskService {
             case IN_PROGRESS -> "En cours";
             case LATE -> "En retard";
             case DONE -> "Terminée";
+            case CANCELED -> "Annulée";
         };
     }
 

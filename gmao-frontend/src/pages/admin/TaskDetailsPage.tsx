@@ -1,6 +1,7 @@
 
 import {
   ArrowLeft,
+  Ban,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
@@ -28,9 +29,16 @@ import DocumentAttachmentField, {
 
 import { getActivitiesByTask } from "../../services/activityService";
 import { getSpareParts } from "../../services/sparePartService";
-import { getTaskById, updateTask, fetchTagOptions, type TagOption } from "../../services/taskService";
+import {
+  getTaskById,
+  updateTask,
+  updateTaskStatus,
+  fetchTagOptions,
+  type TagOption,
+} from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
+import { getAuthenticatedRole } from "../../services/authService";
 import type { Activity } from "../../types/activity";
 import type { SparePart } from "../../types/sparePart";
 import type { Task, TaskStatus, UpdateTaskInput } from "../../types/task";
@@ -110,11 +118,12 @@ function money(value: number | null | undefined, currency?: string | null) {
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> =
   {
-    PLANNED: { label: "Planifiée", className: "task-status-planned" },
     CREATED: { label: "Créée", className: "task-status-created" },
+    PLANNED: { label: "Planifiée", className: "task-status-planned" },
     DONE: { label: "Terminée", className: "task-status-done" },
     LATE: { label: "En retard", className: "task-status-late" },
     IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
+    CANCELED: { label: "Annulée", className: "task-status-canceled" },
   };
 
 const AVATAR_COLORS = [
@@ -194,6 +203,8 @@ function TaskDetailsPage() {
 
   const [editStartDate, setEditStartDate] = useState("");
   const [editStartHour, setEditStartHour] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editEndHour, setEditEndHour] = useState("");
   const [editReportedBy, setEditReportedBy] = useState<
     { userId?: number; teamId?: number; label: string }[]
   >([]);
@@ -202,6 +213,9 @@ function TaskDetailsPage() {
   >([]);
   const [editTagIds, setEditTagIds] = useState<number[]>([]);
   const [editDescription, setEditDescription] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const isAdmin = getAuthenticatedRole() === "ADMIN";
 
   useEffect(() => {
     async function loadTaskDetails() {
@@ -249,6 +263,8 @@ function TaskDetailsPage() {
 
     setEditStartDate(task.startDate);
     setEditStartHour(task.startHour ?? "");
+    setEditEndDate(task.endDate);
+    setEditEndHour(task.endHour ?? "");
     setEditReportedBy(
       task.assignees.map((a) => ({
         userId: a.userId ?? undefined,
@@ -346,8 +362,8 @@ function TaskDetailsPage() {
       links: [],
       notifyAssignees: false,
       status:
-        task.status === "LATE"
-          ? "PLANNED"
+        task.status === "LATE" || task.status === "PLANNED" || task.status === "CREATED"
+          ? "IN_PROGRESS"
           : task.status,
       removeDocumentIds: [],
       ...patch,
@@ -368,6 +384,33 @@ function TaskDetailsPage() {
       setError(message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCancelTask(): Promise<void> {
+    if (!task || !isAdmin) {
+      return;
+    }
+
+    if (!window.confirm("Confirmez-vous l'annulation de cette tâche ?")) {
+      return;
+    }
+
+    setCancelling(true);
+
+    try {
+      const updated = await updateTaskStatus(task.id, "CANCELED");
+      setTask(updated);
+      setError("");
+    } catch (requestError) {
+      console.error(requestError);
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "L'annulation a échoué. Réessayez.";
+      setError(message);
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -445,6 +488,18 @@ function TaskDetailsPage() {
             <span className={`task-status-badge ${status.className}`}>
               {status.label}
             </span>
+
+            {isAdmin && task.status !== "DONE" && task.status !== "CANCELED" && (
+              <button
+                type="button"
+                className="resource-secondary-button"
+                onClick={() => void handleCancelTask()}
+                disabled={cancelling}
+              >
+                <Ban size={16} />
+                {cancelling ? "Annulation..." : "Annuler la tâche"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -510,6 +565,50 @@ function TaskDetailsPage() {
                   <strong>
                     {formatDate(task.startDate)}
                     {task.startHour ? ` à ${formatTime(task.startHour)}` : ""}
+                  </strong>
+                )}
+              </div>
+            </div>
+
+            <div className="task-detail-item">
+              <CalendarDays size={21} />
+              <div>
+                <span>Date de fin</span>
+                {editingField === "date" ? (
+                  <div className="task-inline-edit">
+                    <input
+                      type="date"
+                      value={editEndDate}
+                      onChange={(e) => setEditEndDate(e.target.value)}
+                      onBlur={() =>
+                        void savePatch(
+                          {
+                            endDate: editEndDate,
+                            endHour: editEndHour || null,
+                          },
+                          false,
+                        )
+                      }
+                    />
+                    <input
+                      type="time"
+                      value={editEndHour}
+                      onChange={(e) => setEditEndHour(e.target.value)}
+                      onBlur={() =>
+                        void savePatch(
+                          {
+                            endDate: editEndDate,
+                            endHour: editEndHour || null,
+                          },
+                          false,
+                        )
+                      }
+                    />
+                  </div>
+                ) : (
+                  <strong>
+                    {formatDate(task.endDate)}
+                    {task.endHour ? ` à ${formatTime(task.endHour)}` : ""}
                   </strong>
                 )}
               </div>

@@ -134,29 +134,36 @@ public class TaskMapper {
     }
 
     /**
-     * The "late" and "planned" statuses are never stored — they are
-     * derived on every read from the task's start/end date-time compared
-     * to now, so the UI never needs to set them manually. A task already
-     * marked DONE is never considered late or planned.
+     * Les statuts "Creee" (tache signalee par un operateur/prestataire, pas
+     * encore planifiee), "Terminee" et "Annulee" sont toujours affiches
+     * tels quels. Pour les autres, le statut affiche est calcule a la
+     * volee a chaque lecture :
+     * - si l'echeance (date/heure de fin) est depassee : "En retard" ;
+     * - sinon, si la tache comporte au moins une activite : "En cours" ;
+     * - sinon : "Planifiee" (une tache planifiee/assignee par l'admin
+     *   ne passe "En cours" que lorsqu'une activite y est enregistree,
+     *   pas simplement parce que sa date de debut est arrivee).
      */
     private TaskStatus resolveDisplayStatus(Task task) {
         if (task.getStatus() == TaskStatus.CREATED
-                || task.getStatus() == TaskStatus.IN_PROGRESS
                 || task.getStatus() == TaskStatus.DONE
-                || task.getStatus() == TaskStatus.LATE
-                || task.getStartDate() == null) {
+                || task.getStatus() == TaskStatus.CANCELED) {
             return task.getStatus();
         }
 
-        LocalTime startTime = task.isAllDay() || task.getStartHour() == null
-                ? LocalTime.of(0, 0)
-                : task.getStartHour();
+        LocalTime endTime = task.isAllDay() || task.getEndHour() == null
+                ? LocalTime.of(23, 59)
+                : task.getEndHour();
 
-        LocalDateTime startDateTime = task.getStartDate().atTime(startTime);
+        LocalDateTime deadline = task.getEndDate().atTime(endTime);
 
-        return startDateTime.isBefore(LocalDateTime.now())
-                ? TaskStatus.LATE
-                : TaskStatus.PLANNED;
+        if (deadline.isBefore(LocalDateTime.now())) {
+            return TaskStatus.LATE;
+        }
+
+        boolean hasActivity = task.getActivities() != null && !task.getActivities().isEmpty();
+
+        return hasActivity ? TaskStatus.IN_PROGRESS : TaskStatus.PLANNED;
     }
 
     private TaskEquipmentResponse toEquipmentResponse(Equipment equipment) {

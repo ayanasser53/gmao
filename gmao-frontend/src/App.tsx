@@ -66,6 +66,9 @@ import OperatorTasksPage from "./pages/operator/OperatorTasksPage";
 import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage";
 import TechnicianTasksPage from "./pages/technician/TechnicianTasksPage";
 import TechnicianTaskDetailsPage from "./pages/technician/TechnicianTaskDetailsPage";
+import TechnicianCreatedTasksPage from "./pages/technician/TechnicianCreatedTasksPage";
+import TechnicianCreateTaskPage from "./pages/technician/TechnicianCreateTaskPage";
+import TechnicianCreatedTaskDetailsPage from "./pages/technician/TechnicianCreatedTaskDetailsPage";
 import TechnicianActivitiesPage from "./pages/technician/TechnicianActivitiesPage";
 import TechnicianActivityFormPage from "./pages/technician/TechnicianActivityFormPage";
 import TechnicianMaintenancePlansPage from "./pages/technician/TechnicianMaintenancePlansPage";
@@ -75,6 +78,9 @@ import TechnicianMaintenancePlanDetailsPage from "./pages/technician/TechnicianM
 import ProviderDashboardPage from "./pages/provider/ProviderDashboardPage";
 import ProviderTasksPage from "./pages/provider/ProviderTasksPage";
 import ProviderTaskDetailsPage from "./pages/provider/ProviderTaskDetailsPage";
+import ProviderCreatedTasksPage from "./pages/provider/ProviderCreatedTasksPage";
+import ProviderCreateTaskPage from "./pages/provider/ProviderCreateTaskPage";
+import ProviderCreatedTaskDetailsPage from "./pages/provider/ProviderCreatedTaskDetailsPage";
 import ProviderActivitiesPage from "./pages/provider/ProviderActivitiesPage";
 import ProviderActivityFormPage from "./pages/provider/ProviderActivityFormPage";
 import ProviderMaintenancePlansPage from "./pages/provider/ProviderMaintenancePlansPage";
@@ -360,6 +366,12 @@ function App() {
           <Route index element={<TechnicianDashboardPage />} />
           <Route path="tasks" element={<TechnicianTasksPage />} />
           <Route path="tasks/:id" element={<TechnicianTaskDetailsPage />} />
+          <Route path="created-tasks" element={<TechnicianCreatedTasksPage />} />
+          <Route path="created-tasks/new" element={<TechnicianCreateTaskPage />} />
+          <Route
+            path="created-tasks/:id"
+            element={<TechnicianCreatedTaskDetailsPage />}
+          />
           <Route path="activities" element={<TechnicianActivitiesPage />} />
           <Route path="activities/create" element={<TechnicianActivityFormPage />} />
           <Route
@@ -391,6 +403,12 @@ function App() {
           <Route index element={<ProviderDashboardPage />} />
           <Route path="tasks" element={<ProviderTasksPage />} />
           <Route path="tasks/:id" element={<ProviderTaskDetailsPage />} />
+          <Route path="created-tasks" element={<ProviderCreatedTasksPage />} />
+          <Route path="created-tasks/new" element={<ProviderCreateTaskPage />} />
+          <Route
+            path="created-tasks/:id"
+            element={<ProviderCreatedTaskDetailsPage />}
+          />
           <Route path="activities" element={<ProviderActivitiesPage />} />
           <Route path="activities/create" element={<ProviderActivityFormPage />} />
           <Route path="maintenance-plans" element={<ProviderMaintenancePlansPage />} />

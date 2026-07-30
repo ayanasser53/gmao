@@ -34,11 +34,12 @@ interface WorkspaceDashboardPageProps {
 }
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
-  CREATED: { label: "Creee", color: "#64748b" },
+  CREATED: { label: "Creee", color: "#6b46c1" },
   PLANNED: { label: "Planifiee", color: "#ffb020" },
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
   DONE: { label: "Terminee", color: "#34d1b3" },
+  CANCELED: { label: "Annulee", color: "#5a5f6b" },
 };
 
 function activitySpentMinutes(activity: ActivityItem): number {
@@ -79,7 +80,7 @@ function statusCount(tasks: TaskListItem[], status: TaskStatus): number {
 
 function DashboardStatusList({ tasks }: { tasks: TaskListItem[] }) {
   const total = tasks.length || 1;
-  const statuses: TaskStatus[] = ["CREATED", "PLANNED", "IN_PROGRESS", "LATE", "DONE"];
+  const statuses: TaskStatus[] = ["CREATED", "PLANNED", "IN_PROGRESS", "LATE", "DONE", "CANCELED"];
 
   return (
     <div className="dashboard-bar-chart">

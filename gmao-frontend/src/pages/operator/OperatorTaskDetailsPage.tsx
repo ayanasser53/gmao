@@ -14,7 +14,7 @@ import {
   DocumentPreviewModal,
   type PreviewDocument,
 } from "../../components/admin/DocumentAttachmentField";
-import { getMyCreatedTaskById } from "../../services/taskService";
+import { getMyCreatedTaskById, getTaskById } from "../../services/taskService";
 import type { Task, TaskStatus } from "../../types/task";
 
 import "../admin/task-styles.css";
@@ -27,6 +27,7 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }>
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
   LATE: { label: "En retard", className: "task-status-late" },
   DONE: { label: "Terminee", className: "task-status-done" },
+  CANCELED: { label: "Annulee", className: "task-status-canceled" },
 };
 
 function getFileUrl(path: string | null | undefined): string | null {
@@ -62,7 +63,18 @@ function formatTime(value: string | null | undefined): string {
   return value ? value.slice(0, 5) : "-";
 }
 
-function OperatorTaskDetailsPage() {
+interface OperatorTaskDetailsPageProps {
+  /** Chemin utilise pour le bouton "retour" (sans le /id). */
+  backPath?: string;
+  /** "created" charge la tache via my-created/{id} (le proprietaire),
+   *  "assigned" charge la tache via l'endpoint generique (assignation). */
+  dataSource?: "created" | "assigned";
+}
+
+function OperatorTaskDetailsPage({
+  backPath = "/operator/tasks",
+  dataSource = "created",
+}: OperatorTaskDetailsPageProps) {
   const navigate = useNavigate();
   const { id } = useParams();
   const taskId = Number(id);
@@ -87,7 +99,10 @@ function OperatorTaskDetailsPage() {
       }
 
       try {
-        const nextTask = await getMyCreatedTaskById(taskId);
+        const nextTask =
+          dataSource === "created"
+            ? await getMyCreatedTaskById(taskId)
+            : await getTaskById(taskId);
 
         if (!canceled) {
           setTask(nextTask);
@@ -122,7 +137,7 @@ function OperatorTaskDetailsPage() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [taskId]);
+  }, [taskId, dataSource]);
 
   const equipmentImage = useMemo(
     () => getFileUrl(task?.equipment?.image),
@@ -173,7 +188,7 @@ function OperatorTaskDetailsPage() {
         <button
           type="button"
           className="details-back-button"
-          onClick={() => navigate("/operator/tasks")}
+          onClick={() => navigate(backPath)}
           aria-label="Retour aux taches"
         >
           <ArrowLeft size={22} />
@@ -202,6 +217,17 @@ function OperatorTaskDetailsPage() {
                 <strong>
                   {formatDate(task.startDate)}
                   {task.startHour ? ` a ${formatTime(task.startHour)}` : ""}
+                </strong>
+              </div>
+            </div>
+
+            <div className="task-detail-item">
+              <CalendarDays size={21} />
+              <div>
+                <span>Date de fin</span>
+                <strong>
+                  {formatDate(task.endDate)}
+                  {task.endHour ? ` a ${formatTime(task.endHour)}` : ""}
                 </strong>
               </div>
             </div>

@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   ClipboardList,
   LayoutDashboard,
+  Users,
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
@@ -25,10 +26,16 @@ function ProviderLayout() {
             icon: <LayoutDashboard size={20} />,
           },
           {
-            label: "Mes taches",
+            label: "Taches creees",
+            path: "/provider/created-tasks",
+            description: "Taches que vous avez signalees",
+            icon: <ClipboardList size={20} />,
+          },
+          {
+            label: "Taches assignees",
             path: "/provider/tasks",
             description: "Taches qui vous sont affectees",
-            icon: <ClipboardList size={20} />,
+            icon: <Users size={20} />,
           },
           {
             label: "Activites",

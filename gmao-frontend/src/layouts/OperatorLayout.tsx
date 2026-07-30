@@ -33,7 +33,7 @@ function OperatorLayout() {
     : location.pathname === "/operator/tasks/new"
     ? "Creation d'une tache de maintenance"
     : location.pathname.startsWith("/operator/tasks")
-      ? "Liste de vos taches"
+      ? "Taches que vous avez signalees"
       : "Vue generale de vos taches";
 
   function handleLogout(): void {
@@ -195,6 +195,22 @@ function OperatorLayout() {
             <span className="admin-sidebar-link-label">Mes taches</span>
           </NavLink>
 
+          <NavLink
+            to="/operator/notifications"
+            className={({ isActive }) =>
+              [
+                "admin-sidebar-link",
+                isActive ? "admin-sidebar-link-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
+            }
+          >
+            <span className="admin-sidebar-link-icon">
+              <Bell size={20} />
+            </span>
+            <span className="admin-sidebar-link-label">Notifications</span>
+          </NavLink>
         </nav>
 
         <div className="admin-sidebar-footer">

@@ -627,14 +627,24 @@
   background-color: #ddf6e9;
 }
 
+.task-status-canceled {
+  color: #5a5f6b;
+  background: #e7e8eb;
+}
+
+.task-status-select.task-status-canceled {
+  color: #5a5f6b;
+  background-color: #e7e8eb;
+}
+
 .task-status-created {
-  color: #475569;
-  background: #eef2f7;
+  color: #6b46c1;
+  background: #ede7fb;
 }
 
 .task-status-select.task-status-created {
-  color: #475569;
-  background-color: #eef2f7;
+  color: #6b46c1;
+  background-color: #ede7fb;
 }
 
 .task-status-planned {

@@ -1,4 +1,5 @@
 import {
+  Ban,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
@@ -29,7 +30,7 @@ import {
 } from "../../services/taskService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
-import { getAuthenticatedUserId } from "../../services/authService";
+import { getAuthenticatedRole, getAuthenticatedUserId } from "../../services/authService";
 import type { Activity } from "../../types/activity";
 import type { Equipment } from "../../types/equipment";
 import type { CostCenter } from "../../types/costCenter";
@@ -83,6 +84,7 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   DONE: { label: "Terminée", className: "task-status-done" },
   LATE: { label: "En retard", className: "task-status-late" },
   IN_PROGRESS: { label: "En cours", className: "task-status-progress" },
+  CANCELED: { label: "Annulée", className: "task-status-canceled" },
 };
 
 type TaskTab = "ALL" | TaskStatus;
@@ -157,6 +159,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
   const navigate = useNavigate();
   const basePath = useWorkspaceBasePath();
   const currentUserId = getAuthenticatedUserId();
+  const isAdmin = getAuthenticatedRole() === "ADMIN";
 
   // Le prestataire n'a pas de vue "toutes les tâches de mon usine" : ses
   // tâches lui sont déjà filtrées côté serveur (assigné, toutes usines
@@ -282,6 +285,7 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
       IN_PROGRESS: visibleTasks.filter((task) => task.status === "IN_PROGRESS").length,
       LATE: visibleTasks.filter((task) => task.status === "LATE").length,
       DONE: visibleTasks.filter((task) => task.status === "DONE").length,
+      CANCELED: visibleTasks.filter((task) => task.status === "CANCELED").length,
     };
   }, [tasks, restrictedMode, currentUserId]);
 
@@ -1029,6 +1033,15 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
         </button>
         <button
           type="button"
+          className={`tab-planned ${activeTab === "CREATED" ? "active" : ""}`}
+          onClick={() => setActiveTab("CREATED")}
+        >
+          <ClipboardList size={18} />
+          Créée
+          <span>{statusCounts.CREATED}</span>
+        </button>
+        <button
+          type="button"
           className={`tab-planned ${activeTab === "PLANNED" ? "active" : ""}`}
           onClick={() => setActiveTab("PLANNED")}
         >
@@ -1062,6 +1075,15 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
           <History size={18} />
           Terminée
           <span>{statusCounts.DONE}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-late ${activeTab === "CANCELED" ? "active" : ""}`}
+          onClick={() => setActiveTab("CANCELED")}
+        >
+          <Ban size={18} />
+          Annulée
+          <span>{statusCounts.CANCELED}</span>
         </button>
       </div>
 
@@ -1100,10 +1122,8 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                 const status = STATUS_META[task.status];
                 const equipmentImage = getEquipmentImageUrl(task.equipment);
                 const selectedStatus =
-                  task.status === "LATE"
-                    ? "PLANNED"
-                    : task.status === "CREATED"
-                    ? "PLANNED"
+                  task.status === "LATE" || task.status === "PLANNED" || task.status === "CREATED"
+                    ? "IN_PROGRESS"
                     : task.status;
 
                 return (
@@ -1196,10 +1216,16 @@ function TaskListPage({ technicianMode = false, providerMode = false }: TaskList
                             )
                           }
                         >
-                          <option value="PLANNED">Planifi�e</option>
                           <option value="IN_PROGRESS">En cours</option>
                           <option value="DONE">Terminée</option>
+                          {isAdmin && task.status !== "DONE" && (
+                            <option value="CANCELED">Annulée</option>
+                          )}
                         </select>
+                      ) : task.status === "CANCELED" ? (
+                        <span className={`task-status-badge ${status.className}`}>
+                          {status.label}
+                        </span>
                       ) : (
                         <button
                           type="button"

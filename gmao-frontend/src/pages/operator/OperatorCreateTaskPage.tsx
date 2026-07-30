@@ -16,7 +16,14 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function OperatorCreateTaskPage() {
+interface OperatorCreateTaskPageProps {
+  /** Chemin de retour apres creation / annulation (liste des taches creees). */
+  basePath?: string;
+}
+
+function OperatorCreateTaskPage({
+  basePath = "/operator/tasks",
+}: OperatorCreateTaskPageProps) {
   const navigate = useNavigate();
   const [equipmentOptions, setEquipmentOptions] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState<number | "">("");
@@ -81,7 +88,7 @@ function OperatorCreateTaskPage() {
         files,
       );
 
-      navigate("/operator/tasks");
+      navigate(basePath);
     } catch (submitError) {
       console.error(submitError);
       setError("La creation de la tache a echoue. Reessayez.");
@@ -96,7 +103,7 @@ function OperatorCreateTaskPage() {
         type="button"
         className="supplier-form-backdrop"
         aria-label="Retour aux taches"
-        onClick={() => navigate("/operator/tasks")}
+        onClick={() => navigate(basePath)}
       />
 
       <aside className="supplier-form-drawer task-form-drawer">
@@ -105,7 +112,7 @@ function OperatorCreateTaskPage() {
             <button
               type="button"
               className="measure-drawer-back"
-              onClick={() => navigate("/operator/tasks")}
+              onClick={() => navigate(basePath)}
               aria-label="Retour aux taches"
             >
               <ArrowLeft size={22} />
@@ -116,7 +123,7 @@ function OperatorCreateTaskPage() {
             <button
               type="button"
               className="measure-drawer-close"
-              onClick={() => navigate("/operator/tasks")}
+              onClick={() => navigate(basePath)}
               aria-label="Fermer"
             >
               <X size={21} />
@@ -175,7 +182,7 @@ function OperatorCreateTaskPage() {
               type="button"
               className="measure-cancel-button"
               disabled={submitting}
-              onClick={() => navigate("/operator/tasks")}
+              onClick={() => navigate(basePath)}
             >
               Annuler
             </button>
