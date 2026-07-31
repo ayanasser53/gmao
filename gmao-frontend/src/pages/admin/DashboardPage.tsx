@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -7,8 +7,8 @@ import {
   AlertTriangle,
   Boxes,
   CalendarCheck,
+  CalendarDays,
   Clock,
-  ClipboardList,
   Gauge,
   MapPin,
   PackageSearch,
@@ -47,6 +47,8 @@ import type {
 
 import "./task-styles.css";
 import "./DashboardPage.css";
+
+const BACKEND_URL = "http://localhost:8090";
 
 interface DashboardCard {
   title: string;
@@ -740,6 +742,227 @@ function RankingTable({
   );
 }
 
+interface DateRange {
+  start: Date | null;
+  end: Date | null;
+}
+
+function isWithinRange(dateStr: string | null | undefined, range: DateRange): boolean {
+  if (!range.start || !range.end) return true;
+  if (!dateStr) return false;
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return false;
+
+  return date.getTime() >= range.start.getTime() && date.getTime() <= range.end.getTime();
+}
+
+function resolveImageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return path.startsWith("http") ? path : `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+const AVATAR_COLORS = ["#087fbd", "#6b46c1", "#198754", "#a3660f", "#b42318", "#0f766e"];
+
+function avatarColor(id: number): string {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0) ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.charAt(0) ?? "" : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+interface AvatarOption {
+  id: number;
+  name: string;
+  imageUrl?: string | null;
+}
+
+/** Petite vignette : photo si disponible, sinon cercle coloré avec initiales. */
+function OptionThumb({ option }: { option: AvatarOption }) {
+  if (option.imageUrl) {
+    return <img className="dashboard-avatar-thumb" src={option.imageUrl} alt="" />;
+  }
+
+  return (
+    <span
+      className="dashboard-avatar-thumb dashboard-avatar-thumb-initials"
+      style={{ background: avatarColor(option.id) }}
+    >
+      {initialsFromName(option.name)}
+    </span>
+  );
+}
+
+/** Menu déroulant avec avatar/photo par option — un seul ouvert à la fois. */
+function AvatarSelect({
+  icon,
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+  dropdownKey,
+  openDropdown,
+  setOpenDropdown,
+}: {
+  icon: ReactNode;
+  label: string;
+  options: AvatarOption[];
+  value: number | "";
+  onChange: (id: number | "") => void;
+  placeholder: string;
+  dropdownKey: string;
+  openDropdown: string | null;
+  setOpenDropdown: (key: string | null) => void;
+}) {
+  const selected = options.find((option) => option.id === value);
+  const isOpen = openDropdown === dropdownKey;
+
+  return (
+    <label className="dashboard-filter-field">
+      <span className="dashboard-filter-field-label">
+        {icon}
+        {label}
+      </span>
+
+      <div className="dashboard-avatar-select-control">
+        <button
+          type="button"
+          className="dashboard-avatar-select-trigger"
+          onClick={() => setOpenDropdown(isOpen ? null : dropdownKey)}
+        >
+          {selected ? (
+            <>
+              <OptionThumb option={selected} />
+              <span>{selected.name}</span>
+            </>
+          ) : (
+            <span className="dashboard-avatar-select-placeholder">{placeholder}</span>
+          )}
+        </button>
+
+        {isOpen && (
+          <div className="dashboard-avatar-select-panel">
+            <button
+              type="button"
+              className={value === "" ? "selected" : ""}
+              onClick={() => {
+                onChange("");
+                setOpenDropdown(null);
+              }}
+            >
+              {placeholder}
+            </button>
+
+            {options.map((option) => (
+              <button
+                type="button"
+                key={option.id}
+                className={value === option.id ? "selected" : ""}
+                onClick={() => {
+                  onChange(option.id);
+                  setOpenDropdown(null);
+                }}
+              >
+                <OptionThumb option={option} />
+                <span>{option.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </label>
+  );
+}
+
+interface TagOption {
+  id: number;
+  name: string;
+  color: string;
+}
+
+/** Menu déroulant avec puces colorées — pour le filtre par tag. */
+function TagSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  dropdownKey,
+  openDropdown,
+  setOpenDropdown,
+}: {
+  options: TagOption[];
+  value: number | "";
+  onChange: (id: number | "") => void;
+  placeholder: string;
+  dropdownKey: string;
+  openDropdown: string | null;
+  setOpenDropdown: (key: string | null) => void;
+}) {
+  const selected = options.find((option) => option.id === value);
+  const isOpen = openDropdown === dropdownKey;
+
+  return (
+    <label className="dashboard-filter-field">
+      <span className="dashboard-filter-field-label">
+        <TagIcon size={15} />
+        Tags
+      </span>
+
+      <div className="dashboard-avatar-select-control">
+        <button
+          type="button"
+          className="dashboard-avatar-select-trigger"
+          onClick={() => setOpenDropdown(isOpen ? null : dropdownKey)}
+        >
+          {selected ? (
+            <span className="dashboard-tag-chip" style={{ background: selected.color }}>
+              {selected.name}
+            </span>
+          ) : (
+            <span className="dashboard-avatar-select-placeholder">{placeholder}</span>
+          )}
+        </button>
+
+        {isOpen && (
+          <div className="dashboard-avatar-select-panel">
+            <button
+              type="button"
+              className={value === "" ? "selected" : ""}
+              onClick={() => {
+                onChange("");
+                setOpenDropdown(null);
+              }}
+            >
+              {placeholder}
+            </button>
+
+            {options.map((option) => (
+              <button
+                type="button"
+                key={option.id}
+                className={value === option.id ? "selected" : ""}
+                onClick={() => {
+                  onChange(option.id);
+                  setOpenDropdown(null);
+                }}
+              >
+                <span className="dashboard-tag-chip" style={{ background: option.color }}>
+                  {option.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </label>
+  );
+}
+
 function DashboardPage() {
 
   const navigate = useNavigate();
@@ -747,8 +970,8 @@ function DashboardPage() {
   const role = getAuthenticatedRole();
 
   const [equipmentCount, setEquipmentCount] = useState(0);
-  const [tasks, setTasks] = useState<TaskListItem[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [allTasks, setAllTasks] = useState<TaskListItem[]>([]);
+  const [allActivities, setAllActivities] = useState<Activity[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [teamsCount, setTeamsCount] = useState(0);
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
@@ -759,6 +982,32 @@ function DashboardPage() {
   const [analysisDimension, setAnalysisDimension] = useState<AnalysisDimension>("users");
   const [analysisFiltersOpen, setAnalysisFiltersOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState<DashboardSection>("apercu");
+
+  const [showFilters, setShowFilters] = useState(true);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const filtersPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const [statusFilter, setStatusFilter] = useState<Set<TaskStatus>>(new Set());
+  const [taskOriginFilter, setTaskOriginFilter] = useState<"all" | "notPlan" | "plan">("all");
+  const [equipmentFilterId, setEquipmentFilterId] = useState<number | "">("");
+  const [costCenterFilterId, setCostCenterFilterId] = useState<number | "">("");
+  const [tagFilterId, setTagFilterId] = useState<number | "">("");
+  const [assignedUserFilterId, setAssignedUserFilterId] = useState<number | "">("");
+  const [activityUserFilterId, setActivityUserFilterId] = useState<number | "">("");
+  const [dateTypeFilter, setDateTypeFilter] = useState<"planning" | "created">("planning");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent): void {
+      if (filtersPanelRef.current && !filtersPanelRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -785,8 +1034,8 @@ function DashboardPage() {
         ]);
 
         setEquipmentCount(equipmentData.length);
-        setTasks(tasksData);
-        setActivities(activitiesData);
+        setAllTasks(tasksData);
+        setAllActivities(activitiesData);
         setSpareParts(sparePartsData);
         setTeamsCount(teamsData.length);
         setPlans(plansData);
@@ -800,6 +1049,153 @@ function DashboardPage() {
 
     void loadDashboard();
   }, []);
+
+  const dateRange: DateRange = useMemo(
+    () => ({
+      start: startDateFilter ? new Date(`${startDateFilter}T00:00:00`) : null,
+      end: endDateFilter ? new Date(`${endDateFilter}T23:59:59`) : null,
+    }),
+    [startDateFilter, endDateFilter],
+  );
+
+  function taskMatchesFilters(task: TaskListItem): boolean {
+    if (statusFilter.size > 0 && !statusFilter.has(task.status)) return false;
+    if (taskOriginFilter === "notPlan" && task.maintenancePlanId != null) return false;
+    if (taskOriginFilter === "plan" && task.maintenancePlanId == null) return false;
+    if (equipmentFilterId !== "" && task.equipment?.id !== equipmentFilterId) return false;
+    if (costCenterFilterId !== "" && task.costCenterId !== costCenterFilterId) return false;
+    if (tagFilterId !== "" && !task.tags.some((tag) => tag.id === tagFilterId)) return false;
+    if (
+      assignedUserFilterId !== "" &&
+      !task.assignedTo.some(
+        (assignee) => assignee.type === "USER" && assignee.userId === assignedUserFilterId,
+      )
+    )
+      return false;
+
+    const dateStr = dateTypeFilter === "created" ? task.createdAt : task.startDate;
+    if (!isWithinRange(dateStr, dateRange)) return false;
+
+    return true;
+  }
+
+  function activityMatchesFilters(activity: Activity): boolean {
+    if (equipmentFilterId !== "" && activity.equipmentId !== equipmentFilterId) return false;
+    if (
+      activityUserFilterId !== "" &&
+      !activity.intervenants.some((person) => person.userId === activityUserFilterId)
+    )
+      return false;
+
+    const dateStr = dateTypeFilter === "created" ? activity.createdAt : activity.performedDate;
+    if (!isWithinRange(dateStr, dateRange)) return false;
+
+    return true;
+  }
+
+  const equipmentOptions = useMemo<AvatarOption[]>(() => {
+    const map = new Map<number, AvatarOption>();
+    allTasks.forEach((task) => {
+      if (task.equipment) {
+        map.set(task.equipment.id, {
+          id: task.equipment.id,
+          name: task.equipment.name,
+          imageUrl: resolveImageUrl(task.equipment.image),
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allTasks]);
+
+  const costCenterOptions = useMemo(() => {
+    const map = new Map<number, string>();
+    allTasks.forEach((task) => {
+      if (task.costCenterId != null && task.costCenterName)
+        map.set(task.costCenterId, task.costCenterName);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allTasks]);
+
+  const tagOptions = useMemo<TagOption[]>(() => {
+    const map = new Map<number, TagOption>();
+    allTasks.forEach((task) =>
+      task.tags.forEach((tag) => map.set(tag.id, { id: tag.id, name: tag.name, color: tag.color })),
+    );
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allTasks]);
+
+  const assignedUserOptions = useMemo<AvatarOption[]>(() => {
+    const map = new Map<number, AvatarOption>();
+    allTasks.forEach((task) =>
+      task.assignedTo.forEach((assignee) => {
+        if (assignee.type === "USER" && assignee.userId && assignee.userFullName) {
+          map.set(assignee.userId, {
+            id: assignee.userId,
+            name: assignee.userFullName,
+            imageUrl: resolveImageUrl(assignee.userPhoto),
+          });
+        }
+      }),
+    );
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allTasks]);
+
+  const activityUserOptions = useMemo<AvatarOption[]>(() => {
+    const map = new Map<number, AvatarOption>();
+    allActivities.forEach((activity) =>
+      activity.intervenants.forEach((person) => {
+        const name = [person.firstName, person.lastName].filter(Boolean).join(" ");
+        if (name) map.set(person.userId, { id: person.userId, name });
+      }),
+    );
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allActivities]);
+
+  function clearFilters(): void {
+    setStatusFilter(new Set());
+    setTaskOriginFilter("all");
+    setEquipmentFilterId("");
+    setCostCenterFilterId("");
+    setTagFilterId("");
+    setAssignedUserFilterId("");
+    setActivityUserFilterId("");
+    setDateTypeFilter("planning");
+    setStartDateFilter("");
+    setEndDateFilter("");
+  }
+
+  const tasks = useMemo(
+    () => allTasks.filter(taskMatchesFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      allTasks,
+      statusFilter,
+      taskOriginFilter,
+      equipmentFilterId,
+      costCenterFilterId,
+      tagFilterId,
+      assignedUserFilterId,
+      dateTypeFilter,
+      dateRange,
+    ],
+  );
+
+  const activities = useMemo(
+    () => allActivities.filter(activityMatchesFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allActivities, equipmentFilterId, activityUserFilterId, dateTypeFilter, dateRange],
+  );
+
+  const activeFilterCount =
+    statusFilter.size +
+    (taskOriginFilter !== "all" ? 1 : 0) +
+    (equipmentFilterId !== "" ? 1 : 0) +
+    (costCenterFilterId !== "" ? 1 : 0) +
+    (tagFilterId !== "" ? 1 : 0) +
+    (assignedUserFilterId !== "" ? 1 : 0) +
+    (activityUserFilterId !== "" ? 1 : 0) +
+    (startDateFilter !== "" ? 1 : 0) +
+    (endDateFilter !== "" ? 1 : 0);
 
   const taskStatusSegments: DonutSegment[] = useMemo(() => {
     const counts: Record<TaskStatus, number> = {
@@ -995,7 +1391,8 @@ function DashboardPage() {
     tasksList.forEach((task) => {
       keyOf(task).forEach((key) => {
         const current =
-          map.get(key) ?? { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0 };
+          map.get(key) ??
+          { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0 };
         current[task.status] += 1;
         map.set(key, current);
       });
@@ -1267,6 +1664,194 @@ function DashboardPage() {
           </p>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="dashboard-filters-toggle"
+        onClick={() => setShowFilters((current) => !current)}
+      >
+        <span>{showFilters ? "Masquer les filtres" : "Afficher les filtres"}</span>
+        {activeFilterCount > 0 && (
+          <span className="dashboard-filters-badge">{activeFilterCount}</span>
+        )}
+        <ChevronDown
+          size={18}
+          className={showFilters ? "dashboard-filters-chevron open" : "dashboard-filters-chevron"}
+        />
+      </button>
+
+      {showFilters && (
+        <div className="dashboard-filters-panel" ref={filtersPanelRef}>
+          <div className="dashboard-filters-statuses">
+            {(Object.keys(TASK_STATUS_META) as TaskStatus[]).map((status) => {
+              const meta = TASK_STATUS_META[status];
+              const active = statusFilter.has(status);
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  className={`dashboard-status-chip-btn ${active ? "dashboard-status-chip-btn-active" : ""}`}
+                  style={{
+                    background: meta.color,
+                    color: "#fff",
+                    boxShadow: active ? `0 0 0 2px #fff, 0 0 0 4px ${meta.color}` : "none",
+                  }}
+                  onClick={() =>
+                    setStatusFilter((current) => {
+                      const next = new Set(current);
+                      if (next.has(status)) next.delete(status);
+                      else next.add(status);
+                      return next;
+                    })
+                  }
+                >
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="dashboard-filters-origin">
+            <label>
+              <input
+                type="radio"
+                name="taskOrigin"
+                checked={taskOriginFilter === "all"}
+                onChange={() => setTaskOriginFilter("all")}
+              />
+              Toutes les tâches
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="taskOrigin"
+                checked={taskOriginFilter === "notPlan"}
+                onChange={() => setTaskOriginFilter("notPlan")}
+              />
+              Hors plan de maintenance
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="taskOrigin"
+                checked={taskOriginFilter === "plan"}
+                onChange={() => setTaskOriginFilter("plan")}
+              />
+              Issues d'un plan de maintenance
+            </label>
+          </div>
+
+          <div className="dashboard-filters-grid">
+            <AvatarSelect
+              icon={<Users size={15} />}
+              label="Utilisateur assigné"
+              options={assignedUserOptions}
+              value={assignedUserFilterId}
+              onChange={setAssignedUserFilterId}
+              placeholder="Tous les utilisateurs"
+              dropdownKey="assignedUser"
+              openDropdown={openDropdown}
+              setOpenDropdown={setOpenDropdown}
+            />
+
+            <AvatarSelect
+              icon={<Users size={15} />}
+              label="Utilisateur de l'activité"
+              options={activityUserOptions}
+              value={activityUserFilterId}
+              onChange={setActivityUserFilterId}
+              placeholder="Tous les utilisateurs"
+              dropdownKey="activityUser"
+              openDropdown={openDropdown}
+              setOpenDropdown={setOpenDropdown}
+            />
+
+            <TagSelect
+              options={tagOptions}
+              value={tagFilterId}
+              onChange={setTagFilterId}
+              placeholder="Tous les tags"
+              dropdownKey="tags"
+              openDropdown={openDropdown}
+              setOpenDropdown={setOpenDropdown}
+            />
+
+            <AvatarSelect
+              icon={<Wrench size={15} />}
+              label="Équipement"
+              options={equipmentOptions}
+              value={equipmentFilterId}
+              onChange={setEquipmentFilterId}
+              placeholder="Tous les équipements"
+              dropdownKey="equipment"
+              openDropdown={openDropdown}
+              setOpenDropdown={setOpenDropdown}
+            />
+
+            <label className="dashboard-filter-field">
+              <span className="dashboard-filter-field-label">
+                <MapPin size={15} />
+                Centre de coût
+              </span>
+              <select
+                value={costCenterFilterId}
+                onChange={(event) =>
+                  setCostCenterFilterId(event.target.value ? Number(event.target.value) : "")
+                }
+              >
+                <option value="">Tous les centres de coût</option>
+                {costCenterOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="dashboard-filter-field">
+              <span className="dashboard-filter-field-label">
+                <Clock size={15} />
+                Type de date
+              </span>
+              <select
+                value={dateTypeFilter}
+                onChange={(event) => setDateTypeFilter(event.target.value as "planning" | "created")}
+              >
+                <option value="planning">Date de planification</option>
+                <option value="created">Date de création</option>
+              </select>
+            </label>
+
+            <label className="dashboard-filter-field">
+              <span className="dashboard-filter-field-label">
+                <CalendarDays size={15} />
+                Date début
+              </span>
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(event) => setStartDateFilter(event.target.value)}
+              />
+            </label>
+
+            <label className="dashboard-filter-field">
+              <span className="dashboard-filter-field-label">
+                <CalendarDays size={15} />
+                Date fin
+              </span>
+              <input
+                type="date"
+                value={endDateFilter}
+                onChange={(event) => setEndDateFilter(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <button type="button" className="dashboard-filters-clear" onClick={clearFilters}>
+            Effacer les filtres
+          </button>
+        </div>
+      )}
 
       {error && <div className="resource-error-message">{error}</div>}
 
