@@ -25,6 +25,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     boolean existsByEquipmentId(Long equipmentId);
 
+    boolean existsByMaintenancePlanId(Long maintenancePlanId);
+
     /**
      * Tâches affectées à un utilisateur pour exécution (champ assignedTo
      * uniquement — pas le champ "assignees", qui identifie le

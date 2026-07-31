@@ -295,6 +295,16 @@ public class MaintenancePlanService {
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));
     }
 
+    /**
+     * Variante publique de {@link #ensureDueOccurrences(Long)}, appelable
+     * hors contexte de requête HTTP (pas d'utilisateur courant) — utilisée
+     * par {@link MaintenancePlanTaskGenerationService} pour faire avancer les
+     * occurrences avant de générer les tâches dues.
+     */
+    public void ensureDueOccurrencesForUsine(Long usineId) {
+        ensureDueOccurrences(usineId);
+    }
+
     public void delete(Long id) {
         MaintenancePlan plan = maintenancePlanRepository.findByIdAndUsineId(id, currentUserProvider.requireUsineId())
                 .orElseThrow(() -> new RuntimeException("Plan de maintenance introuvable"));

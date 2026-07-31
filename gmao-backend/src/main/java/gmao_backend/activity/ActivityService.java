@@ -596,6 +596,7 @@ public class ActivityService {
                 activity.getId(),
                 task.getId(),
                 task.getDescription(),
+                task.getEquipment() != null ? task.getEquipment().getId() : null,
                 task.getEquipment() != null ? task.getEquipment().getName() : null,
                 activity.getDescription(),
                 activity.getPerformedDate(),

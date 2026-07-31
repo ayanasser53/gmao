@@ -9,6 +9,7 @@ public record ActivityResponse(
         Long id,
         Long taskId,
         String taskDescription,
+        Long equipmentId,
         String equipmentName,
         String description,
         LocalDate performedDate,

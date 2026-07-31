@@ -7,6 +7,7 @@ export interface Activity {
   id: number;
   taskId: number;
   taskDescription: string;
+  equipmentId: number | null;
   equipmentName: string | null;
   description: string;
   performedDate: string;

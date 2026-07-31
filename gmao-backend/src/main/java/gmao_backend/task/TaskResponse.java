@@ -39,6 +39,8 @@ public record TaskResponse(
 
         String costCenterName,
 
+        Long maintenancePlanId,
+
         TaskStatus status,
 
         Set<TaskAssigneeResponse> assignees,

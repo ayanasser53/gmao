@@ -52,13 +52,18 @@ export interface TaskListItem {
   endHour: string | null;
   plannedMaintenanceHours: number;
   plannedMaintenanceMinutes: number;
+  plannedStoppedHours: number;
+  plannedStoppedMinutes: number;
   equipment: TaskEquipmentSummary | null;
   costCenterId: number | null;
   costCenterName: string | null;
+  maintenancePlanId: number | null;
   assignees: TaskAssignee[];
   assignedTo: TaskAssignee[];
   tags: TaskTag[];
   status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Task {
@@ -77,6 +82,7 @@ export interface Task {
   plannedStoppedMinutes: number;
   costCenterId: number | null;
   costCenterName: string | null;
+  maintenancePlanId: number | null;
   status: TaskStatus;
   assignees: TaskAssignee[];
   assignedTo: TaskAssignee[];

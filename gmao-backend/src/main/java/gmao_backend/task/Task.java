@@ -1,6 +1,7 @@
 package com.gmao.gmao_backend.task;
 
 import com.gmao.gmao_backend.equipment.Equipment;
+import com.gmao.gmao_backend.maintenanceplan.MaintenancePlan;
 import com.gmao.gmao_backend.tag.Tag;
 import com.gmao.gmao_backend.user.User;
 
@@ -42,6 +43,15 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
     private User createdBy;
+
+    /**
+     * Plan de maintenance à l'origine de cette tâche, quand elle a été
+     * générée automatiquement (voir MaintenancePlanTaskGenerationService) —
+     * null pour une tâche créée manuellement.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "maintenance_plan_id")
+    private MaintenancePlan maintenancePlan;
 
     @Column(columnDefinition = "TEXT")
     private String description;

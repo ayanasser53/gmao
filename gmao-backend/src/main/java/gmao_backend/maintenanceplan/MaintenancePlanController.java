@@ -14,6 +14,7 @@ import java.util.List;
 public class MaintenancePlanController {
 
     private final MaintenancePlanService maintenancePlanService;
+    private final MaintenancePlanTaskGenerationService maintenancePlanTaskGenerationService;
 
     @GetMapping
     public ResponseEntity<List<MaintenancePlanResponse>> findAll() {
@@ -65,6 +66,17 @@ public class MaintenancePlanController {
             @PathVariable Long id
     ) {
         maintenancePlanService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Déclenche manuellement la génération des tâches dues (celle qui tourne
+     * normalement chaque nuit via le job planifié) — utile pour vérifier le
+     * comportement sans attendre minuit.
+     */
+    @PostMapping("/generate-due-tasks")
+    public ResponseEntity<Void> generateDueTasks() {
+        maintenancePlanTaskGenerationService.generateDueTasks();
         return ResponseEntity.noContent().build();
     }
 }

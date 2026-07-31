@@ -64,6 +64,8 @@ public class TaskMapper {
                         ? equipment.getCostCenter().getName()
                         : null,
 
+                task.getMaintenancePlan() != null ? task.getMaintenancePlan().getId() : null,
+
                 status,
 
                 mapAssignees(task.getAssignees()),
@@ -113,6 +115,10 @@ public class TaskMapper {
 
                 task.getPlannedMaintenanceMinutes(),
 
+                task.getPlannedStoppedHours(),
+
+                task.getPlannedStoppedMinutes(),
+
                 toEquipmentResponse(equipment),
 
                 equipment != null && equipment.getCostCenter() != null
@@ -123,13 +129,19 @@ public class TaskMapper {
                         ? equipment.getCostCenter().getName()
                         : null,
 
+                task.getMaintenancePlan() != null ? task.getMaintenancePlan().getId() : null,
+
                 mapAssignees(task.getAssignees()),
 
                 mapAssignedTo(task.getAssignedTo()),
 
                 mapTags(task.getTags()),
 
-                status
+                status,
+
+                task.getCreatedAt(),
+
+                task.getUpdatedAt()
         );
     }
 
@@ -333,6 +345,9 @@ public class TaskMapper {
                         activity.getId(),
                         activity.getTask() != null ? activity.getTask().getId() : null,
                         activity.getTask() != null ? activity.getTask().getDescription() : null,
+                        activity.getTask() != null && activity.getTask().getEquipment() != null
+                                ? activity.getTask().getEquipment().getId()
+                                : null,
                         activity.getTask() != null && activity.getTask().getEquipment() != null
                                 ? activity.getTask().getEquipment().getName()
                                 : null,
