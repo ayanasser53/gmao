@@ -1,0 +1,77 @@
+name: CI GMAO
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: gmao_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+      - name: Compiler et tester le backend
+        run: mvn -B clean verify
+        working-directory: gmao-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/gmao_test
+          SPRING_DATASOURCE_USERNAME: test
+          SPRING_DATASOURCE_PASSWORD: test
+          JWT_SECRET: secret_de_test_uniquement_pour_la_ci_0123456789abcdef
+          APP_SUPERADMIN_PASSWORD: test
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gmao-frontend/package-lock.json
+      - name: Installer et construire le frontend
+        run: |
+          npm ci
+          npm run build
+        working-directory: gmao-frontend
+
+  build-images:
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Construire et publier le backend
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/gmao-backend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./gmao-backend
+          docker push $IMAGE --all-tags
+      - name: Construire et publier le frontend
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/gmao-frontend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./gmao-frontend
+          docker push $IMAGE --all-tags
