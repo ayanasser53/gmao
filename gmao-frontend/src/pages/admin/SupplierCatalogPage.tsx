@@ -54,7 +54,7 @@ type StoredCatalog = {
 };
 
 const catalogItemsPerPage = 5;
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const officialSuppliers: CatalogSupplier[] = [
   {

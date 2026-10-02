@@ -51,6 +51,7 @@ public class UserController {
         return ResponseEntity.ok(userService.findCurrentUser());
     }
 
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     @PostMapping
     public ResponseEntity<UserInviteResponse> invite(@RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.invite(request));
@@ -66,9 +67,12 @@ public class UserController {
     }
 
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.delete(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/active")
+    public ResponseEntity<UserDetailResponse> setActive(
+            @PathVariable Long id,
+            @RequestParam boolean active
+    ) {
+        return ResponseEntity.ok(userService.setActive(id, active));
     }
+
 }

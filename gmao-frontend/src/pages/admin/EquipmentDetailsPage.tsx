@@ -1,4 +1,4 @@
-﻿import {
+import {
   ArrowLeft,
   Camera,
   CalendarDays,
@@ -35,7 +35,7 @@ import {
 import type { Equipment } from "../../types/equipment";
 import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 type UploadFolder = "equipment" | "spare-parts";
 
@@ -94,13 +94,13 @@ function EquipmentDetailsPage() {
   const source = searchParams.get("from");
   const backTarget =
     source === "activities"
-      ? { label: "Retour aux activités", path: `${basePath}/activities` }
+      ? { label: "Retour aux activit�s", path: `${basePath}/activities` }
       : source === "tasks"
-      ? { label: "Retour aux tâches", path: `${basePath}/tasks` }
+      ? { label: "Retour aux t�ches", path: `${basePath}/tasks` }
       : source === "spare-parts"
-      ? { label: "Retour aux pièces détachées", path: `${basePath}/spare-parts` }
+      ? { label: "Retour aux pi�ces d�tach�es", path: `${basePath}/spare-parts` }
       : {
-          label: basePath === "/technician" ? "Retour aux tâches" : "Retour aux équipements",
+          label: basePath === "/technician" ? "Retour aux t�ches" : "Retour aux �quipements",
           path: basePath === "/technician" ? `${basePath}/tasks` : `${basePath}/equipment`,
         };
 
@@ -122,7 +122,7 @@ function EquipmentDetailsPage() {
   useEffect(() => {
     async function loadEquipment(): Promise<void> {
       if (!id || Number.isNaN(Number(id))) {
-        setError("Identifiant d'équipement invalide.");
+        setError("Identifiant d'�quipement invalide.");
         setLoading(false);
         return;
       }
@@ -151,12 +151,12 @@ function EquipmentDetailsPage() {
         setActiveTab("linked-equipment");
       } catch (requestError) {
         console.error(
-          "Erreur chargement équipement :",
+          "Erreur chargement �quipement :",
           requestError,
         );
 
         setError(
-          "Impossible de charger les informations de l'équipement.",
+          "Impossible de charger les informations de l'�quipement.",
         );
       } finally {
         setLoading(false);
@@ -169,7 +169,7 @@ function EquipmentDetailsPage() {
   if (loading) {
     return (
       <div className="equipment-detail-state">
-        Chargement de l'équipement...
+        Chargement de l'�quipement...
       </div>
     );
   }
@@ -178,7 +178,7 @@ function EquipmentDetailsPage() {
     return (
       <div className="equipment-detail-state">
         <p>
-          {error || "Équipement introuvable."}
+          {error || "�quipement introuvable."}
         </p>
 
         <button
@@ -247,7 +247,7 @@ function EquipmentDetailsPage() {
 
         <div className="equipment-detail-title">
           <span className="admin-page-eyebrow">
-            Fiche équipement
+            Fiche �quipement
           </span>
 
           <h1>{equipment.name}</h1>
@@ -283,7 +283,7 @@ function EquipmentDetailsPage() {
 
               <p>
                 {equipment.description ||
-                  "Aucune description renseignée."}
+                  "Aucune description renseign�e."}
               </p>
             </div>
 
@@ -292,10 +292,10 @@ function EquipmentDetailsPage() {
                 <MapPin size={20} />
 
                 <div>
-                  <span>Centre de coût</span>
+                  <span>Centre de co�t</span>
 
                   <strong>
-                    {equipment.costCenterName || "Non défini"}
+                    {equipment.costCenterName || "Non d�fini"}
                   </strong>
                 </div>
               </div>
@@ -345,7 +345,7 @@ function EquipmentDetailsPage() {
                   ))
                 ) : (
                   <p className="equipment-detail-muted">
-                    Aucun tag associé.
+                    Aucun tag associ�.
                   </p>
                 )}
               </div>
@@ -386,7 +386,7 @@ function EquipmentDetailsPage() {
                 </div>
               ) : (
                 <p className="equipment-detail-muted">
-                  Aucun document ou photo associé.
+                  Aucun document ou photo associ�.
                 </p>
               )}
             </div>
@@ -404,7 +404,7 @@ function EquipmentDetailsPage() {
           }
           onClick={() => setActiveTab("linked-equipment")}
         >
-          Équipements liés
+          �quipements li�s
           <span>{linkedEquipment.length}</span>
         </button>
 
@@ -417,7 +417,7 @@ function EquipmentDetailsPage() {
           }
           onClick={() => setActiveTab("linked-spare-parts")}
         >
-          Pièces liées
+          Pi�ces li�es
           <span>{linkedSpareParts.length}</span>
         </button>
       </div>
@@ -449,7 +449,7 @@ function EquipmentDetailsPage() {
 
                     <div className="linked-compact-meta">
                       <span>
-                        Code article : {linked.itemCode || "Non défini"}
+                        Code article : {linked.itemCode || "Non d�fini"}
                       </span>
 
                       <span>Identifiant : {linked.id}</span>
@@ -457,14 +457,14 @@ function EquipmentDetailsPage() {
                   </div>
 
                   <div className="linked-compact-action">
-                    <span>Voir le détail</span>
+                    <span>Voir le d�tail</span>
                     <ChevronRight size={18} />
                   </div>
                 </button>
               ))
             ) : (
               <div className="equipment-detail-empty">
-                Aucun équipement lié.
+                Aucun �quipement li�.
               </div>
             )}
           </div>
@@ -497,21 +497,21 @@ function EquipmentDetailsPage() {
                     <strong>{part.name}</strong>
 
                     <div className="linked-compact-meta">
-                      <span>Code : {part.code || "Non défini"}</span>
+                      <span>Code : {part.code || "Non d�fini"}</span>
 
-                      <span>Quantité en stock : {part.quantity ?? 0}</span>
+                      <span>Quantit� en stock : {part.quantity ?? 0}</span>
                     </div>
                   </div>
 
                   <div className="linked-compact-action">
-                    <span>Voir le détail</span>
+                    <span>Voir le d�tail</span>
                     <ChevronRight size={18} />
                   </div>
                 </button>
               ))
             ) : (
               <div className="equipment-detail-empty">
-                Aucune pièce de rechange liée.
+                Aucune pi�ce de rechange li�e.
               </div>
             )}
           </div>
@@ -523,7 +523,7 @@ function EquipmentDetailsPage() {
           className="maintenance-photo-preview-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-label="Aperçu des documents"
+          aria-label="Aper�u des documents"
         >
           <div className="maintenance-photo-preview">
             <div className="maintenance-photo-preview-header">
@@ -540,16 +540,16 @@ function EquipmentDetailsPage() {
                   href={selectedDocument.dataUrl}
                   download={selectedDocument.name}
                   className="maintenance-document-download"
-                  aria-label={`Télécharger ${selectedDocument.name}`}
+                  aria-label={`T�l�charger ${selectedDocument.name}`}
                 >
                   <Download size={18} />
-                  Télécharger
+                  T�l�charger
                 </a>
 
                 <button
                   type="button"
                   onClick={() => setSelectedDocumentIndex(null)}
-                  aria-label="Fermer l'aperçu"
+                  aria-label="Fermer l'aper�u"
                 >
                   <X size={20} />
                 </button>
@@ -562,7 +562,7 @@ function EquipmentDetailsPage() {
                   type="button"
                   className="maintenance-photo-preview-nav previous"
                   onClick={showPreviousDocument}
-                  aria-label="Document précédent"
+                  aria-label="Document pr�c�dent"
                 >
                   <ChevronLeft size={28} />
                 </button>
@@ -588,14 +588,14 @@ function EquipmentDetailsPage() {
                   <FileText size={44} />
                   <strong>{selectedDocument.name}</strong>
                   <span>
-                    Ce format ne peut pas être affiché directement dans le
+                    Ce format ne peut pas �tre affich� directement dans le
                     navigateur.
                   </span>
                   <a
                     href={selectedDocument.dataUrl}
                     download={selectedDocument.name}
                   >
-                    Télécharger
+                    T�l�charger
                   </a>
                 </div>
               )}

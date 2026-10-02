@@ -41,7 +41,7 @@ import type { MaintenancePlan } from "../../types/maintenancePlan";
 
 import "./task-styles.css";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const AVATAR_COLORS = [
   "#087fbd",

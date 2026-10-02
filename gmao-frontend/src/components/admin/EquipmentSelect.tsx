@@ -5,7 +5,7 @@ import type { Equipment } from "../../types/equipment";
 
 import "./SparePartSelect.css";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 function getFileUrl(path: string | null): string | null {
   if (!path) {

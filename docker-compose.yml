@@ -1,0 +1,43 @@
+services:
+  gmao_mysql:
+    image: mysql:8.0
+    container_name: gmao_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: gmao_mobility
+      MYSQL_USER: gmao_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - gmao_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gmao_backend:
+    build: ./gmao-backend
+    container_name: gmao_backend
+    restart: unless-stopped
+    depends_on:
+      gmao_mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://gmao_mysql:3306/gmao_mobility
+      SPRING_DATASOURCE_USERNAME: gmao_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
+
+  gmao_frontend:
+    build: ./gmao-frontend
+    container_name: gmao_frontend
+    restart: unless-stopped
+    depends_on:
+      - gmao_backend
+    ports:
+      - "80:80"
+
+volumes:
+  gmao_mysql_data:

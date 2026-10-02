@@ -284,7 +284,7 @@ export default function PurchaseOrderDetailsPage() {
     }
 
     if (panel === "supplier" && order) {
-      setSupplierDraftId(order.supplierId ? String(order.supplierId) : "");
+      setSupplierDraftId(currentOrder.supplierId ? String(currentOrder.supplierId) : "");
     }
   }, [editedLine, order, panel]);
 
@@ -320,6 +320,8 @@ export default function PurchaseOrderDetailsPage() {
     );
   }
 
+  const currentOrder = order;
+
   function closePanel() {
     setSearchParams({});
   }
@@ -329,23 +331,23 @@ export default function PurchaseOrderDetailsPage() {
   }
 
   async function confirmOrder() {
-    const updatedOrder = await updatePurchaseOrderStatus(order.id, "CONFIRMED");
+    const updatedOrder = await updatePurchaseOrderStatus(currentOrder.id, "CONFIRMED");
     await refresh(updatedOrder);
   }
 
   async function registerReception() {
-    const updatedOrder = await updatePurchaseOrderStatus(order.id, "IN_PROGRESS");
+    const updatedOrder = await updatePurchaseOrderStatus(currentOrder.id, "IN_PROGRESS");
     await refresh(updatedOrder);
   }
 
   async function finishOrder() {
-    const updatedOrder = await updatePurchaseOrderStatus(order.id, "DONE");
+    const updatedOrder = await updatePurchaseOrderStatus(currentOrder.id, "DONE");
     await refresh(updatedOrder);
   }
 
   async function saveGeneralInfo() {
-    const updatedOrder = await updatePurchaseOrder(order.id, {
-      reference: editReference.trim() || order.reference,
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, {
+      reference: editReference.trim() || currentOrder.reference,
     });
     await refresh(updatedOrder);
     setSupplierReferenceSupplier("");
@@ -357,7 +359,7 @@ export default function PurchaseOrderDetailsPage() {
   async function saveSupplier() {
     const selectedSupplier =
       suppliers.find((supplier) => supplier.id === Number(supplierDraftId)) ?? null;
-    const updatedOrder = await updatePurchaseOrder(order.id, {
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, {
       supplierId: selectedSupplier?.id ?? null,
       supplierName: selectedSupplier?.name ?? null,
     });
@@ -367,7 +369,7 @@ export default function PurchaseOrderDetailsPage() {
   }
 
   async function saveExpectedDeliveryDate(value: Date) {
-    const updatedOrder = await updatePurchaseOrder(order.id, {
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, {
       expectedDeliveryDate: toIsoDate(value),
     });
 
@@ -377,7 +379,7 @@ export default function PurchaseOrderDetailsPage() {
   }
 
   async function saveNotes() {
-    const updatedOrder = await updatePurchaseOrder(order.id, {
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, {
       notes: notesDraft.trim(),
     });
 
@@ -386,7 +388,7 @@ export default function PurchaseOrderDetailsPage() {
   }
 
   function cancelNotesEdition() {
-    setNotesDraft(order.notes);
+    setNotesDraft(currentOrder.notes);
     setIsEditingNotes(false);
   }
 
@@ -438,7 +440,7 @@ export default function PurchaseOrderDetailsPage() {
     const dark = "0.063 0.157 0.271";
     const gray = "0.32 0.38 0.45";
     const commands: string[] = [];
-    const total = orderTotal(order);
+    const total = orderTotal(currentOrder);
 
     function text(value: string, x: number, y: number, size = 11, color = dark) {
       commands.push(`BT ${color} rg /F1 ${size} Tf ${x} ${y} Td <${toPdfHex(value)}> Tj ET`);
@@ -459,14 +461,14 @@ export default function PurchaseOrderDetailsPage() {
     text("SNOP API", 52, 765, 16, blue);
     text("Le numéro suivant doit apparaître sur toute correspondance,", 52, 715, 9, gray);
     text("document d'expédition et facture.", 52, 702, 9, gray);
-    text(`N° de commande: ${order.reference}`, 52, 678, 11, dark);
+    text(`N° de commande: ${currentOrder.reference}`, 52, 678, 11, dark);
     text("Bon de", 418, 755, 26, blue);
     text("commande", 396, 727, 26, blue);
 
     rect(52, 610, 491, 24, blue, true);
     text("Notes", 60, 617, 12, "1 1 1");
     rect(52, 584, 491, 26, blue);
-    text(order.notes || "-", 60, 592, 11, dark);
+    text(currentOrder.notes || "-", 60, 592, 11, dark);
 
     const tableTop = 548;
     const rowHeight = 42;
@@ -482,7 +484,7 @@ export default function PurchaseOrderDetailsPage() {
     rect(52, tableTop, 491, 32, blue, true);
     columns.forEach((column) => text(column.label, column.x + 5, tableTop + 11, 10, "1 1 1"));
 
-    order.lines.forEach((line, index) => {
+    currentOrder.lines.forEach((line, index) => {
       const y = tableTop - rowHeight * (index + 1);
       const reference = line.sparePartId
         ? `MM-${String(line.sparePartId).padStart(8, "0")}`
@@ -497,7 +499,7 @@ export default function PurchaseOrderDetailsPage() {
       text(formatCurrency(line.quantity * line.unitPrice), 500, y + 17, 10);
     });
 
-    const totalsY = tableTop - rowHeight * order.lines.length - 42;
+    const totalsY = tableTop - rowHeight * currentOrder.lines.length - 42;
     text("Sous-total", 350, totalsY + 20, 12, gray);
     text(formatCurrency(total), 465, totalsY + 20, 12, gray);
     rect(350, totalsY - 25, 95, 34, blue);
@@ -506,8 +508,8 @@ export default function PurchaseOrderDetailsPage() {
     text(formatCurrency(total), 468, totalsY - 3, 15, blue);
 
     rect(52, 88, 491, 1, "0.85 0.89 0.93", true);
-    text(order.reference, 52, 62, 13, dark);
-    text(`Date d'ajout : ${formatHistoryDate(order.createdAt)}`, 52, 42, 10, gray);
+    text(currentOrder.reference, 52, 62, 13, dark);
+    text(`Date d'ajout : ${formatHistoryDate(currentOrder.createdAt)}`, 52, 42, 10, gray);
 
     const content = commands.join("\n");
     const objects = [
@@ -537,7 +539,7 @@ export default function PurchaseOrderDetailsPage() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `${order.reference}.pdf`;
+    link.download = `${currentOrder.reference}.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -576,12 +578,12 @@ export default function PurchaseOrderDetailsPage() {
 
     const lines =
       panel === "edit-line"
-        ? order.lines.map((line) =>
+        ? currentOrder.lines.map((line) =>
             line.id === normalizedLine.id ? normalizedLine : line,
           )
-        : [...order.lines, normalizedLine];
+        : [...currentOrder.lines, normalizedLine];
 
-    const updatedOrder = await updatePurchaseOrder(order.id, { lines });
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, { lines });
     await refresh(updatedOrder);
     closePanel();
   }
@@ -596,18 +598,18 @@ export default function PurchaseOrderDetailsPage() {
   }
 
   async function removeLine(lineToRemove: PurchaseOrderLine) {
-    const updatedOrder = await updatePurchaseOrder(order.id, {
-      lines: order.lines.filter((line) => line.id !== lineToRemove.id),
+    const updatedOrder = await updatePurchaseOrder(currentOrder.id, {
+      lines: currentOrder.lines.filter((line) => line.id !== lineToRemove.id),
     });
     await refresh(updatedOrder);
   }
 
-  const receivedQuantity = order.status === "DONE"
-    ? order.lines.reduce((total, line) => total + line.quantity, 0)
+  const receivedQuantity = currentOrder.status === "DONE"
+    ? currentOrder.lines.reduce((total, line) => total + line.quantity, 0)
     : 0;
-  const orderedQuantity = order.lines.reduce((total, line) => total + line.quantity, 0);
+  const orderedQuantity = currentOrder.lines.reduce((total, line) => total + line.quantity, 0);
   const calendarDays = buildCalendarDays(calendarMonth);
-  const selectedDeliveryDate = order.expectedDeliveryDate ?? "";
+  const selectedDeliveryDate = currentOrder.expectedDeliveryDate ?? "";
   const todayDate = toIsoDate(new Date());
 
   return (
@@ -623,14 +625,14 @@ export default function PurchaseOrderDetailsPage() {
         </button>
 
         <div>
-          <h1>{order.reference}</h1>
-          <span className={`purchase-status-pill ${STATUS_CLASS_NAMES[order.status]}`}>
-            {STATUS_LABELS[order.status]}
+          <h1>{currentOrder.reference}</h1>
+          <span className={`purchase-status-pill ${STATUS_CLASS_NAMES[currentOrder.status]}`}>
+            {STATUS_LABELS[currentOrder.status]}
           </span>
         </div>
 
         <div className="purchase-detail-actions">
-          {order.status === "DRAFT" ? (
+          {currentOrder.status === "DRAFT" ? (
             <>
               <button
                 type="button"
@@ -706,10 +708,10 @@ export default function PurchaseOrderDetailsPage() {
         <>
       <section
         className={`purchase-info-grid ${
-          order.status !== "DRAFT" ? "purchase-info-grid-confirmed" : ""
+          currentOrder.status !== "DRAFT" ? "purchase-info-grid-confirmed" : ""
         }`}
       >
-        {order.status === "DRAFT" && (
+        {currentOrder.status === "DRAFT" && (
           <button
             type="button"
             className="purchase-info-action-card purchase-info-supplier"
@@ -718,7 +720,7 @@ export default function PurchaseOrderDetailsPage() {
             <Building2 size={22} />
             <div>
               <span>Fournisseur</span>
-              <strong>{order.supplierName || "Aucun fournisseur sélectionné"}</strong>
+              <strong>{currentOrder.supplierName || "Aucun fournisseur sélectionné"}</strong>
             </div>
             <Plus size={18} />
           </button>
@@ -733,7 +735,7 @@ export default function PurchaseOrderDetailsPage() {
             <CalendarClock size={22} />
             <div>
               <span>Date de livraison espérée</span>
-              <strong>{order.expectedDeliveryDate || "-"}</strong>
+              <strong>{currentOrder.expectedDeliveryDate || "-"}</strong>
             </div>
             <Pencil size={18} />
           </button>
@@ -791,14 +793,14 @@ export default function PurchaseOrderDetailsPage() {
           <Clock size={22} />
           <div>
             <span>Créé le</span>
-            <strong>{relativeDate(order.createdAt)}</strong>
+            <strong>{relativeDate(currentOrder.createdAt)}</strong>
           </div>
         </article>
         <article className="purchase-info-updated">
           <Clock size={22} />
           <div>
             <span>Mis à jour le</span>
-            <strong>{relativeDate(order.updatedAt)}</strong>
+            <strong>{relativeDate(currentOrder.updatedAt)}</strong>
           </div>
         </article>
       </section>
@@ -838,7 +840,7 @@ export default function PurchaseOrderDetailsPage() {
               </div>
             </>
           ) : (
-            <strong>{order.notes || "Aucune note pour le moment..."}</strong>
+            <strong>{currentOrder.notes || "Aucune note pour le moment..."}</strong>
           )}
         </div>
         {!isEditingNotes && (
@@ -846,7 +848,7 @@ export default function PurchaseOrderDetailsPage() {
             type="button"
             className="purchase-notes-edit-button"
             onClick={() => {
-              setNotesDraft(order.notes);
+              setNotesDraft(currentOrder.notes);
               setIsEditingNotes(true);
             }}
             aria-label="Modifier les notes"
@@ -859,7 +861,7 @@ export default function PurchaseOrderDetailsPage() {
       <section className="purchase-lines-card">
         <header>
           <div>
-            Lignes de commande <strong>{order.lines.length}</strong>
+            Lignes de commande <strong>{currentOrder.lines.length}</strong>
           </div>
           <button
             type="button"
@@ -885,7 +887,7 @@ export default function PurchaseOrderDetailsPage() {
             </tr>
           </thead>
           <tbody>
-            {order.lines.map((line) => (
+            {currentOrder.lines.map((line) => (
               <tr key={line.id}>
                 <td>
                   <div className="purchase-line-main">
@@ -897,7 +899,7 @@ export default function PurchaseOrderDetailsPage() {
                 <td>
                   <span className="purchase-status-pill waiting">En attente</span>
                 </td>
-                <td>{order.status === "DONE" ? line.quantity : 0} / {line.quantity}</td>
+                <td>{currentOrder.status === "DONE" ? line.quantity : 0} / {line.quantity}</td>
                 <td>{formatCurrency(line.unitPrice)}</td>
                 <td>{line.quantity}</td>
                 <td>{formatCurrency(line.quantity * line.unitPrice)}</td>
@@ -935,7 +937,7 @@ export default function PurchaseOrderDetailsPage() {
           <strong>{receivedQuantity} / {orderedQuantity}</strong>
           <i />
           <span>Total</span>
-          <strong>{formatCurrency(orderTotal(order))}</strong>
+          <strong>{formatCurrency(orderTotal(currentOrder))}</strong>
         </footer>
       </section>
         </>
@@ -950,12 +952,12 @@ export default function PurchaseOrderDetailsPage() {
                 <p>
                   <strong>Administrateur</strong> a créé le bon de commande
                 </p>
-                <span>Référence : {order.reference}</span>
-                <time>{formatHistoryDate(order.createdAt)}</time>
+                <span>Référence : {currentOrder.reference}</span>
+                <time>{formatHistoryDate(currentOrder.createdAt)}</time>
               </div>
             </article>
 
-            {order.updatedAt !== order.createdAt && (
+            {currentOrder.updatedAt !== currentOrder.createdAt && (
               <article className="purchase-history-item">
                 <span className="purchase-history-dot">
                   <History size={14} />
@@ -964,8 +966,8 @@ export default function PurchaseOrderDetailsPage() {
                   <p>
                     <strong>Administrateur</strong> a mis à jour le bon de commande
                   </p>
-                  <span>Statut : {STATUS_LABELS[order.status]}</span>
-                  <time>{formatHistoryDate(order.updatedAt)}</time>
+                  <span>Statut : {STATUS_LABELS[currentOrder.status]}</span>
+                  <time>{formatHistoryDate(currentOrder.updatedAt)}</time>
                 </div>
               </article>
             )}
@@ -1011,14 +1013,14 @@ export default function PurchaseOrderDetailsPage() {
                           Le numéro suivant doit apparaître sur toute correspondance,
                           document d'expédition et facture.
                         </p>
-                        <strong>N° de commande: {order.reference}</strong>
+                        <strong>N° de commande: {currentOrder.reference}</strong>
                       </div>
                       <h2>Bon de<br />commande</h2>
                     </header>
 
                     <div className="purchase-preview-notes">
                       <strong>Notes</strong>
-                      <span>{order.notes || "-"}</span>
+                      <span>{currentOrder.notes || "-"}</span>
                     </div>
 
                     <table>
@@ -1033,7 +1035,7 @@ export default function PurchaseOrderDetailsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {order.lines.map((line) => (
+                        {currentOrder.lines.map((line) => (
                           <tr key={line.id}>
                             <td>{line.quantity}</td>
                             <td>{line.sparePartName || line.description}</td>
@@ -1052,16 +1054,16 @@ export default function PurchaseOrderDetailsPage() {
 
                     <div className="purchase-preview-total">
                       <span>Sous-total</span>
-                      <strong>{formatCurrency(orderTotal(order))}</strong>
+                      <strong>{formatCurrency(orderTotal(currentOrder))}</strong>
                       <b>Total</b>
-                      <em>{formatCurrency(orderTotal(order))}</em>
+                      <em>{formatCurrency(orderTotal(currentOrder))}</em>
                     </div>
 
                   </div>
 
                   <footer>
-                    <h3>{order.reference}</h3>
-                    <span>Date d'ajout : {formatHistoryDate(order.createdAt)}</span>
+                    <h3>{currentOrder.reference}</h3>
+                    <span>Date d'ajout : {formatHistoryDate(currentOrder.createdAt)}</span>
                     <button
                       type="button"
                       className="resource-secondary-button"

@@ -85,7 +85,7 @@ function ActivityFormPage() {
         setSpareParts(sparePartsData);
         setMeasures(measuresData);
       } catch {
-        setError("Impossible de charger les données.");
+        setError("Impossible de charger les donnees.");
       }
     }
 
@@ -117,7 +117,7 @@ function ActivityFormPage() {
 
   async function submit(finishTask: boolean) {
     if (!taskId || !description.trim()) {
-      setError("Sélectionnez une tâche et saisissez une description.");
+      setError("Selectionnez une tache et saisissez une description.");
       return;
     }
 
@@ -127,7 +127,7 @@ function ActivityFormPage() {
         !Number.isFinite(sparePartQuantity) ||
         sparePartQuantity <= 0)
     ) {
-      setError("Sélectionnez une pièce détachée et une quantité valide.");
+      setError("Selectionnez une piece detachee et une quantite valide.");
       return;
     }
 
@@ -137,7 +137,7 @@ function ActivityFormPage() {
       sparePartQuantity > selectedSparePart.quantity
     ) {
       setError(
-        `La quantite saisie (${sparePartQuantity}) depass? le stock disponible (${selectedSparePart.quantity}).`,
+        `La quantite saisie (${sparePartQuantity}) depasse le stock disponible (${selectedSparePart.quantity}).`,
       );
       return;
     }
@@ -149,7 +149,7 @@ function ActivityFormPage() {
       (!Number.isFinite(additionalCostAmountValue) ||
         additionalCostAmountValue <= 0)
     ) {
-      setError("Saisissez un co?t additionnel superieur a 0.");
+      setError("Saisissez un cout additionnel superieur a 0.");
       return;
     }
 
@@ -159,7 +159,7 @@ function ActivityFormPage() {
       showMeasureLine &&
       (!measureId || !Number.isFinite(measureValueParsed))
     ) {
-      setError("Sélectionnez une mesure et saisissez une valeur.");
+      setError("Selectionnez une mesure et saisissez une valeur.");
       return;
     }
 
@@ -177,7 +177,7 @@ function ActivityFormPage() {
       showAdditionalCostLine && additionalCostAmount
         ? [
             {
-              label: additionalCostLabel.trim() || "Coût additionnel",
+              label: additionalCostLabel.trim() || "Cout additionnel",
               amount: additionalCostAmountValue,
               currency: "EUR",
             },
@@ -223,7 +223,7 @@ function ActivityFormPage() {
       navigate(presetTaskId ? `${basePath}/tasks/${presetTaskId}` : `${basePath}/activities`);
     } catch (submitError) {
       console.error(submitError);
-      setError("Impossible d'ajouter l'activité.");
+      setError("Impossible d'ajouter l'activite.");
     } finally {
       setSubmitting(false);
     }
@@ -239,7 +239,7 @@ function ActivityFormPage() {
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour aux activités"
+        aria-label="Retour aux activites"
         onClick={closeForm}
       />
 
@@ -250,12 +250,12 @@ function ActivityFormPage() {
               type="button"
               className="measure-drawer-back"
               onClick={closeForm}
-              aria-label="Retour aux activités"
+              aria-label="Retour aux activites"
             >
               <ArrowLeft size={22} />
             </button>
 
-            <h2>Ajouter une activité</h2>
+            <h2>Ajouter une activite</h2>
 
             <button
               type="button"
@@ -286,7 +286,7 @@ function ActivityFormPage() {
                     onChange={(event) => setTaskId(event.target.value)}
                     required
                   >
-                    <option value="">S?lectionner une tache</option>
+                    <option value="">Selectionner une tache</option>
                     {tasks.map((task) => (
                       <option key={task.id} value={task.id}>
                         {task.description}
@@ -319,7 +319,7 @@ function ActivityFormPage() {
               <div className="equipment-form-grid">
                 <div className="measure-form-group">
                   <label>
-                    R?alis?e le <span>*</span>
+                    Realisee le <span>*</span>
                   </label>
                   <input
                     type="date"
@@ -348,7 +348,7 @@ function ActivityFormPage() {
             <div className="task-form-section">
               <div className="task-section-title">
                 <Clock size={18} />
-                Temps pass?
+                Temps passe
               </div>
 
               <div className="equipment-form-grid">
@@ -415,7 +415,7 @@ function ActivityFormPage() {
                   }
                 >
                   <Coins size={18} />
-                  Coût additionnel
+                  Cout additionnel
                 </button>
               </div>
 
@@ -429,7 +429,7 @@ function ActivityFormPage() {
                       value={measureId}
                       onChange={(event) => setMeasureId(event.target.value)}
                     >
-                      <option value="">S?lectionner une mesure</option>
+                      <option value="">Selectionner une mesure</option>
                       {measures.map((measure) => (
                         <option key={measure.id} value={measure.id}>
                           {measure.name} ({measure.unitSymbol})
@@ -501,7 +501,7 @@ function ActivityFormPage() {
                       value={sparePartId}
                       onChange={(event) => setSparePartId(event.target.value)}
                     >
-                      <option value="">Sélectionner une pièce détachée</option>
+                      <option value="">Selectionner une piece detachee</option>
                       {spareParts.map((sparePart) => (
                         <option key={sparePart.id} value={sparePart.id}>
                           {sparePart.name}
@@ -524,7 +524,7 @@ function ActivityFormPage() {
 
                   {selectedSparePart && (
                     <div className="form-info-box activity-task-info">
-                      Coût : {selectedSparePart.unitPrice} {selectedSparePart.currency || "EUR"} x{" "}
+                      Cout : {selectedSparePart.unitPrice} {selectedSparePart.currency || "EUR"} x{" "}
                       {sparePartQuantity} ={" "}
                       {(selectedSparePart.unitPrice * sparePartQuantity).toFixed(2)}{" "}
                       {selectedSparePart.currency || "EUR"}
@@ -534,7 +534,7 @@ function ActivityFormPage() {
                   {selectedSparePart &&
                     sparePartQuantity > selectedSparePart.quantity && (
                       <p className="activity-stock-warning">
-                        Quantité supérieure au stock disponible ({selectedSparePart.quantity}).
+                        Quantite superieure au stock disponible ({selectedSparePart.quantity}).
                       </p>
                     )}
 
@@ -546,7 +546,7 @@ function ActivityFormPage() {
                       setSparePartId("");
                       setSparePartQuantity(1);
                     }}
-                    aria-label="Retirer la pièce détachée"
+                    aria-label="Retirer la piece detachee"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -557,7 +557,7 @@ function ActivityFormPage() {
                 <div className="activity-extra-line">
                   <div className="measure-form-group">
                     <label>
-                      Coût additionnel <span>*</span>
+                      Cout additionnel <span>*</span>
                     </label>
                     <div className="activity-money-input">
                       <input
@@ -574,7 +574,7 @@ function ActivityFormPage() {
                   </div>
 
                   <div className="measure-form-group">
-                    <label>Libellé</label>
+                    <label>Libelle</label>
                     <input
                       type="text"
                       maxLength={255}
@@ -595,7 +595,7 @@ function ActivityFormPage() {
                       setAdditionalCostAmount("");
                       setAdditionalCostLabel("");
                     }}
-                    aria-label="Retirer le co?t additionnel"
+                    aria-label="Retirer le cout additionnel"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -624,7 +624,7 @@ function ActivityFormPage() {
               disabled={submitting}
             >
               <Save size={18} />
-              Ajouter une activité
+              Ajouter une activite
             </button>
 
             <button

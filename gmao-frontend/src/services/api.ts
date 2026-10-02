@@ -6,7 +6,7 @@ import axios, {
 import { getImpersonatedUsine } from "./impersonation";
 
 const api = axios.create({
-  baseURL: "http://localhost:8090/api",
+  baseURL: `${import.meta.env.VITE_BACKEND_URL}/api`,
   timeout: 10000,
 });
 

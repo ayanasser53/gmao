@@ -120,7 +120,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}>
+            <ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN", "SUPERVISOR"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -292,27 +292,57 @@ function App() {
 
           <Route
             path="teams"
-            element={<TeamsPage />}
+            element={
+              getAuthenticatedRole() === "SUPERVISOR" ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <TeamsPage />
+              )
+            }
           />
 
           <Route
             path="teams/invite"
-            element={<InviteColleaguePage />}
+            element={
+              getAuthenticatedRole() === "SUPERVISOR" ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <InviteColleaguePage />
+              )
+            }
           />
 
           <Route
             path="teams/colleagues/:id/edit"
-            element={<InviteColleaguePage />}
+            element={
+              getAuthenticatedRole() === "SUPERVISOR" ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <InviteColleaguePage />
+              )
+            }
           />
 
           <Route
             path="teams/new"
-            element={<CreateTeamPage />}
+            element={
+              getAuthenticatedRole() === "SUPERVISOR" ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <CreateTeamPage />
+              )
+            }
           />
 
           <Route
             path="teams/:id/edit"
-            element={<CreateTeamPage />}
+            element={
+              getAuthenticatedRole() === "SUPERVISOR" ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <CreateTeamPage />
+              )
+            }
           />
 
           <Route

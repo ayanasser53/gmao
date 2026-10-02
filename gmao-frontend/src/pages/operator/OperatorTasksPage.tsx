@@ -17,7 +17,7 @@ import type { TaskListItem, TaskStatus } from "../../types/task";
 
 import "../admin/task-styles.css";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   CREATED: { label: "Creee", className: "task-status-created" },
@@ -26,6 +26,7 @@ const STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   LATE: { label: "En retard", className: "task-status-late" },
   DONE: { label: "Terminee", className: "task-status-done" },
   CANCELED: { label: "Annulee", className: "task-status-canceled" },
+  ARCHIVED: { label: "Archivee", className: "task-status-archived" },
 };
 
 type TaskTab = "ALL" | TaskStatus;

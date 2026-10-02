@@ -128,7 +128,7 @@ function CreateTeamPage() {
 
   const selectedMembers = users.filter((user) => memberIds.includes(user.id));
   const availableMembers = users.filter(
-    (user) => !memberIds.includes(user.id),
+    (user) => user.active && !memberIds.includes(user.id),
   );
 
   return (

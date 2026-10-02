@@ -105,6 +105,28 @@
   color: #ffffff !important;
 }
 
+.team-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.team-status-badge.active {
+  color: #087fbd;
+  background: #e1f3fb;
+}
+
+.team-status-badge.inactive {
+  color: #596777;
+  background: #edf1f5;
+}
+
 .team-row-actions {
   display: flex;
   gap: 14px;
@@ -124,7 +146,7 @@
 }
 
 .team-row-actions button:last-child {
-  color: #d0342c;
+  color: #087fbd;
 }
 
 .team-row-actions button:hover {
@@ -206,6 +228,157 @@
   text-decoration: underline;
 }
 
+.team-account-type-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  min-height: 92px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  text-align: left;
+  color: #12365c;
+  background: #eaf6fc;
+  border: 1px solid #c8dced;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.team-account-type-card svg {
+  color: #52677c;
+  transition: transform 0.15s ease;
+}
+
+.team-account-type-card.open svg {
+  transform: rotate(180deg);
+}
+
+.team-account-type-image {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  background: #ffffff;
+  color: #087fbd;
+  border: 1px solid #c8dced;
+  border-radius: 8px;
+}
+
+.team-account-type-content {
+  display: grid;
+  gap: 4px;
+}
+
+.team-account-type-content span {
+  color: #6f8194;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.team-account-type-content strong {
+  color: #12365c;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.team-account-type-content em {
+  color: #5b6f84;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.team-role-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #dbe6ef;
+}
+
+.team-role-inline-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  text-align: left;
+  color: #12365c;
+  background: #ffffff;
+  border: 1px solid #d4e0ea;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.team-role-inline-card.selected {
+  background: #edf8fc;
+  border-color: #087fbd;
+  box-shadow: inset 3px 0 0 #087fbd;
+}
+
+.team-role-inline-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.team-role-logo {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: #087fbd;
+  background: #edf8fc;
+  border: 1px solid #cfe5f2;
+  border-radius: 8px;
+}
+
+.team-role-inline-head strong {
+  display: block;
+  color: #12365c;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.team-role-inline-head em {
+  display: block;
+  margin-top: 4px;
+  color: #60758a;
+  font-size: 12.5px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.team-role-inline-head svg {
+  color: #087fbd;
+}
+
+.team-role-feature-list {
+  display: grid;
+  gap: 7px;
+  padding-left: 66px;
+}
+
+.team-role-feature-list span {
+  position: relative;
+  color: #405a73;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.team-role-feature-list span::before {
+  position: absolute;
+  top: 0.55em;
+  left: -14px;
+  width: 5px;
+  height: 5px;
+  content: "";
+  background: #087fbd;
+  border-radius: 50%;
+}
+
 .team-tag-toggle {
   padding: 7px 14px;
   border: 1.5px solid #cddceb;
@@ -219,5 +392,13 @@
 @media (max-width: 720px) {
   .team-role-grid {
     grid-template-columns: 1fr;
+  }
+
+  .team-role-inline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-role-feature-list {
+    padding-left: 18px;
   }
 }

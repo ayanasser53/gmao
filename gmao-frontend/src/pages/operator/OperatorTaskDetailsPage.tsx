@@ -19,7 +19,7 @@ import type { Task, TaskStatus } from "../../types/task";
 
 import "../admin/task-styles.css";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }> = {
   CREATED: { label: "Creee", className: "task-status-created" },
@@ -28,6 +28,7 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; className: string }>
   LATE: { label: "En retard", className: "task-status-late" },
   DONE: { label: "Terminee", className: "task-status-done" },
   CANCELED: { label: "Annulee", className: "task-status-canceled" },
+  ARCHIVED: { label: "Archivee", className: "task-status-archived" },
 };
 
 function getFileUrl(path: string | null | undefined): string | null {

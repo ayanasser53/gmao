@@ -48,7 +48,7 @@ import type {
 import "./task-styles.css";
 import "./DashboardPage.css";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 interface DashboardCard {
   title: string;
@@ -69,6 +69,7 @@ const TASK_STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
   LATE: { label: "En retard", color: "#ff6b6b" },
   DONE: { label: "Terminée", color: "#34d1b3" },
   CANCELED: { label: "Annulée", color: "#5a5f6b" },
+  ARCHIVED: { label: "Archivée", color: "#8b95a1" },
 };
 
 const PLAN_STATUS_META: Record<
@@ -79,6 +80,7 @@ const PLAN_STATUS_META: Record<
   IN_PROGRESS: { label: "En cours", color: "#4da6ff" },
   LATE: { label: "En retard", color: "#ff6b6b" },
   DONE: { label: "Terminé", color: "#34d1b3" },
+  CANCELLED: { label: "Annulé", color: "#5a5f6b" },
 };
 
 function activityCost(activity: Activity): number {
@@ -1205,6 +1207,7 @@ function DashboardPage() {
       LATE: 0,
       DONE: 0,
       CANCELED: 0,
+      ARCHIVED: 0,
     };
 
     tasks.forEach((task) => {
@@ -1224,6 +1227,7 @@ function DashboardPage() {
       IN_PROGRESS: 0,
       LATE: 0,
       DONE: 0,
+      CANCELLED: 0,
     };
 
     plans.forEach((plan) => {
@@ -1392,7 +1396,7 @@ function DashboardPage() {
       keyOf(task).forEach((key) => {
         const current =
           map.get(key) ??
-          { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0 };
+          { CREATED: 0, PLANNED: 0, IN_PROGRESS: 0, LATE: 0, DONE: 0, CANCELED: 0, ARCHIVED: 0 };
         current[task.status] += 1;
         map.set(key, current);
       });

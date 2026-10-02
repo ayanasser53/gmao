@@ -27,7 +27,7 @@ import { getSupplierById } from "../../services/supplierService";
 
 import type { Supplier } from "../../types/supplier";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 function getImageUrl(imagePath: string | null | undefined): string | null {
   if (!imagePath) {

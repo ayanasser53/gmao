@@ -63,7 +63,7 @@ import type { CostCenter } from "../../types/costCenter";
 import type { SparePart } from "../../types/sparePart";
 import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 type EquipmentDocumentDraft = {
   id: string;

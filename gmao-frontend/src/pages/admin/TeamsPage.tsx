@@ -1,9 +1,17 @@
-import { Download, Pencil, Plus, Search, Trash2, UsersRound } from "lucide-react";
+import {
+  Download,
+  Pencil,
+  Plus,
+  Search,
+  ToggleLeft,
+  ToggleRight,
+  UsersRound,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { deleteTeam, getTeams } from "../../services/teamService";
-import { deleteUser, getUsersDetailed } from "../../services/userService";
+import { getTeams, setTeamActive } from "../../services/teamService";
+import { getUsersDetailed, setUserActive } from "../../services/userService";
 import type { Team } from "../../types/team";
 import type { UserDetail, UserRole } from "../../types/user";
 import { exportTableCsv, exportTablePdf } from "../../utils/exportFiles";
@@ -13,6 +21,7 @@ import "./team-styles.css";
 const ROLE_LABELS: Record<UserRole, string> = {
   SUPERADMIN: "Super administrateur",
   ADMIN: "Administrateur",
+  SUPERVISOR: "Superviseur",
   TECHNICIAN: "Technicien",
   PRODUCTION: "Production",
   SERVICE_PROVIDER: "Prestataire",
@@ -38,8 +47,31 @@ function initials(firstName: string, lastName: string): string {
 function teamInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   const first = parts[0]?.charAt(0) ?? "";
-  const second = parts.length > 1 ? parts[1].charAt(0) : parts[0]?.charAt(1) ?? "";
+  const second =
+    parts.length > 1 ? parts[1].charAt(0) : parts[0]?.charAt(1) ?? "";
   return `${first}${second}`.toUpperCase();
+}
+
+function activationErrorMessage(target: "compte" | "equipe", error: unknown): string {
+  const status =
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "status" in error.response
+      ? error.response.status
+      : null;
+
+  if (status === 403) {
+    return "Vous n'avez pas le droit de modifier cet etat.";
+  }
+
+  if (status === 404 || status === 405) {
+    return "Route d'activation introuvable. Redemarrez le backend avec la derniere version.";
+  }
+
+  return `Modification de l'etat ${target === "compte" ? "du compte" : "de l'equipe"} impossible.`;
 }
 
 function TeamsPage() {
@@ -66,7 +98,7 @@ function TeamsPage() {
         setTeams(teamsData);
       } catch (requestError) {
         console.error(requestError);
-        setError("Impossible de charger les données.");
+        setError("Impossible de charger les donnees.");
       } finally {
         setLoading(false);
       }
@@ -99,31 +131,50 @@ function TeamsPage() {
     return teams.filter((team) => team.name.toLowerCase().includes(query));
   }, [teams, search]);
 
-  async function handleDeleteUser(id: number) {
-    if (!window.confirm("Supprimer ce collègue ?")) {
+  async function handleToggleUserActive(user: UserDetail) {
+    const nextActive = !user.active;
+    const actionLabel = nextActive ? "Activer" : "Desactiver";
+
+    if (!window.confirm(`${actionLabel} ce collegue ?`)) {
       return;
     }
 
     try {
-      await deleteUser(id);
-      setUsers((current) => current.filter((user) => user.id !== id));
+      const updatedUser = await setUserActive(user.id, nextActive);
+      setUsers((current) =>
+        current.map((item) => (item.id === updatedUser.id ? updatedUser : item)),
+      );
+
+      if (!nextActive) {
+        setTeams((current) =>
+          current.map((team) => ({
+            ...team,
+            members: team.members.filter((member) => member.id !== user.id),
+          })),
+        );
+      }
     } catch (requestError) {
       console.error(requestError);
-      setError("Suppression impossible.");
+      setError(activationErrorMessage("compte", requestError));
     }
   }
 
-  async function handleDeleteTeam(id: number) {
-    if (!window.confirm("Supprimer cette équipe ?")) {
+  async function handleToggleTeamActive(team: Team) {
+    const nextActive = !team.active;
+    const actionLabel = nextActive ? "Activer" : "Desactiver";
+
+    if (!window.confirm(`${actionLabel} cette equipe ?`)) {
       return;
     }
 
     try {
-      await deleteTeam(id);
-      setTeams((current) => current.filter((team) => team.id !== id));
+      const updatedTeam = await setTeamActive(team.id, nextActive);
+      setTeams((current) =>
+        current.map((item) => (item.id === updatedTeam.id ? updatedTeam : item)),
+      );
     } catch (requestError) {
       console.error(requestError);
-      setError("Suppression impossible.");
+      setError(activationErrorMessage("equipe", requestError));
     }
   }
 
@@ -140,11 +191,12 @@ function TeamsPage() {
       return {
         title: "Liste des collegues",
         fileName: "equipes-collegues",
-        headers: ["Membre", "Email", "Role", "Equipes", "Tags"],
+        headers: ["Membre", "Email", "Role", "Etat", "Equipes", "Tags"],
         rows: filteredUsers.map((user) => [
           `${user.firstName} ${user.lastName}`,
           user.email,
           ROLE_LABELS[user.role],
+          user.active ? "Actif" : "Inactif",
           user.teams.map((team) => team.name).join(", ") || "-",
           user.tags.map((tag) => tag.name).join(", ") || "-",
         ]),
@@ -154,10 +206,11 @@ function TeamsPage() {
     return {
       title: "Liste des equipes",
       fileName: "equipes",
-      headers: ["Equipe", "Description", "Membres", "Tags"],
+      headers: ["Equipe", "Description", "Etat", "Membres", "Tags"],
       rows: filteredTeams.map((team) => [
         team.name,
         team.description ?? "-",
+        team.active ? "Active" : "Inactive",
         team.members
           .map((member) => `${member.firstName} ${member.lastName}`)
           .join(", ") || "-",
@@ -172,7 +225,7 @@ function TeamsPage() {
         <div className="suppliers-heading-content">
           <div className="suppliers-title">
             <UsersRound size={28} />
-            <h1>Équipe</h1>
+            <h1>Equipe</h1>
           </div>
         </div>
 
@@ -216,8 +269,8 @@ function TeamsPage() {
           >
             <Plus size={17} />
             {activeTab === "colleagues"
-              ? "Inviter un collègue"
-              : "Créer une équipe"}
+              ? "Inviter un collegue"
+              : "Creer une equipe"}
           </button>
         </div>
       </div>
@@ -228,14 +281,14 @@ function TeamsPage() {
           className={activeTab === "colleagues" ? "active" : ""}
           onClick={() => setActiveTab("colleagues")}
         >
-          Collègues <span>{users.length}</span>
+          Collegues <span>{users.length}</span>
         </button>
         <button
           type="button"
           className={activeTab === "teams" ? "active" : ""}
           onClick={() => setActiveTab("teams")}
         >
-          Équipes <span>{teams.length}</span>
+          Equipes <span>{teams.length}</span>
         </button>
       </div>
 
@@ -246,8 +299,8 @@ function TeamsPage() {
             type="text"
             placeholder={
               activeTab === "colleagues"
-                ? "Rechercher un collègue..."
-                : "Rechercher une équipe..."
+                ? "Rechercher un collegue..."
+                : "Rechercher une equipe..."
             }
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -268,7 +321,8 @@ function TeamsPage() {
               <tr>
                 <th>Membre</th>
                 <th>Email</th>
-                <th>Équipes</th>
+                <th>Etat</th>
+                <th>Equipes</th>
                 <th>Tags</th>
                 <th />
               </tr>
@@ -276,8 +330,8 @@ function TeamsPage() {
             <tbody>
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="resource-table-empty">
-                    Aucun collègue trouvé.
+                  <td colSpan={6} className="resource-table-empty">
+                    Aucun collegue trouve.
                   </td>
                 </tr>
               )}
@@ -303,6 +357,15 @@ function TeamsPage() {
                     </div>
                   </td>
                   <td>{user.email}</td>
+                  <td>
+                    <span
+                      className={`team-status-badge ${
+                        user.active ? "active" : "inactive"
+                      }`}
+                    >
+                      {user.active ? "Actif" : "Inactif"}
+                    </span>
+                  </td>
                   <td>
                     {user.teams.length > 0 ? (
                       <div className="team-chip-list">
@@ -344,10 +407,15 @@ function TeamsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteUser(user.id)}
-                        aria-label="Supprimer"
+                        onClick={() => void handleToggleUserActive(user)}
+                        aria-label={user.active ? "Desactiver" : "Activer"}
+                        title={user.active ? "Desactiver" : "Activer"}
                       >
-                        <Trash2 size={16} />
+                        {user.active ? (
+                          <ToggleRight size={17} />
+                        ) : (
+                          <ToggleLeft size={17} />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -363,7 +431,8 @@ function TeamsPage() {
           <table className="resource-table">
             <thead>
               <tr>
-                <th>Équipe</th>
+                <th>Equipe</th>
+                <th>Etat</th>
                 <th>Membres</th>
                 <th>Tags</th>
                 <th />
@@ -372,8 +441,8 @@ function TeamsPage() {
             <tbody>
               {filteredTeams.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="resource-table-empty">
-                    Aucune équipe trouvée.
+                  <td colSpan={5} className="resource-table-empty">
+                    Aucune equipe trouvee.
                   </td>
                 </tr>
               )}
@@ -401,6 +470,15 @@ function TeamsPage() {
                         )}
                       </div>
                     </div>
+                  </td>
+                  <td>
+                    <span
+                      className={`team-status-badge ${
+                        team.active ? "active" : "inactive"
+                      }`}
+                    >
+                      {team.active ? "Active" : "Inactive"}
+                    </span>
                   </td>
                   <td>
                     {team.members.length > 0 ? (
@@ -445,10 +523,15 @@ function TeamsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteTeam(team.id)}
-                        aria-label="Supprimer"
+                        onClick={() => void handleToggleTeamActive(team)}
+                        aria-label={team.active ? "Desactiver" : "Activer"}
+                        title={team.active ? "Desactiver" : "Activer"}
                       >
-                        <Trash2 size={16} />
+                        {team.active ? (
+                          <ToggleRight size={17} />
+                        ) : (
+                          <ToggleLeft size={17} />
+                        )}
                       </button>
                     </div>
                   </td>

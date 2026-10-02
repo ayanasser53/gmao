@@ -1,4 +1,4 @@
-﻿import {
+import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -21,7 +21,10 @@ import {
   type TagOption,
 } from "../../services/taskService";
 
-import { getAuthenticatedUserId } from "../../services/authService";
+import {
+  getAuthenticatedEmail,
+  getAuthenticatedUserId,
+} from "../../services/authService";
 import { getEquipment } from "../../services/equipmentService";
 import { getTeams } from "../../services/teamService";
 import { getUsersDetailed } from "../../services/userService";
@@ -104,11 +107,24 @@ function TaskCreatePage() {
   const [assignSearch, setAssignSearch] = useState("");
   const [assignMode, setAssignMode] = useState<"manual" | "tags">("manual");
   const [assignTagIds, setAssignTagIds] = useState<number[]>([]);
-  const [showReportedByDropdown, setShowReportedByDropdown] = useState(false);
   const [showAssignSection, setShowAssignSection] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const executableUserIds = useMemo(
+    () =>
+      new Set(
+        userDetails
+          .filter(
+            (user) =>
+              user.role === "TECHNICIAN" ||
+              user.role === "SERVICE_PROVIDER",
+          )
+          .map((user) => user.id),
+      ),
+    [userDetails],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -140,13 +156,22 @@ function TaskCreatePage() {
       const currentUserOption = userList.find(
         (option) => option.id === currentUserId,
       );
+      const currentUserDetail = userDetailList.find(
+        (user) => user.id === currentUserId,
+      );
 
-      if (currentUserOption) {
+      if (currentUserOption || currentUserDetail || currentUserId) {
+        const currentUserLabel =
+          currentUserOption?.label ||
+          (currentUserDetail
+            ? `${currentUserDetail.firstName} ${currentUserDetail.lastName}`.trim()
+            : getAuthenticatedEmail());
+
         setAssignees([
           {
-            key: `user-${currentUserOption.id}`,
-            userId: currentUserOption.id,
-            label: currentUserOption.label,
+            key: `user-${currentUserId}`,
+            userId: currentUserId ?? undefined,
+            label: currentUserLabel,
           },
         ]);
       }
@@ -167,19 +192,6 @@ function TaskCreatePage() {
         ? current.filter((tagId) => tagId !== id)
         : [...current, id],
     );
-  }
-
-  function addAssignee(userId: number): void {
-    const option = userOptions.find((option) => option.id === userId);
-
-    if (!option || assignees.some((a) => a.userId === userId)) {
-      return;
-    }
-
-    setAssignees((current) => [
-      ...current,
-      { key: `user-${userId}`, userId, label: option.label },
-    ]);
   }
 
   function addAssignedUser(userId: number): void {
@@ -219,7 +231,7 @@ function TaskCreatePage() {
     event.preventDefault();
 
     if (!equipmentId || !description.trim() || !startDate || !endDate) {
-      setError("Merci de compléter les champs obligatoires.");
+      setError("Merci de compl�ter les champs obligatoires.");
       return;
     }
 
@@ -262,7 +274,6 @@ function TaskCreatePage() {
 
       if (createAnother) {
         setDescription("");
-        setAssignees([]);
         setLinks([]);
         setFiles([]);
         setTagIds([]);
@@ -271,7 +282,7 @@ function TaskCreatePage() {
       }
     } catch (submitError) {
       console.error(submitError);
-      setError("La création de la tâche a échoué. Réessayez.");
+      setError("La cr�ation de la t�che a �chou�. R�essayez.");
     } finally {
       setSubmitting(false);
     }
@@ -280,14 +291,18 @@ function TaskCreatePage() {
   const filteredUserOptions = useMemo(() => {
     const query = assignSearch.trim().toLowerCase();
 
+    const executableUsers = userOptions.filter((option) =>
+      executableUserIds.has(option.id),
+    );
+
     if (!query) {
-      return userOptions;
+      return executableUsers;
     }
 
-    return userOptions.filter((option) =>
+    return executableUsers.filter((option) =>
       option.label.toLowerCase().includes(query),
     );
-  }, [userOptions, assignSearch]);
+  }, [userOptions, executableUserIds, assignSearch]);
 
   const filteredTeamOptions = useMemo(() => {
     const query = assignSearch.trim().toLowerCase();
@@ -312,8 +327,10 @@ function TaskCreatePage() {
     }
 
     const matchedUsers = userDetails
-      .filter((user) =>
-        user.tags.some((tag) => assignTagIds.includes(tag.id)),
+      .filter(
+        (user) =>
+          executableUserIds.has(user.id) &&
+          user.tags.some((tag) => assignTagIds.includes(tag.id)),
       )
       .map((user) => ({
         key: `user-${user.id}`,
@@ -332,14 +349,14 @@ function TaskCreatePage() {
       }));
 
     setAssignedTo([...matchedTeams, ...matchedUsers]);
-  }, [assignMode, assignTagIds, userDetails, teamOptions]);
+  }, [assignMode, assignTagIds, userDetails, teamOptions, executableUserIds]);
 
   return (
     <section className="supplier-modal-page">
       <button
         type="button"
         className="supplier-form-backdrop"
-        aria-label="Retour aux tâches"
+        aria-label="Retour aux t�ches"
         onClick={() => navigate(`${basePath}/tasks`)}
       />
 
@@ -353,12 +370,12 @@ function TaskCreatePage() {
               type="button"
               className="measure-drawer-back"
               onClick={() => navigate(`${basePath}/tasks`)}
-              aria-label="Retour aux tâches"
+              aria-label="Retour aux t�ches"
             >
               <ArrowLeft size={22} />
             </button>
 
-            <h2>Créer une tâche</h2>
+            <h2>Cr�er une t�che</h2>
 
             <button
               type="button"
@@ -381,7 +398,7 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Équipement <span>*</span>
+                  �quipement <span>*</span>
                 </label>
                 <EquipmentSelect
                   equipmentList={equipmentOptions}
@@ -392,11 +409,11 @@ function TaskCreatePage() {
 
               <div className="measure-form-group">
                 <label>
-                  Description de la tâche <span>*</span>
+                  Description de la t�che <span>*</span>
                 </label>
                 <textarea
                   rows={5}
-                  placeholder="Décrivez la panne, l'équipement concerné et tout détail utile..."
+                  placeholder="D�crivez la panne, l'�quipement concern� et tout d�tail utile..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -410,7 +427,7 @@ function TaskCreatePage() {
               </div>
 
               <label className="task-toggle-row">
-                <span>Toute la journée</span>
+                <span>Toute la journ�e</span>
                 <input
                   type="checkbox"
                   checked={allDay}
@@ -421,7 +438,7 @@ function TaskCreatePage() {
               <div className="supplier-form-grid">
                 <div className="measure-form-group">
                   <label>
-                    Date de début <span>*</span>
+                    Date de d�but <span>*</span>
                   </label>
                   <input
                     type="date"
@@ -440,7 +457,7 @@ function TaskCreatePage() {
                 {!allDay && (
                   <div className="measure-form-group">
                     <label>
-                      Heure de début <span>*</span>
+                      Heure de d�but <span>*</span>
                     </label>
                     <input
                       type="time"
@@ -486,79 +503,28 @@ function TaskCreatePage() {
             {/* Assignees */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>Signalé par</span>
+                <span>Signal� par</span>
               </div>
 
               <div className="task-chip-list">
                 {assignees.length === 0 && (
-                  <p className="task-empty-hint">Personne renseignée pour l'instant.</p>
+                  <p className="task-empty-hint">
+                    Le compte connect� sera utilis� automatiquement.
+                  </p>
                 )}
 
                 {assignees.map((assignee) => (
                   <span className="task-chip" key={assignee.key}>
                     {assignee.label}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAssignees((current) =>
-                          current.filter((a) => a.key !== assignee.key),
-                        )
-                      }
-                      aria-label={`Retirer ${assignee.label}`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
                   </span>
                 ))}
-              </div>
-
-              <div className="task-filter-dropdown">
-                <button
-                  type="button"
-                  className="task-filter-dropdown-trigger"
-                  onClick={() =>
-                    setShowReportedByDropdown((current) => !current)
-                  }
-                >
-                  + Sélectionner un utilisateur
-                </button>
-
-                {showReportedByDropdown && (
-                  <div className="task-filter-dropdown-panel">
-                    {userOptions.length === 0 && (
-                      <p className="task-empty-hint">
-                        Aucun collègue disponible.
-                      </p>
-                    )}
-
-                    {userOptions.map((option) => (
-                      <button
-                        type="button"
-                        key={option.id}
-                        className="task-filter-dropdown-row"
-                        onClick={() => {
-                          addAssignee(option.id);
-                          setShowReportedByDropdown(false);
-                        }}
-                      >
-                        <span
-                          className="task-filter-avatar"
-                          style={{ background: avatarColor(option.id) }}
-                        >
-                          {initials(option.label)}
-                        </span>
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
             {/* Assigned to */}
             <div className="task-form-section">
               <div className="supplier-drawer-section-title">
-                <span>Assigné à</span>
+                <span>Assign� �</span>
               </div>
 
               <div className="assign-mode-toggle">
@@ -568,7 +534,7 @@ function TaskCreatePage() {
                   onClick={() => setAssignMode("manual")}
                 >
                   <UsersRound size={20} />
-                  Sélection manuelle
+                  S�lection manuelle
                 </button>
                 <button
                   type="button"
@@ -576,7 +542,7 @@ function TaskCreatePage() {
                   onClick={() => setAssignMode("tags")}
                 >
                   <TagIcon size={20} />
-                  Sélection par tag(s)
+                  S�lection par tag(s)
                 </button>
               </div>
 
@@ -586,7 +552,7 @@ function TaskCreatePage() {
                     <Search size={16} />
                     <input
                       type="text"
-                      placeholder="Rechercher un collègue ou une équipe..."
+                      placeholder="Rechercher un coll�gue ou une �quipe..."
                       value={assignSearch}
                       onChange={(e) => setAssignSearch(e.target.value)}
                     />
@@ -613,13 +579,13 @@ function TaskCreatePage() {
 
                   {showAssignSection && (
                     <div className="assign-picker-list">
-                  <p className="assign-picker-heading">Équipes</p>
+                  <p className="assign-picker-heading">�quipes</p>
 
                   {filteredTeamOptions.length === 0 && (
                     <p className="task-empty-hint">
                       {teamOptions.length === 0
-                        ? "Aucune équipe créée."
-                        : "Aucune équipe ne correspond à la recherche."}
+                        ? "Aucune �quipe cr��e."
+                        : "Aucune �quipe ne correspond � la recherche."}
                     </p>
                   )}
 
@@ -658,11 +624,11 @@ function TaskCreatePage() {
                     );
                   })}
 
-                  <p className="assign-picker-heading">Collègues</p>
+                  <p className="assign-picker-heading">Coll�gues</p>
 
                   {filteredUserOptions.length === 0 && (
                     <p className="task-empty-hint">
-                      Aucun collègue ne correspond à la recherche.
+                      Aucun coll�gue ne correspond � la recherche.
                     </p>
                   )}
 
@@ -732,8 +698,8 @@ function TaskCreatePage() {
                   ))}
 
                   <p className="assign-tag-hint">
-                    Tous les collègues et équipes portant au moins un des tags
-                    sélectionnés seront automatiquement assignés.
+                    Tous les coll�gues et �quipes portant au moins un des tags
+                    s�lectionn�s seront automatiquement assign�s.
                   </p>
                 </div>
               )}
@@ -741,7 +707,7 @@ function TaskCreatePage() {
               <div className="task-chip-list">
                 {assignedTo.length === 0 && (
                   <p className="task-empty-hint">
-                    Personne assignée pour l'instant.
+                    Personne assign�e pour l'instant.
                   </p>
                 )}
 
@@ -808,7 +774,7 @@ function TaskCreatePage() {
               disabled={submitting}
               onClick={(e) => handleSubmit(e, true)}
             >
-              Créer et créer une autre
+              Cr�er et cr�er une autre
             </button>
 
             <button
@@ -818,7 +784,7 @@ function TaskCreatePage() {
               onClick={(e) => handleSubmit(e, false)}
             >
               <Plus size={16} />
-              {submitting ? "Création..." : "Créer la tâche"}
+              {submitting ? "Cr�ation..." : "Cr�er la t�che"}
             </button>
           </div>
         </form>

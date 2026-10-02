@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import type {
   MaintenancePlan,
   MaintenancePlanPayload,
@@ -18,7 +18,7 @@ export async function getMyMaintenancePlans(): Promise<MaintenancePlan[]> {
 }
 
 /**
- * Mes plans de maintenance, toutes usines confondues. Utilisé par le
+ * Mes plans de maintenance, toutes usines confondues. Utilis� par le
  * portail prestataire.
  */
 export async function getAssignedToMeMaintenancePlans(): Promise<MaintenancePlan[]> {

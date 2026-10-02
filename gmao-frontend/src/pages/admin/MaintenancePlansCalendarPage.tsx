@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock,
   History,
+  XCircle,
 } from "lucide-react";
 
 import type { MaintenancePlan } from "../../types/maintenancePlan";
@@ -22,7 +23,7 @@ import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
 
 import "./task-styles.css";
 
-type DisplayStatus = "planned" | "in_progress" | "late" | "done";
+type DisplayStatus = "planned" | "in_progress" | "late" | "done" | "cancelled";
 type AgendaView = "month" | "week" | "day";
 
 type CalendarEntry = {
@@ -59,6 +60,11 @@ const STATUS_TABS = [
     status: "done",
     label: "Termine",
     icon: History,
+  },
+  {
+    status: "cancelled",
+    label: "Annulé",
+    icon: XCircle,
   },
 ] as const;
 
@@ -148,6 +154,7 @@ function getTaskDateKey(task: TaskListItem) {
 
 function getPlanDisplayStatus(plan: MaintenancePlan): DisplayStatus {
   if (plan.status === "DONE") return "done";
+  if (plan.status === "CANCELLED") return "cancelled";
   if (plan.status === "LATE") return "late";
   if (plan.status === "IN_PROGRESS") return "in_progress";
 
@@ -172,6 +179,7 @@ function getTaskDisplayStatus(task: TaskListItem): DisplayStatus {
 
 function getStatusLabel(status: DisplayStatus) {
   if (status === "done") return "Termine";
+  if (status === "cancelled") return "Annulé";
   if (status === "late") return "En retard";
   if (status === "planned") return "Planifie";
   return "En cours";

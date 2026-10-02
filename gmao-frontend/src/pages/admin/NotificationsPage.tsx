@@ -8,7 +8,7 @@ import {
   PackageCheck,
   ShoppingCart,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useWorkspaceBasePath } from "../../hooks/useWorkspaceBasePath";
@@ -25,7 +25,7 @@ import "./notifications-styles.css";
 type FilterTab = "ALL" | "UNREAD";
 
 interface NotificationTypeMeta {
-  icon: JSX.Element;
+  icon: ReactNode;
   className: string;
 }
 
@@ -66,7 +66,7 @@ function formatRelativeDate(value: string): string {
   const diffMinutes = Math.round(diffMs / 60000);
 
   if (diffMinutes < 1) {
-    return "À l'instant";
+    return "A l'instant";
   }
 
   if (diffMinutes < 60) {
@@ -221,6 +221,8 @@ function NotificationsPage() {
                 icon: <Bell size={18} />,
                 className: "notif-icon-blue",
               };
+              const title = notification.title;
+              const message = notification.message;
 
               return (
                 <article
@@ -234,14 +236,14 @@ function NotificationsPage() {
 
                   <div className="notif-row-body">
                     <div className="notif-row-title-line">
-                      <span className="notif-row-title">{notification.title}</span>
+                      <span className="notif-row-title">{title}</span>
                       <span className="notif-row-time">
                         {formatRelativeDate(notification.createdAt)}
                       </span>
                     </div>
 
-                    {notification.message && (
-                      <p className="notif-row-message">{notification.message}</p>
+                    {message && (
+                      <p className="notif-row-message">{message}</p>
                     )}
                   </div>
 

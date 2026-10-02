@@ -12,7 +12,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  getAuthenticatedRole,
   loginAdmin,
   saveAuthentication,
 } from "../services/authService";

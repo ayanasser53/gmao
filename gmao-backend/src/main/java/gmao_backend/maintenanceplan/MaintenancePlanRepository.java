@@ -49,4 +49,34 @@ public interface MaintenancePlanRepository
             @Param("id") Long id,
             @Param("userId") Long userId
     );
+
+    @Query(
+            "select p from MaintenancePlan p "
+                    + "where p.equipment.id = :equipmentId "
+                    + "and p.equipment.usine.id = :usineId "
+                    + "and p.equipmentOnly = :equipmentOnly "
+                    + "and p.description = :description "
+                    + "and p.regulatory = :regulatory "
+                    + "and p.triggerType = :triggerType "
+                    + "and p.frequencyValue = :frequencyValue "
+                    + "and p.frequencyUnit = :frequencyUnit "
+                    + "and p.plannedMaintenanceHours = :plannedMaintenanceHours "
+                    + "and p.plannedMaintenanceMinutes = :plannedMaintenanceMinutes "
+                    + "and p.plannedStoppedHours = :plannedStoppedHours "
+                    + "and p.plannedStoppedMinutes = :plannedStoppedMinutes"
+    )
+    List<MaintenancePlan> findSeriesBySignature(
+            @Param("equipmentId") Long equipmentId,
+            @Param("usineId") Long usineId,
+            @Param("equipmentOnly") boolean equipmentOnly,
+            @Param("description") String description,
+            @Param("regulatory") boolean regulatory,
+            @Param("triggerType") MaintenanceTriggerType triggerType,
+            @Param("frequencyValue") int frequencyValue,
+            @Param("frequencyUnit") String frequencyUnit,
+            @Param("plannedMaintenanceHours") int plannedMaintenanceHours,
+            @Param("plannedMaintenanceMinutes") int plannedMaintenanceMinutes,
+            @Param("plannedStoppedHours") int plannedStoppedHours,
+            @Param("plannedStoppedMinutes") int plannedStoppedMinutes
+    );
 }

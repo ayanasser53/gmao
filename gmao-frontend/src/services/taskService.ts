@@ -9,7 +9,7 @@ import type {
 
 import { getImpersonatedUsine } from "./impersonation";
 
-const BACKEND_URL = "http://localhost:8090";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 /**
  * The backend requires a JWT on every route except /api/auth/** and

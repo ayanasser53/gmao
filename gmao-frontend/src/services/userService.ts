@@ -34,6 +34,12 @@ export async function updateUser(
   return response.data;
 }
 
-export async function deleteUser(id: number): Promise<void> {
-  await api.delete(`/users/${id}`);
+export async function setUserActive(
+  id: number,
+  active: boolean,
+): Promise<UserDetail> {
+  const response = await api.patch<UserDetail>(
+    `/users/${id}/active?active=${active}`,
+  );
+  return response.data;
 }

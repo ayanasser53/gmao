@@ -458,41 +458,47 @@
 /* ---------- Onglets actif / historique ---------- */
 
 .task-status-cards {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   margin: 20px 0 22px;
 }
 
 .task-status-cards button {
-  min-height: 88px;
+  flex: 0 0 auto;
+  min-height: 48px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
+  gap: 8px;
+  padding: 8px 14px;
   color: #193858;
   background: #ffffff;
   border: 1px solid #cfdbe6;
   border-radius: 8px;
   font: inherit;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
   text-align: left;
   cursor: pointer;
 }
 
 .task-status-cards button svg {
-  width: 46px;
-  height: 46px;
-  padding: 11px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  border-radius: 7px;
   flex-shrink: 0;
 }
 
 .task-status-cards button span {
-  margin-left: auto;
-  font-size: 28px;
+  font-size: 16px;
   line-height: 1;
+}
+
+.task-status-cards button .task-status-card-label {
+  font-size: 13px;
 }
 
 .task-status-cards button.tab-all svg {
@@ -518,6 +524,11 @@
 .task-status-cards button.tab-done svg {
   color: #198754;
   background: #ddf6e9;
+}
+
+.task-status-cards button.tab-cancelled svg {
+  color: #64748b;
+  background: #eef2f7;
 }
 
 .task-status-cards button.tab-all.active {
@@ -550,9 +561,15 @@
   box-shadow: inset 4px 0 0 #198754;
 }
 
+.task-status-cards button.tab-cancelled.active {
+  background: #eef2f7;
+  border-color: #64748b;
+  box-shadow: inset 4px 0 0 #64748b;
+}
+
 @media (max-width: 900px) {
-  .task-status-cards {
-    grid-template-columns: 1fr;
+  .task-status-cards button {
+    flex: 1 1 calc(50% - 8px);
   }
 }
 
@@ -630,6 +647,11 @@
 .task-status-canceled {
   color: #5a5f6b;
   background: #e7e8eb;
+}
+
+.task-status-archived {
+  color: #475569;
+  background: #eef2f7;
 }
 
 .task-status-select.task-status-canceled {

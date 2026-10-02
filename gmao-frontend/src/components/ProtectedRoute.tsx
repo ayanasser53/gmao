@@ -22,7 +22,7 @@ function defaultPathForRole(role: string) {
     return "/provider";
   }
 
-  if (role === "ADMIN" || role === "SUPERADMIN") {
+  if (role === "ADMIN" || role === "SUPERADMIN" || role === "SUPERVISOR") {
     return "/admin/dashboard";
   }
 

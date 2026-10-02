@@ -69,19 +69,19 @@
 }
 
 .dashboard-hero-card-tasks {
-  background: linear-gradient(135deg, #5eb3ff 0%, #3d8fe0 100%);
+  background: linear-gradient(135deg, #9498ea 0%, #6d71d8 100%);
 }
 
 .dashboard-hero-card-activities {
-  background: linear-gradient(135deg, #ffb26b 0%, #f3935a 100%);
+  background: linear-gradient(135deg, #4fb3b8 0%, #2c8b90 100%);
 }
 
 .dashboard-hero-card-time {
-  background: linear-gradient(135deg, #4be3c4 0%, #2dd4b0 100%);
+  background: linear-gradient(135deg, #a8d8f0 0%, #6fb3da 100%);
 }
 
 .dashboard-hero-card-avg {
-  background: linear-gradient(135deg, #a7b4c0 0%, #869aad 100%);
+  background: linear-gradient(135deg, #c9e07a 0%, #9ec24a 100%);
 }
 
 .dashboard-hero-card-body {
@@ -154,8 +154,8 @@
 }
 
 .dashboard-resource-card:hover {
-  border-color: #b9d8e9;
-  box-shadow: 0 6px 16px -10px rgba(8, 127, 189, 0.35);
+  border-color: #c6cbf3;
+  box-shadow: 0 6px 16px -10px rgba(109, 113, 216, 0.35);
 }
 
 .dashboard-resource-icon {
@@ -164,8 +164,8 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  color: #087fbd;
-  background: #eaf6fc;
+  color: #6d71d8;
+  background: #eceefd;
   border-radius: 9px;
 }
 
@@ -187,7 +187,7 @@
 }
 
 .dashboard-resource-card strong {
-  color: #12365c;
+  color: #2a2f66;
   font-size: 19px;
   font-weight: 800;
 }
@@ -239,13 +239,13 @@
 
 .dashboard-section-tabs button:hover {
   background: #f2f6fa;
-  color: #12365c;
+  color: #2a2f66;
 }
 
 .dashboard-section-tabs button.active {
   color: #ffffff;
-  background: #4da6ff;
-  box-shadow: 0 4px 12px -4px rgba(77, 166, 255, 0.55);
+  background: #6d71d8;
+  box-shadow: 0 4px 12px -4px rgba(109, 113, 216, 0.55);
 }
 
 @media (max-width: 700px) {
@@ -294,13 +294,13 @@
 
 .dashboard-reference-title h2 {
   margin: 0;
-  color: #263746;
+  color: #2d2f63;
   font-size: 18px;
   font-weight: 800;
 }
 
 .dashboard-reference-title > svg {
-  color: #087fbd;
+  color: #6d71d8;
 }
 
 /* =====================================================
@@ -317,7 +317,7 @@
 
 .dashboard-gauge-card h2 {
   margin: 0 0 16px;
-  color: #12365c;
+  color: #2a2f66;
   font-size: 16px;
   font-weight: 800;
 }
@@ -366,7 +366,7 @@
 
 .dashboard-gauge-total strong {
   display: block;
-  color: #12365c;
+  color: #2a2f66;
   font-size: 30px;
   font-weight: 800;
   line-height: 1;
@@ -453,12 +453,12 @@
 }
 
 .dashboard-top-tasks-table tbody tr:hover {
-  background: #eaf6fc;
+  background: #eceefd;
 }
 
 .dashboard-task-id {
   padding: 0;
-  color: #178ab5;
+  color: #6d71d8;
   background: transparent;
   border: 0;
   font: inherit;
@@ -505,8 +505,8 @@
 }
 
 .dashboard-reference-trend-panel .dashboard-trend-toggle button.active {
-  color: #087fbd;
-  border-bottom-color: #087fbd;
+  color: #6d71d8;
+  border-bottom-color: #6d71d8;
 }
 
 .dashboard-reference-trend-panel .dashboard-trend-svg {
@@ -520,18 +520,18 @@
 }
 
 .dashboard-reference-trend-panel .dashboard-trend-area {
-  fill: rgba(0, 137, 190, 0.88);
+  fill: rgba(44, 139, 144, 0.88);
 }
 
 .dashboard-reference-trend-panel .dashboard-trend-line {
   fill: none;
-  stroke: #0089be;
+  stroke: #2c8b90;
   stroke-width: 2.5;
 }
 
 .dashboard-reference-trend-panel .dashboard-trend-dot {
   fill: #ffffff;
-  stroke: #0089be;
+  stroke: #2c8b90;
   stroke-width: 2;
 }
 
@@ -656,7 +656,7 @@
 
 .dashboard-ranking-card-header h2 {
   margin: 0;
-  color: #102b4c;
+  color: #262b5e;
   font-size: 17px;
   font-weight: 800;
 }
@@ -683,7 +683,7 @@
   width: 100%;
   min-width: 560px;
   border-collapse: collapse;
-  color: #102b4c;
+  color: #262b5e;
   font-size: 14.5px;
 }
 
@@ -714,7 +714,7 @@
 }
 
 .dashboard-ranking-table tbody tr:hover {
-  background: #eaf6fc;
+  background: #eceefd;
 }
 
 .dashboard-ranking-table th:last-child,
@@ -752,7 +752,7 @@
   align-items: center;
   gap: 7px;
   padding: 0;
-  color: #007fbd;
+  color: #6d71d8;
   background: transparent;
   border: 0;
   font: inherit;
@@ -760,12 +760,12 @@
 }
 
 .dashboard-ranking-link:disabled {
-  color: #007fbd;
+  color: #6d71d8;
   cursor: default;
 }
 
 .dashboard-ranking-link:not(:disabled):hover {
-  color: #005f91;
+  color: #4a4fc4;
   text-decoration: underline;
 }
 
@@ -867,8 +867,8 @@
 }
 
 .task-analysis-dimension-tabs button.active {
-  color: #0077b6;
-  background: #d8effb;
+  color: #6d71d8;
+  background: #eceefd;
 }
 
 .task-analysis-print {
@@ -879,10 +879,10 @@
   min-height: 46px;
   padding: 0 22px;
   color: #ffffff;
-  background: #087fbd;
-  border: 1px solid #087fbd;
+  background: #6d71d8;
+  border: 1px solid #6d71d8;
   border-radius: 8px;
-  box-shadow: 0 3px 8px rgba(8, 127, 189, 0.25);
+  box-shadow: 0 3px 8px rgba(109, 113, 216, 0.25);
   font: inherit;
   font-size: 14.5px;
   font-weight: 700;
@@ -891,7 +891,7 @@
 }
 
 .task-analysis-print:hover {
-  background: #066a9e;
+  background: #565bc4;
 }
 
 .task-analysis-more-filters {
@@ -902,7 +902,7 @@
   min-height: 54px;
   padding: 0 24px;
   margin: 0 20px;
-  color: #172c43;
+  color: #2a2f5c;
   background: #eef7fb;
   border: 0;
   border-radius: 8px;
@@ -1108,7 +1108,7 @@
 }
 
 .dashboard-filters-toggle:hover {
-  color: #12365c;
+  color: #2a2f66;
   background: #f2f6fa;
   border-color: #c7d1da;
 }
@@ -1121,7 +1121,7 @@
   height: 18px;
   padding: 0 5px;
   color: #ffffff;
-  background: #087fbd;
+  background: #6d71d8;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
@@ -1192,7 +1192,7 @@
 }
 
 .dashboard-filters-origin input {
-  accent-color: #087fbd;
+  accent-color: #6d71d8;
 }
 
 .dashboard-filters-grid {
@@ -1243,7 +1243,7 @@
   border-radius: 8px;
   font: inherit;
   font-size: 13px;
-  color: #12365c;
+  color: #2a2f66;
   cursor: pointer;
   text-align: left;
 }
@@ -1309,7 +1309,7 @@
   border-radius: 8px;
   font: inherit;
   font-size: 13px;
-  color: #12365c;
+  color: #2a2f66;
   text-align: left;
   cursor: pointer;
 }
@@ -1319,7 +1319,7 @@
 }
 
 .dashboard-avatar-select-panel button.selected {
-  background: #e7f5fb;
+  background: #eceefd;
   font-weight: 700;
 }
 

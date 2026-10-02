@@ -48,6 +48,7 @@ public class TeamService {
                 .description(request.description())
                 .usine(usine)
                 .tags(resolveTags(request.tagIds()))
+                .active(true)
                 .build();
 
         Team savedTeam = teamRepository.save(team);
@@ -83,6 +84,14 @@ public class TeamService {
         teamRepository.delete(team);
     }
 
+    @Transactional
+    public TeamResponse setActive(Long id, boolean active) {
+        Team team = getTeam(id);
+        team.setActive(active);
+
+        return toResponse(teamRepository.save(team));
+    }
+
     private void syncMembers(Team team, List<Long> memberIds) {
         Set<Long> targetIds = memberIds == null
                 ? new HashSet<>()
@@ -91,6 +100,10 @@ public class TeamService {
         for (User user : userRepository.findAllByUsineId(currentUserProvider.requireUsineId())) {
             boolean shouldBeMember = targetIds.contains(user.getId());
             boolean isMember = user.getTeams().contains(team);
+
+            if (shouldBeMember && !Boolean.TRUE.equals(user.getActive())) {
+                throw new IllegalArgumentException("Un utilisateur inactif ne peut pas etre ajoute a une equipe.");
+            }
 
             if (shouldBeMember && !isMember) {
                 user.getTeams().add(team);
@@ -118,6 +131,7 @@ public class TeamService {
     private TeamResponse toResponse(Team team) {
         List<TeamResponse.TeamMemberSummary> members = team.getMembers()
                 .stream()
+                .filter(user -> Boolean.TRUE.equals(user.getActive()))
                 .map(user -> new TeamResponse.TeamMemberSummary(
                         user.getId(),
                         user.getFirstName(),
@@ -135,6 +149,7 @@ public class TeamService {
                 team.getId(),
                 team.getName(),
                 team.getDescription(),
+                Boolean.TRUE.equals(team.getActive()),
                 members,
                 tags,
                 team.getCreatedAt(),
