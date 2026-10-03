@@ -75,3 +75,19 @@ jobs:
           IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/gmao-frontend
           docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./gmao-frontend
           docker push $IMAGE --all-tags
+  deploy:
+    needs: build-images
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Préparer la clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Déployer sur le serveur Azure
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ~/gmao && docker compose pull && docker compose up -d && docker image prune -f"

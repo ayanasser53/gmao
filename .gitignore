@@ -3,3 +3,6 @@
 *.sql
 *.tsbuildinfo
 .tsbuildinfo/
+.terraform/
+*.tfstate
+*.tfstate.backup

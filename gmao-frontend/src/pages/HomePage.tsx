@@ -31,7 +31,7 @@ function HomePage() {
             </span>
 
             <h1>
-              Pilotez vos équipements, vos interventions et vos équipes depuis
+              Pilotez vos équipementsssss, vos interventions et vos équipes depuis
               une seule plateforme
             </h1>
 
